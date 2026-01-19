@@ -2,7 +2,7 @@
  * @Author: 1372594487 1372594487@qq.com
  * @Date: 2026-01-17 16:01:23
  * @LastEditors: '1372594487
- * @LastEditTime: 2026-01-18 00:46:21
+ * @LastEditTime: 2026-01-20 00:59:59
  * @Description: File description
  */
 package config
@@ -38,10 +38,10 @@ var (
 )
 
 type Config struct {
-	// Server
 	Server Server `yaml:"server"`
 	Mysql  Mysql  `yaml:"mysql"`
 	Redis  Redis  `yaml:"redis"`
+	Logger Logger `yaml:"logger"`
 }
 
 type Server struct {
@@ -70,6 +70,15 @@ type Redis struct {
 	DBIndex int    `yaml:"db_index"` // 数据库索引
 	MaxIdle int    `yaml:"max_idle"` // 最大空闲连接数
 	MaxOpen int    `yaml:"max_open"` // 最大连接数
+}
+
+type Logger struct {
+	Path       string `yaml:"path"`        // 日志文件路径
+	FileName   string `yaml:"file_name"`   // 日志文件名
+	MaxSize    int    `yaml:"max_size"`    // 单个日志文件最大尺寸，单位MB
+	MaxBackups int    `yaml:"max_backups"` // 最大备份数量
+	MaxAge     int    `yaml:"max_age"`     // 最大保留天数
+	Compress   bool   `yaml:"compress"`    // 是否压缩
 }
 
 // 初始化命令行参数
