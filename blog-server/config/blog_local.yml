@@ -4,6 +4,14 @@ server:
   enable_pprof: true
   log_level: debug
   env: dev
+  enable_gzip: false
+  min_size: 1024  # 小于1KB的响应不压缩
+  gzip_exclude_types:  # 这些类型不压缩
+    - "image/*"
+    - "video/*"
+    - "audio/*"
+    - "application/zip"
+    - "application/x-rar-compressed"
 
 mysql:
   dialect: mysql

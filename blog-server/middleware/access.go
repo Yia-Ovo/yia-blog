@@ -2,12 +2,13 @@
  * @Author: 1372594487 1372594487@qq.com
  * @Date: 2026-01-21 04:36:18
  * @LastEditors: '1372594487
- * @LastEditTime: 2026-01-21 09:31:11
+ * @LastEditTime: 2026-01-23 05:26:42
  * @Description: File description
  */
 package middleware
 
 import (
+	"blog-server/config"
 	"blog-server/utils/logger"
 	"bytes"
 	"io"
@@ -17,7 +18,15 @@ import (
 	"go.uber.org/zap"
 )
 
-func AccessLogMiddleware() gin.HandlerFunc {
+type responseWriterWrapper struct {
+	gin.ResponseWriter //类型嵌入
+	targetWriter       io.Writer
+	compressed         bool // 记录是否压缩
+	size               int  // 记录响应大小
+	minSize            int  // 添加最小压缩阈值配置
+}
+
+func AccessLogMiddleware(conf *config.Config) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// 读取请求体
 		body, newBody := GetRequestBody(ctx)
@@ -42,8 +51,9 @@ func AccessLogMiddleware() gin.HandlerFunc {
 		multiWriter := io.MultiWriter(ctx.Writer, &responseBody)
 		// 创建一个包装了原始响应写入器的自定义响应写入器
 		ctx.Writer = &responseWriterWrapper{
-			ResponseWriter: ctx.Writer,  // 保留原始 Writer 的所有能力（如写入 Header、获取状态码等）
-			targetWriter:   multiWriter, // 将实际的数据写入操作重定向到 multiWriter
+			ResponseWriter: ctx.Writer,          // 保留原始 Writer 的所有能力（如写入 Header、获取状态码等）
+			targetWriter:   multiWriter,         // 将实际的数据写入操作重定向到 multiWriter
+			minSize:        conf.Server.MinSize, // 传入配置值
 		}
 
 		ctx.Next()
@@ -54,17 +64,23 @@ func AccessLogMiddleware() gin.HandlerFunc {
 		fields = append(fields, zap.Int64("dur_ms", time.Since(begin).Milliseconds()))
 		fields = append(fields, zap.Int("status", ctx.Writer.Status()))
 		fields = append(fields, zap.String("resp", respBody))
+		fields = append(fields, zap.Bool("compressed", ctx.Writer.(*responseWriterWrapper).compressed)) // 添加压缩字段
 		logger.Info("access_log", fields...)
 
 	}
 }
 
-type responseWriterWrapper struct {
-	gin.ResponseWriter //类型嵌入
-	targetWriter       io.Writer
-}
-
 func (w *responseWriterWrapper) Write(b []byte) (int, error) {
+	// 记录响应大小
+	w.size += len(b)
+
+	// 检查是否达到最小压缩阈值
+	if w.size >= w.minSize {
+		if w.Header().Get("Content-Encoding") != "" {
+			w.compressed = true
+		}
+	}
+
 	return w.targetWriter.Write(b)
 }
 

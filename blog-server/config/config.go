@@ -2,7 +2,7 @@
  * @Author: 1372594487 1372594487@qq.com
  * @Date: 2026-01-17 16:01:23
  * @LastEditors: '1372594487
- * @LastEditTime: 2026-01-20 00:59:59
+ * @LastEditTime: 2026-01-23 04:38:24
  * @Description: File description
  */
 package config
@@ -45,10 +45,13 @@ type Config struct {
 }
 
 type Server struct {
-	HttpPort    int    `yaml:"http_port"`    // HTTP端口
-	Env         string `yaml:"env"`          // 运行环境
-	EnablePprof bool   `yaml:"enable_pprof"` // 是否启用性能分析
-	LogLevel    string `yaml:"log_level"`    // 日志级别
+	HttpPort         int      `yaml:"http_port"`          // HTTP端口
+	Env              string   `yaml:"env"`                // 运行环境
+	EnablePprof      bool     `yaml:"enable_pprof"`       // 是否启用性能分析
+	LogLevel         string   `yaml:"log_level"`          // 日志级别
+	EnableGzip       bool     `yaml:"enable_gzip"`        // 是否启用Gzip压缩
+	MinSize          int      `yaml:"min_size"`           // 最小压缩阈值，单位字节
+	GzipExcludeTypes []string `yaml:"gzip_exclude_types"` // 不压缩的内容类型
 }
 
 type Mysql struct {
