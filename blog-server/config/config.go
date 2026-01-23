@@ -2,7 +2,7 @@
  * @Author: 1372594487 1372594487@qq.com
  * @Date: 2026-01-17 16:01:23
  * @LastEditors: '1372594487
- * @LastEditTime: 2026-01-23 04:38:24
+ * @LastEditTime: 2026-01-24 01:26:44
  * @Description: File description
  */
 package config
@@ -28,6 +28,7 @@ var (
 	etcdAddr        string
 	localConfigPath string
 	GlobalConfig    Config
+	CurrentEnv      string // 程序当前运行的环境（dev/prod/test）
 
 	// 新增：用于存放 etcd 认证相关的变量
 	// etcdUsername   string
@@ -45,13 +46,23 @@ type Config struct {
 }
 
 type Server struct {
-	HttpPort         int      `yaml:"http_port"`          // HTTP端口
-	Env              string   `yaml:"env"`                // 运行环境
-	EnablePprof      bool     `yaml:"enable_pprof"`       // 是否启用性能分析
-	LogLevel         string   `yaml:"log_level"`          // 日志级别
+	HttpPort    int    `yaml:"http_port"`    // HTTP端口
+	Env         string `yaml:"env"`          // 运行环境
+	EnablePprof bool   `yaml:"enable_pprof"` // 是否启用性能分析
+	LogLevel    string `yaml:"log_level"`    // 日志级别
+
+	//压缩中间件
 	EnableGzip       bool     `yaml:"enable_gzip"`        // 是否启用Gzip压缩
 	MinSize          int      `yaml:"min_size"`           // 最小压缩阈值，单位字节
 	GzipExcludeTypes []string `yaml:"gzip_exclude_types"` // 不压缩的内容类型
+
+	//CORS中间件
+	CorsOrigins     []string `yaml:"cors_origins"` // 允许的来源
+	CorsCredentials bool     `yaml:"cors_credentials"`
+	CorsMaxAge      int      `yaml:"cors_max_age"` // 预检请求的缓存时间，单位秒
+	// CorsAllowHeaders []string `yaml:"cors_allow_headers"`
+	// CorsAllowMethods []string `yaml:"cors_allow_methods"`
+
 }
 
 type Mysql struct {
@@ -86,8 +97,13 @@ type Logger struct {
 
 // 初始化命令行参数
 func init() {
-	flag.StringVar(&localConfigPath, "c", "config/"+ServerName+"_local.yml", "default config path") // 本地配置文件路径
-	flag.StringVar(&etcdAddr, "r", os.Getenv("ETCD_ADDR"), "etcd address")                          // etcd地址
+	CurrentEnv = os.Getenv("APP_ENV")
+	if CurrentEnv == "" {
+		CurrentEnv = "dev" // 默认开发环境
+	}
+
+	flag.StringVar(&localConfigPath, "c", "config."+CurrentEnv+".yaml", "default config path") // 本地配置文件路径
+	flag.StringVar(&etcdAddr, "r", os.Getenv("ETCD_ADDR"), "etcd address")                     // etcd地址
 }
 
 // GetDsn 方法，返回MySQL的DSN连接字符串
@@ -114,6 +130,24 @@ func InitConfig() *Config {
 			panic(err)
 		}
 	}
+
+	// 校验配置文件里的env和环境变量的env是否一致
+	if tempConf.Server.Env != "" && tempConf.Server.Env != CurrentEnv {
+		panic(fmt.Sprintf(
+			"config env mismatch! APP_ENV=%s, but config server.env=%s",
+			CurrentEnv, tempConf.Server.Env,
+		))
+	}
+	// 如果配置文件里的env为空，用环境变量的env填充
+	if tempConf.Server.Env == "" {
+		tempConf.Server.Env = CurrentEnv
+	}
+
+	// 赋值给全局配置
+	GlobalConfig = *tempConf
+	// 更新全局环境标识（确保和配置一致）
+	CurrentEnv = tempConf.Server.Env
+
 	return tempConf
 
 }

@@ -1,9 +1,11 @@
 
 server:
-  http_port: 8080
+  http_port: 0311
   enable_pprof: true
   log_level: debug
   env: dev
+
+  # 压缩中间件
   enable_gzip: false
   min_size: 1024  # 小于1KB的响应不压缩
   gzip_exclude_types:  # 这些类型不压缩
@@ -12,6 +14,26 @@ server:
     - "audio/*"
     - "application/zip"
     - "application/x-rar-compressed"
+
+  # CORE中间件
+  cors_origins:
+    - "https://localhost:0311"
+  cors_credentials: true
+  cors_max_age: 3600
+  
+  # cors_allow_headers:
+  #   - "Content-Type"
+  #   - "Authorization"
+  #   - "X-Requested-With"
+  #   - "Accept"
+  #   - "Origin"
+  # cors_allow_methods:
+  #   - "GET"
+  #   - "POST"
+  #   - "PUT"
+  #   - "DELETE"
+  #   - "OPTIONS"
+
 
 mysql:
   dialect: mysql
