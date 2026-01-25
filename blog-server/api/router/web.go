@@ -1,14 +1,7 @@
-/*
- * @Author: 1372594487 1372594487@qq.com
- * @Date: 2026-01-19 04:15:44
- * @LastEditors: '1372594487
- * @LastEditTime: 2026-01-19 05:22:46
- * @Description: File description
- */
 package router
 
 import (
-	"blog-server/utils/logger"
+	"blog-server/common/utils/logger"
 	"context"
 	"fmt"
 	"log"

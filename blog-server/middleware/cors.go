@@ -1,15 +1,19 @@
 /*
- * @Author: 1372594487 1372594487@qq.com
+ * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-23 06:19:18
- * @LastEditors: '1372594487
- * @LastEditTime: 2026-01-24 00:37:17
- * @Description: File description
+ * @LastEditors: Yia 1372594487@qq.com
+ * @LastEditTime: 2026-01-26 07:00:22
+ * @FilePath: \yia-blog\blog-server\middleware\cors.go
+ * @Description:
+ *
+ * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
  */
+
 package middleware
 
 import (
+	"blog-server/common/utils/logger"
 	"blog-server/config"
-	"blog-server/utils/logger"
 	"net/http"
 	"slices"
 	"strconv"

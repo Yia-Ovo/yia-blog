@@ -1,15 +1,18 @@
 /*
- * @Author: 1372594487 1372594487@qq.com
- * @Date: 2026-01-21 04:36:18
- * @LastEditors: '1372594487
- * @LastEditTime: 2026-01-23 05:26:42
- * @Description: File description
+ * @Author: Yia 1372594487@qq.com
+ * @Date: 2026-01-21 11:32:32
+ * @LastEditors: Yia 1372594487@qq.com
+ * @LastEditTime: 2026-01-26 06:59:42
+ * @FilePath: \yia-blog\blog-server\middleware\access.go
+ * @Description:
+ *
+ * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
  */
 package middleware
 
 import (
+	"blog-server/common/utils/logger"
 	"blog-server/config"
-	"blog-server/utils/logger"
 	"bytes"
 	"io"
 	"time"

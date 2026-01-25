@@ -1,18 +1,8 @@
-/*
- * @Author: Yia 1372594487@qq.com
- * @Date: 2026-01-25 23:13:50
- * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-01-26 00:54:21
- * @FilePath: \yia-blog\blog-server\middleware\auth.go
- * @Description:
- *
- * Copyright (c) 2026 by ${git_name_email}, All Rights Reserved.
- */
 package middleware
 
 import (
 	"blog-server/common"
-	"blog-server/consts"
+	"blog-server/common/consts"
 	"context"
 	"net/http"
 
