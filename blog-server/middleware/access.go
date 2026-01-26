@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-01-26 06:59:42
+ * @LastEditTime: 2026-01-27 00:58:29
  * @FilePath: \yia-blog\blog-server\middleware\access.go
  * @Description:
  *
@@ -29,7 +29,7 @@ type responseWriterWrapper struct {
 	minSize            int  // 添加最小压缩阈值配置
 }
 
-func AccessLogMiddleware(conf *config.Config) gin.HandlerFunc {
+func AccessLogMiddleware(conf *config.GlobalConfig) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// 读取请求体
 		body, newBody := GetRequestBody(ctx)
@@ -54,9 +54,9 @@ func AccessLogMiddleware(conf *config.Config) gin.HandlerFunc {
 		multiWriter := io.MultiWriter(ctx.Writer, &responseBody)
 		// 创建一个包装了原始响应写入器的自定义响应写入器
 		ctx.Writer = &responseWriterWrapper{
-			ResponseWriter: ctx.Writer,          // 保留原始 Writer 的所有能力（如写入 Header、获取状态码等）
-			targetWriter:   multiWriter,         // 将实际的数据写入操作重定向到 multiWriter
-			minSize:        conf.Server.MinSize, // 传入配置值
+			ResponseWriter: ctx.Writer,            // 保留原始 Writer 的所有能力（如写入 Header、获取状态码等）
+			targetWriter:   multiWriter,           // 将实际的数据写入操作重定向到 multiWriter
+			minSize:        conf.Gin.Gzip.MinSize, // 传入配置值
 		}
 
 		ctx.Next()
