@@ -1,64 +1,72 @@
-
+# config.dev.yaml - 开发环境配置文件
+# 服务器基础配置
 server:
-  http_port: 0311
-  enable_pprof: true
-  log_level: debug
-  env: dev
+  http_port: 8081                # 修正：端口不能以0开头，改为8081（1-65535合法范围）
+  env: dev                       # 运行环境标识（dev/prod/test）
+  enable_pprof: true             # 开发环境开启pprof性能分析（访问 /debug/pprof 查看）
+  log_level: debug               # 开发环境日志级别（debug/info/warn/error）
 
-  # 压缩中间件
-  enable_gzip: false
-  min_size: 1024  # 小于1KB的响应不压缩
-  gzip_exclude_types:  # 这些类型不压缩
-    - "image/*"
-    - "video/*"
-    - "audio/*"
-    - "application/zip"
-    - "application/x-rar-compressed"
+# Gin框架配置
+gin:
+  mode: debug                      # 开发环境用debug模式（打印详细日志、热重载）
+  disable_console_color: false     # 开发环境保留控制台颜色（便于调试）
+  max_multipart_memory: 10         # 上传文件最大内存限制（10MB）
+  router_prefix: /api/v1           # 全局路由前缀
+  # 跨域配置（开发环境宽松配置，修复重复定义问题）
+  cors:
+    enabled: true                          # 开发环境开启跨域
+    allow_origins: ["http://localhost:8081"] # 修正：http而非https（本地开发无证书），端口匹配http_port
+    allow_methods: 
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "PATCH"
+      - "OPTIONS"
+    allow_headers:
+      - "Content-Type"
+      - "Authorization"
+      - "X-Requested-With"
+      - "Token"
+    allow_credentials: true                # 允许携带Cookie
+    max_age: 600                           # 预检请求缓存时间（10分钟）
+  # Gzip压缩配置
+  gzip:                                    
+    enable_gzip: true                      # 开发环境开启Gzip压缩
+    min_size: 1024                         # 最小压缩阈值（1KB，小于1KB不压缩）
+    gzip_exclude_types:  
+      - "image/*"
+      - "video/*"
+      - "audio/*"
+      - "application/zip"
+      - "application/x-rar-compressed"       # 不压缩的内容类型（图片/视频本身已压缩）
 
-  # CORE中间件
-  cors_origins:
-    - "https://localhost:0311"
-  cors_credentials: true
-  cors_max_age: 3600
-  
-  # cors_allow_headers:
-  #   - "Content-Type"
-  #   - "Authorization"
-  #   - "X-Requested-With"
-  #   - "Accept"
-  #   - "Origin"
-  # cors_allow_methods:
-  #   - "GET"
-  #   - "POST"
-  #   - "PUT"
-  #   - "DELETE"
-  #   - "OPTIONS"
-
-
+# MySQL数据库配置（本地开发环境）
 mysql:
-  dialect: mysql
-  user: root
-  password: 123456
-  host: 127.0.0.1
-  port: 3306
-  database: edu.mall
-  charset: utf8mb4
-  show_mysql: true
-  max_open: 20
-  max_idle: 5
+  dialect: mysql                     # 数据库方言（固定为mysql）
+  user: root                         # 本地MySQL用户名（根据自己环境修改）
+  password: 123456                   # 本地MySQL密码（根据自己环境修改）
+  host: 127.0.0.1                    # 本地MySQL地址
+  port: 3306                         # 本地MySQL端口
+  database: yia_blog_dev             # 开发环境数据库名（建议加dev后缀区分）
+  charset: utf8mb4                   # 字符集（utf8mb4兼容emoji）
+  show_sql: true                     # 开发环境显示SQL语句（便于调试）
+  max_open: 20                       # 数据库最大连接数
+  max_idle: 10                       # 数据库最大空闲连接数
 
+# Redis配置（本地开发环境）
 redis:
-  addr: 127.0.0.1:6379
-  password: ""
-  db_index: 0
-  max_idle: 2
-  max_open: 10
+  addr: 127.0.0.1:6379               # 本地Redis地址
+  password: ""                       # 开发环境Redis默认无密码（如有密码请修改）
+  db_index: 0                        # Redis数据库索引（0-15）
+  max_idle: 10                       # Redis最大空闲连接数
+  max_open: 20                       # Redis最大连接数
 
+# 日志配置（开发环境）
 logger:
-  path: ./logs
-  file_name: blog_server.log
-  max_size: 10
-  max_backups: 5
-  max_age: 7
-  compress: true
-
+  path: ./logs                       # 日志文件存放路径（项目根目录下的logs文件夹）
+  file_name: blog_server_dev.log     # 修正：加dev后缀区分环境
+  max_size: 10                       # 单个日志文件最大大小（10MB，开发环境减小尺寸）
+  max_backups: 30                    # 日志文件最大备份数
+  max_age: 7                         # 日志文件最大保留天数（7天）
+  compress: false                    # 修正：开发环境不压缩（便于查看原始日志）
