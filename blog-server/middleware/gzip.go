@@ -25,7 +25,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CustonGzipMiddleware(conf *config.GlobalConfig) gin.HandlerFunc {
+func CustomGzipMiddleware(conf *config.GlobalConfig) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if !conf.Gin.Gzip.EnableGzip {
 			ctx.Next()
