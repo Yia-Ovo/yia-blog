@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-27 11:00:00
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-01-28 08:35:15
+ * @LastEditTime: 2026-01-30 08:16:29
  * @FilePath: \yia-blog\blog-server\common\gin\gin_init.go
  * @Description:
  集成所有自定义中间件：Recovery → CORS → AccessLog →  → Gzip
@@ -17,6 +17,7 @@ import (
 	"blog-server/common/utils/logger" // 替换为你实际的日志工具包路径
 	"blog-server/config"
 	"blog-server/middleware"
+	"io"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -39,6 +40,11 @@ func NewGinEngine() *gin.Engine {
 		logger.Debug("Gin控制台颜色已禁用")
 	}
 
+	// 将Gin的默认日志器重定向到空Writer，彻底去掉[GIN-debug]打印
+	gin.DefaultWriter = io.Discard
+	// 关闭Gin的错误日志输出（可选，若想保留Gin的错误日志，可注释这行，或重定向到自定义日志）
+	gin.DefaultErrorWriter = io.Discard
+	logger.Debug("Gin日志输出已重定向")
 	// 3. 创建Gin引擎实例（生产环境使用New()，避免默认中间件开销）
 	engine := gin.New()
 
