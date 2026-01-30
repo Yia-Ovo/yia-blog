@@ -1,3 +1,13 @@
+/*
+ * @Author: Yia 1372594487@qq.com
+ * @Date: 2026-01-21 11:32:32
+ * @LastEditors: Yia 1372594487@qq.com
+ * @LastEditTime: 2026-01-30 03:51:21
+ * @FilePath: \yia-blog\blog-server\api\router\router.go
+ * @Description:
+ *
+ * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
+ */
 package router
 
 import (
@@ -7,18 +17,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type IRouter interface {
-	Register(engine *gin.Engine)
-}
-
 type Router struct {
 	FullPPROF bool
 	rootPath  string
-	conf      *config.Config
+	conf      *config.GlobalConfig
 	checkFunc func() error // 健康检查函数
 }
 
-func NewRouter(conf *config.Config, checkFunc func() error) *Router {
+func NewRouter(conf *config.GlobalConfig, checkFunc func() error) *Router {
 	return &Router{
 		FullPPROF: conf.Server.EnablePprof, // 是否开启pprof
 		rootPath:  "/api/blog",

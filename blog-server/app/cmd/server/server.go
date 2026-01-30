@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-26 19:58:36
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-01-28 10:03:23
+ * @LastEditTime: 2026-01-30 04:44:04
  * @FilePath: \yia-blog\blog-server\app\cmd\server\server.go
  * @Description:
  *
@@ -33,7 +33,7 @@ type App struct {
 }
 
 // NewApp 创建服务器实例（依赖注入路由实现）
-func NewApp(router router.IRouter) *App {
+func NewApp(router *router.Router) *App {
 
 	// 1. 从配置读取gin模式
 	globalConf := config.GetGlobalConfig()
