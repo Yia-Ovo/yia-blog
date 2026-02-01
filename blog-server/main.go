@@ -14,8 +14,10 @@ package main
 import (
 	"blog-server/api/router"
 	"blog-server/app/cmd/server"
+	"blog-server/common/db"
 	"blog-server/common/utils/logger"
 	"blog-server/config"
+	"blog-server/infra/repo"
 )
 
 func main() {
@@ -24,6 +26,10 @@ func main() {
 
 	// 初始化日志
 	logger.InitLogger(conf)
+	// 初始化数据库
+	gormDB := db.InitGorm(conf)
+	// 初始化用户仓库
+	repo.InitUserRepo(gormDB)
 	// 确保日志文件被写入
 	defer logger.Sync()
 	// 初始化路由
