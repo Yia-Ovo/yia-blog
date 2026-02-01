@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-01-30 08:08:42
+ * @LastEditTime: 2026-01-31 04:23:15
  * @FilePath: \yia-blog\blog-server\config\config.go
  * @Description:
  *
@@ -30,7 +30,7 @@ const (
 type GlobalConfig struct {
 	Server ServerConfig `yaml:"server"` // 服务器基础配置
 	Gin    GinConfig    `yaml:"gin"`    // Gin 专属配置
-	Mysql  MysqlConfig  `yaml:"mysql"`
+	Mysql  *MysqlConfig `yaml:"mysql"`
 	Redis  RedisConfig  `yaml:"redis"`
 	Logger LoggerConfig `yaml:"logger"`
 	// 可追加数据库、Redis等其他配置
