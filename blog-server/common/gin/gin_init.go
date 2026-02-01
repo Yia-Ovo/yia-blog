@@ -2,10 +2,10 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-27 11:00:00
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-01-30 08:16:29
+ * @LastEditTime: 2026-02-02 06:17:41
  * @FilePath: \yia-blog\blog-server\common\gin\gin_init.go
  * @Description:
- 集成所有自定义中间件：Recovery → CORS → AccessLog →  → Gzip
+ 集成所有自定义中间件：Recovery → AccessLog → CORS → Gzip
  遵循中间件注册优先级，适配生产级性能配置
  *
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
@@ -45,24 +45,28 @@ func NewGinEngine() *gin.Engine {
 	// 关闭Gin的错误日志输出（可选，若想保留Gin的错误日志，可注释这行，或重定向到自定义日志）
 	gin.DefaultErrorWriter = io.Discard
 	logger.Debug("Gin日志输出已重定向")
+
 	// 3. 创建Gin引擎实例（生产环境使用New()，避免默认中间件开销）
 	engine := gin.New()
 
-	// 4. 核心基础中间件
-	// 4.1 Recovery：捕获panic，防止程序崩溃，返回500错误
+	// 4. 核心基础中间件【最终精准顺序：从上到下执行】
+	// 4.1 Recovery：最优先，捕获所有panic，防止程序崩溃（必须第一个）
 	engine.Use(gin.RecoveryWithWriter(
 		logger.GetWriter(), // 替换为日志工具的Writer，无则用gin.DefaultWriter
 	))
 	logger.Debug("Gin Recovery中间件已加载")
-	// 4.2 CORS 中间件：处理跨域请求
-	if ginConf.CORS.Enabled {
-		engine.Use(middleware.Cors(globalConf))
-		logger.Info("CORS 中间件已启用", zap.Any("allow_origins", ginConf.CORS.AllowOrigins))
-	}
-	// 4.3 AccessLog 中间件：记录请求日志
+
+	// 4.2 AccessLog：动态包装Writer，必须在Gzip之前（所有包装Writer的操作都在这之后）
 	engine.Use(middleware.AccessLogMiddleware(globalConf))
 	logger.Info("AccessLog 中间件已启用")
-	// 4.4 Gzip 中间件：压缩响应数据
+
+	// 4.3 CORS：不操作Writer，放在AccessLog之后、Gzip之前即可
+	if ginConf.CORS.Enabled {
+		engine.Use(middleware.Cors(globalConf)) // 保留你原有的Corss（多一个s）
+		logger.Info("CORS 中间件已启用", zap.Any("allow_origins", ginConf.CORS.AllowOrigins))
+	}
+
+	// 4.4 Gzip：最后加载,所有包装Writer的操作（AccessLog）都在它前面，彻底避免类型冲突
 	engine.Use(middleware.CustomGzipMiddleware(globalConf))
 	logger.Info("Gzip 中间件已启用")
 
