@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-01-30 03:51:21
+ * @LastEditTime: 2026-02-02 03:28:38
  * @FilePath: \yia-blog\blog-server\api\router\router.go
  * @Description:
  *
@@ -11,6 +11,7 @@
 package router
 
 import (
+	"blog-server/api/handler"
 	"blog-server/config"
 	"net/http"
 
@@ -58,5 +59,19 @@ func (r *Router) Register(engine *gin.Engine) {
 }
 
 func (r *Router) route(rg *gin.RouterGroup) {
+	// 版本化路由组：/api/blog/v1
+	v1 := rg.Group("/v1")
+	{
+		r.registerUserRouter(v1) // 新增：注册用户路由
+	}
+}
 
+// registerUserRouter 注册用户相关路由：模块化拆分，不污染核心代码
+func (r *Router) registerUserRouter(v1 *gin.RouterGroup) {
+	// 用户子路由组：/api/blog/v1/user
+	userGroup := v1.Group("/user")
+	// 创建用户处理函数实例
+	userHandler := handler.NewUserHandler()
+	// 绑定POST请求：/api/blog/v1/user/register → userHandler.Register
+	userGroup.POST("/register", userHandler.Register)
 }
