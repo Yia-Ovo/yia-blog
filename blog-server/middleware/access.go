@@ -2,7 +2,7 @@
 * @Author: Yia 1372594487@qq.com
 * @Date: 2026-01-21 11:32:32
   - @LastEditors: Yia 1372594487@qq.com
-  - @LastEditTime: 2026-01-27 03:53:05
+  - @LastEditTime: 2026-02-02 05:44:52
   - @FilePath: \yia-blog\blog-server\middleware\access.go
 
 * @Description:
@@ -72,7 +72,12 @@ func AccessLogMiddleware(conf *config.GlobalConfig) gin.HandlerFunc {
 		fields = append(fields, zap.Int64("dur_ms", time.Since(begin).Milliseconds()))
 		fields = append(fields, zap.Int("status", ctx.Writer.Status()))
 		fields = append(fields, zap.String("resp", respBody))
-		fields = append(fields, zap.Bool("compressed", ctx.Writer.(*responseWriterWrapper).compressed)) // 添加压缩字段
+		if wrapper, ok := ctx.Writer.(*responseWriterWrapper); ok {
+			fields = append(fields, zap.Bool("compressed", wrapper.compressed))
+		} else {
+			// 不是自定义Wrapper，标记为未压缩，不panic
+			fields = append(fields, zap.Bool("compressed", false))
+		}
 		logger.Info("access_log", fields...)
 
 	}
