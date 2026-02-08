@@ -39,4 +39,5 @@ var (
 	RedisErr    = Errno{Code: 10001, Msg: "Redis Error"}
 
 	UserNotFoundErr = Errno{Code: 11001, Msg: "User Not Found"}
+	UserExistErr    = Errno{Code: 11002, Msg: "User Already Exist"}
 )
