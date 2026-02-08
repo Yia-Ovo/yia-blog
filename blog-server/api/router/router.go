@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-02 03:28:38
+ * @LastEditTime: 2026-02-09 02:03:09
  * @FilePath: \yia-blog\blog-server\api\router\router.go
  * @Description:
  *
@@ -12,6 +12,7 @@ package router
 
 import (
 	"blog-server/api/handler"
+	"blog-server/app/service"
 	"blog-server/config"
 	"net/http"
 
@@ -23,14 +24,17 @@ type Router struct {
 	rootPath  string
 	conf      *config.GlobalConfig
 	checkFunc func() error // 健康检查函数
+	// 注入用户应用服务
+	userAppSrv *service.UserAppService
 }
 
-func NewRouter(conf *config.GlobalConfig, checkFunc func() error) *Router {
+func NewRouter(conf *config.GlobalConfig, userAppSrv *service.UserAppService, checkFunc func() error) *Router {
 	return &Router{
-		FullPPROF: conf.Server.EnablePprof, // 是否开启pprof
-		rootPath:  "/api/blog",
-		conf:      conf,
-		checkFunc: checkFunc,
+		FullPPROF:  conf.Server.EnablePprof, // 是否开启pprof
+		rootPath:   "/api/blog",
+		conf:       conf,
+		checkFunc:  checkFunc,
+		userAppSrv: userAppSrv,
 	}
 }
 
@@ -62,16 +66,18 @@ func (r *Router) route(rg *gin.RouterGroup) {
 	// 版本化路由组：/api/blog/v1
 	v1 := rg.Group("/v1")
 	{
-		r.registerUserRouter(v1) // 新增：注册用户路由
+		r.userRouter(v1) // 新增：注册用户路由
 	}
 }
 
 // registerUserRouter 注册用户相关路由：模块化拆分，不污染核心代码
-func (r *Router) registerUserRouter(v1 *gin.RouterGroup) {
+func (r *Router) userRouter(v1 *gin.RouterGroup) {
 	// 用户子路由组：/api/blog/v1/user
 	userGroup := v1.Group("/user")
 	// 创建用户处理函数实例
-	userHandler := handler.NewUserHandler()
+	userHandler := handler.NewUserHandler(r.userAppSrv)
 	// 绑定POST请求：/api/blog/v1/user/register → userHandler.Register
 	userGroup.POST("/register", userHandler.Register)
+	// 绑定POST请求：/api/blog/v1/user/findUserByNickname → userHandler.FindUserByNickname
+	userGroup.GET("/findUserByNickname", userHandler.FindUserByNickname)
 }
