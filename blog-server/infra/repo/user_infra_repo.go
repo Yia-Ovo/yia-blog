@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-01 04:59:06
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-02 05:52:18
+ * @LastEditTime: 2026-02-09 00:51:10
  * @FilePath: \yia-blog\blog-server\infra\repo\user_repo_impl.go
  * @Description:
  *
@@ -21,22 +21,17 @@ import (
 	"gorm.io/gorm"
 )
 
-type userRepoImpl struct {
+type userInfraRepo struct {
 	db *gorm.DB
 }
 
 // 私有结构体，实现domain/repo中的UserRepo接口
-func NewUserRepoImpl(db *gorm.DB) repo.UserRepo {
-	return &userRepoImpl{db: db}
-}
-
-// 初始化用户仓库：给domain/repo的全局变量赋值，让上层能调用
-func InitUserRepo(db *gorm.DB) {
-	repo.UserRepoIns = NewUserRepoImpl(db)
+func NewUserInfraRepo(db *gorm.DB) repo.UserRepo {
+	return &userInfraRepo{db: db}
 }
 
 // 实现UserRepo接口的Create方法：创建用户（DO转Model+写入数据库）
-func (r *userRepoImpl) CreateUser(userDO *do.UserDO) error {
+func (r *userInfraRepo) CreateUser(userDO *do.UserDO) error {
 	// 领域对象DO转换成数据库实体Model
 	userModel := &model.UserModel{
 		NickName: userDO.NickName,
@@ -50,7 +45,7 @@ func (r *userRepoImpl) CreateUser(userDO *do.UserDO) error {
 	return r.db.Debug().Create(userModel).Error
 }
 
-func (r *userRepoImpl) FindUserByNickName(nickName string) (*do.UserDO, error) {
+func (r *userInfraRepo) FindUserByNickname(nickName string) (*do.UserDO, error) {
 	var userModel model.UserModel
 	// 查询一条记录，匹配第一个找到的字段
 	if err := r.db.Debug().Where("nick_name = ?", nickName).First(&userModel).Error; err != nil {
