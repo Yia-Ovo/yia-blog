@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 03:11:10
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-02 03:11:22
+ * @LastEditTime: 2026-02-09 02:11:49
  * @FilePath: \yia-blog\blog-server\api\handler\user_handler.go
  * @Description:
  *
@@ -13,7 +13,8 @@ package handler
 import (
 	"blog-server/api/dto"
 	"blog-server/app/service"
-	"net/http"
+	"blog-server/common"
+	gin_util "blog-server/common/gin"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,32 +25,69 @@ type UserHandler struct {
 	userAppSrv *service.UserAppService
 }
 
-// 对外提供创建实例的方法，给路由调用
-func NewUserHandler() *UserHandler {
+// 构造函数接收注入的AppService，不再自己创建
+func NewUserHandler(userAppSrv *service.UserAppService) *UserHandler {
 	return &UserHandler{
-		userAppSrv: service.NewUserAppService(),
+		userAppSrv: userAppSrv, // 由外部注入，Handler不关心AppService的依赖
 	}
 }
 
 // Register 注册接口处理函数：POST /api/blog/v1/user/register
 func (h *UserHandler) Register(c *gin.Context) {
-	// 1. 定义请求DTO变量，用于绑定前端参数
+	// 1. 绑定请求参数
 	var req dto.UserRegisterReq
-	// 2. 绑定并校验参数：JSON→结构体，校验失败直接返回400
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code": 400,
-			"msg":  "参数错误：" + err.Error(),
-		})
+		// 用统一响应工具，避免硬编码（保持格式一致）
+		gin_util.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
 		return
 	}
-	// 3. 参数校验通过，调用应用层
-	res, err := h.userAppSrv.Register(&req)
+
+	// 2. 调用应用层（无gorm，无业务逻辑）
+	err := h.userAppSrv.Register(&req)
 	if err != nil {
-		// 4. 业务失败，返回应用层封装的错误响应
-		c.JSON(http.StatusOK, res)
+		// 3. 业务失败：统一用gin_util.WriteResp封装响应（核心修正）
+		// 断言错误为common.Errno类型，保证格式统一
+		if errno, ok := err.(common.Errno); ok {
+			gin_util.WriteResp(c, nil, errno)
+		} else {
+			// 兜底：未知错误封装为服务器错误
+			gin_util.WriteResp(c, nil, common.ServerErr.WithErr(err))
+		}
 		return
 	}
-	// 5. 全部成功，返回成功响应
-	c.JSON(http.StatusOK, res)
+
+	// 4. 成功响应,返回通用成功数据
+	successData := gin.H{
+		"message":  "注册成功",
+		"nickname": req.NickName, // 可选：返回前端传的昵称，提升体验
+	}
+	gin_util.WriteResp(c, successData, common.OK)
+
+}
+
+func (h *UserHandler) FindUserByNickname(c *gin.Context) {
+	var req dto.UserFindInfoReq
+	if err := c.ShouldBind(&req); err != nil {
+		// 用统一响应工具，避免硬编码（保持格式一致）
+		gin_util.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		return
+	}
+
+	res, err := h.userAppSrv.FindUserByNickname(&req)
+	if err != nil {
+		if errno, ok := err.(common.Errno); ok {
+			gin_util.WriteResp(c, nil, errno)
+		} else {
+			// 兜底：未知错误封装为服务器错误
+			gin_util.WriteResp(c, nil, common.ServerErr.WithErr(err))
+		}
+		return
+	}
+
+	// 4. 成功响应,返回通用成功数据
+	successData := gin.H{
+		"message": "查找成功",
+		"data":    res, // 可选：返回前端传的昵称，提升体验
+	}
+	gin_util.WriteResp(c, successData, common.OK)
 }
