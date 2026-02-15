@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 02:58:44
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-09 00:52:40
+ * @LastEditTime: 2026-02-16 03:32:03
  * @FilePath: \yia-blog\blog-server\app\service\user_app_service.go
  * @Description:
  *
@@ -14,8 +14,11 @@ package service
 import (
 	"blog-server/api/dto"
 	"blog-server/common"
+	"blog-server/domain/do"
 	"blog-server/domain/service"
 	"blog-server/infra/repo"
+	"regexp"
+	"strconv"
 
 	"gorm.io/gorm"
 )
@@ -80,6 +83,73 @@ func (s *UserAppService) FindUserByNickname(req *dto.UserFindInfoReq) (*dto.User
 			Avatar:   userDO.Avatar,
 			Status:   userDO.Status,
 			CreateAt: userDO.CreateAt,
+		},
+	}, nil
+}
+
+// 预编译邮箱正则（全局只编译一次，提升性能）
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+
+func (s *UserAppService) UpdateUserInfo(req *dto.UserUpdateInfoReq) (*dto.UserFindInfoRes, error) {
+	// 1. 前置参数校验（核心：覆盖binding的不足+业务规则）
+	if req == nil {
+		return nil, common.ParamErr.WithMsg("更新用户信息请求参数不能为空")
+	}
+
+	// 校验ID：不仅非空，还要是正整数（覆盖binding:"required"的不足）
+	if req.ID <= 0 {
+		return nil, common.ParamErr.WithMsg("用户ID必须为正整数，当前值：" + strconv.FormatInt(req.ID, 10))
+	}
+
+	// 校验Gender：指针类型，非空时要校验值的合法性（比如性别只能是 0-未知 1-男 2-女）
+	if req.Gender != nil {
+		genderVal := *req.Gender
+		if genderVal < 0 || genderVal > 2 {
+			return nil, common.ParamErr.WithMsg("性别值不合法，只能是0(未知)/1(男)/2(女)，当前值：" + strconv.Itoa(genderVal))
+		}
+	}
+
+	// 校验Email：非空时校验格式合法性
+	if req.Email != "" && !emailRegex.MatchString(req.Email) {
+		return nil, common.ParamErr.WithMsg("邮箱格式不合法，当前值：" + req.Email)
+	}
+
+	// 2. 原有逻辑：整合更新数据
+	updateData := &do.UserDO{
+		NickName:  req.NickName,
+		Avatar:    req.Avatar,
+		Gender:    req.Gender, // 指针类型直接赋值，领域层需处理nil的情况（比如不更新）
+		Signature: req.Signature,
+		Email:     req.Email,
+	}
+
+	// 3. 调用领域服务+错误处理
+	err := s.userDomainSrv.UpdateUserInfo(req.ID, updateData)
+	if err != nil {
+		switch {
+		case err == gorm.ErrRecordNotFound:
+			return nil, common.UserNotFoundErr.WithMsg("用户ID：" + strconv.FormatInt(req.ID, 10))
+		default:
+			return nil, common.DatabaseErr.WithErr(err).WithMsg("更新用户信息失败")
+		}
+	}
+
+	// 4. 查询最新数据并返回
+	userDO, err := s.userDomainSrv.FindUserByID(req.ID)
+	if err != nil {
+		return nil, common.DatabaseErr.WithErr(err).WithMsg("查询更新后用户信息失败")
+	}
+
+	return &dto.UserFindInfoRes{
+		Data: &dto.UserInfoData{
+			ID:        userDO.ID,
+			NickName:  userDO.NickName,
+			Avatar:    userDO.Avatar,
+			Status:    userDO.Status,
+			CreateAt:  userDO.CreateAt,
+			Gender:    userDO.Gender,
+			Signature: userDO.Signature,
+			Email:     userDO.Email,
 		},
 	}, nil
 }

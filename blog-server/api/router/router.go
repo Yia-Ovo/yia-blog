@@ -80,4 +80,5 @@ func (r *Router) userRouter(v1 *gin.RouterGroup) {
 	userGroup.POST("/register", userHandler.Register)
 	// 绑定POST请求：/api/blog/v1/user/findUserByNickname → userHandler.FindUserByNickname
 	userGroup.GET("/findUserByNickname", userHandler.FindUserByNickname)
+	userGroup.GET("/updateUserInfo", userHandler.UpdateUserInfo)
 }

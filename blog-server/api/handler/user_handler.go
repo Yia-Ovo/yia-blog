@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 03:11:10
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-09 02:11:49
+ * @LastEditTime: 2026-02-16 03:43:56
  * @FilePath: \yia-blog\blog-server\api\handler\user_handler.go
  * @Description:
  *
@@ -45,7 +45,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	// 2. 调用应用层（无gorm，无业务逻辑）
 	err := h.userAppSrv.Register(&req)
 	if err != nil {
-		// 3. 业务失败：统一用gin_util.WriteResp封装响应（核心修正）
+		// 3. 业务失败：统一用gin_util.WriteResp封装响应
 		// 断言错误为common.Errno类型，保证格式统一
 		if errno, ok := err.(common.Errno); ok {
 			gin_util.WriteResp(c, nil, errno)
@@ -87,6 +87,30 @@ func (h *UserHandler) FindUserByNickname(c *gin.Context) {
 	// 4. 成功响应,返回通用成功数据
 	successData := gin.H{
 		"message": "查找成功",
+		"data":    res, // 可选：返回前端传的昵称，提升体验
+	}
+	gin_util.WriteResp(c, successData, common.OK)
+}
+
+func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
+	var req dto.UserUpdateInfoReq
+	if err := c.ShouldBind(&req); err != nil {
+		// 用统一响应工具，避免硬编码（保持格式一致）
+		gin_util.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		return
+	}
+	res, err := h.userAppSrv.UpdateUserInfo(&req)
+	if err != nil {
+		if errno, ok := err.(common.Errno); ok {
+			gin_util.WriteResp(c, nil, errno)
+		} else {
+			// 兜底：未知错误封装为服务器错误
+			gin_util.WriteResp(c, nil, common.ServerErr.WithErr(err))
+		}
+		return
+	}
+	successData := gin.H{
+		"message": "更新成功",
 		"data":    res, // 可选：返回前端传的昵称，提升体验
 	}
 	gin_util.WriteResp(c, successData, common.OK)

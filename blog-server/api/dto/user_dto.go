@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-26 07:44:28
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-09 02:12:12
+ * @LastEditTime: 2026-02-16 03:03:55
  * @FilePath: \yia-blog\blog-server\api\dto\user_dto.go
  * @Description:
  *
@@ -26,11 +26,14 @@ type UserRegisterRes struct {
 
 // 仅定义前端需要的字段，无敏感信息、无领域层依赖
 type UserInfoData struct {
-	ID       int64     `json:"id"`        // 用户ID
-	NickName string    `json:"nick_name"` // 昵称
-	Avatar   string    `json:"avatar"`    // 头像
-	Status   int       `json:"status"`    // 用户状态（仅返回前端需要的字段）
-	CreateAt time.Time `json:"create_at"` // 创建时间
+	ID        int64     `json:"id"`        // 用户ID
+	NickName  string    `json:"nick_name"` // 昵称
+	Avatar    string    `json:"avatar"`    // 头像
+	Status    int       `json:"status"`    // 用户状态（仅返回前端需要的字段）
+	Gender    *int      `json:"gender"`    // 性别
+	Signature string    `json:"signature"` // 个性签名
+	Email     string    `json:"email"`     // 邮箱
+	CreateAt  time.Time `json:"create_at"` // 创建时间
 }
 
 // UserFindInfoReq 查询用户信息请求DTO：前端必须传这些参数，带Gin自动校验规则
@@ -41,4 +44,18 @@ type UserFindInfoRes struct {
 	Code int           `json:"code"` // 状态码：200成功，500失败，400参数错误
 	Msg  string        `json:"msg"`  // 提示信息：成功/失败原因
 	Data *UserInfoData `json:"data"` // 用户信息
+}
+
+type UserUpdateInfoReq struct {
+	ID        int64  `json:"user_id" binding:"required"` // 用户ID
+	NickName  string `json:"nick_name"`                  // 昵称
+	Avatar    string `json:"avatar" `                    // 头像
+	Gender    *int   `json:"gender"`                     // 性别
+	Signature string `json:"signature"`                  // 个性签名
+	Email     string `json:"email"`                      // 邮箱
+}
+
+type UserUpdateInfoRes struct {
+	Code int    `json:"code"` // 状态码：200成功，500失败，400参数错误
+	Msg  string `json:"msg"`  // 提示信息：成功/失败原因
 }

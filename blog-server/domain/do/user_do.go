@@ -12,6 +12,9 @@ type UserDO struct {
 	CreateAt    time.Time  `json:"create_at"`
 	UpdateAt    time.Time  `json:"update_at"`
 	IsDeleted   bool       `json:"is_deleted"`
+	Gender      *int       `json:"gender"`    // 性别：0-未知 1-男 2-女
+	Signature   string     `json:"signature"` // 个性签名
+	Email       string     `json:"email"`
 }
 
 // FormatCreateAt 业务方法：格式化创建时间为字符串（给前端展示用）

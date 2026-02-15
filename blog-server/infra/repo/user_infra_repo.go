@@ -2,8 +2,8 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-01 04:59:06
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-09 00:51:10
- * @FilePath: \yia-blog\blog-server\infra\repo\user_repo_impl.go
+ * @LastEditTime: 2026-02-16 02:23:47
+ * @FilePath: \yia-blog\blog-server\infra\repo\user_infra_repo.go
  * @Description:
  *
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
@@ -70,4 +70,27 @@ func (r *userInfraRepo) FindUserByNickname(nickName string) (*do.UserDO, error) 
 		userDO.LastLoginAt = &loginAt
 	}
 	return userDO, nil
+}
+
+func (r *userInfraRepo) FindUserByID(id int64) (*do.UserDO, error) {
+	var userModel model.UserModel
+	if err := r.db.Debug().Where("id = ?", id).First(&userModel).Error; err != nil {
+		logger.Error("func FindByID error", zap.Error(err))
+		return nil, err
+	}
+	userDO := &do.UserDO{
+		ID:       int64(userModel.ID),
+		NickName: userModel.NickName,
+		Gender:   userModel.Gender,
+		Avatar:   userModel.Avatar,
+		Status:   userModel.Status,
+	}
+
+	return userDO, nil
+
+}
+
+func (r *userInfraRepo) UpdateUserInfo(userDO *do.UserDO) error {
+	// GORM的Updates方法会自动忽略零值字段，仅更新非零字段
+	return r.db.Model(&do.UserDO{}).Where("id = ?", userDO.ID).Updates(userDO).Error
 }

@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-01 03:41:21
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-02 03:53:26
+ * @LastEditTime: 2026-02-16 03:05:30
  * @FilePath: \yia-blog\blog-server\infra\model\user_model.go
  * @Description:
  *
@@ -28,6 +28,9 @@ type UserModel struct {
 	CreateAt    time.Time      `gorm:"type:datetime;not null;default:CURRENT_TIMESTAMP;comment:创建时间"`
 	UpdateAt    time.Time      `gorm:"type:datetime;not null;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;comment:更新时间"`
 	DeletedAt   gorm.DeletedAt `gorm:"type:datetime;default:null;comment:软删除时间"`
+	Gender      *int           `gorm:"type:tinyint(1);not null;default:0;comment:性别：0-未知，1-男，2-女"`
+	Signature   string         `gorm:"type:varchar(255);default:null;comment:个性签名"`
+	Email       string         `gorm:"type:varchar(255);default:null;comment:邮箱"`
 }
 
 // TableName 指定数据库表名
