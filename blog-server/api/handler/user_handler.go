@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 03:11:10
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-16 03:43:56
+ * @LastEditTime: 2026-03-06 11:18:19
  * @FilePath: \yia-blog\blog-server\api\handler\user_handler.go
  * @Description:
  *
@@ -14,7 +14,8 @@ import (
 	"blog-server/api/dto"
 	"blog-server/app/service"
 	"blog-server/common"
-	gin_util "blog-server/common/gin"
+	"blog-server/common/gin/response"
+	"blog-server/common/utils/jwt"
 
 	"github.com/gin-gonic/gin"
 )
@@ -38,7 +39,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	var req dto.UserRegisterReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		// 用统一响应工具，避免硬编码（保持格式一致）
-		gin_util.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
 		return
 	}
 
@@ -48,10 +49,10 @@ func (h *UserHandler) Register(c *gin.Context) {
 		// 3. 业务失败：统一用gin_util.WriteResp封装响应
 		// 断言错误为common.Errno类型，保证格式统一
 		if errno, ok := err.(common.Errno); ok {
-			gin_util.WriteResp(c, nil, errno)
+			response.WriteResp(c, nil, errno)
 		} else {
 			// 兜底：未知错误封装为服务器错误
-			gin_util.WriteResp(c, nil, common.ServerErr.WithErr(err))
+			response.WriteResp(c, nil, common.ServerErr.WithErr(err))
 		}
 		return
 	}
@@ -61,25 +62,25 @@ func (h *UserHandler) Register(c *gin.Context) {
 		"message":  "注册成功",
 		"nickname": req.NickName, // 可选：返回前端传的昵称，提升体验
 	}
-	gin_util.WriteResp(c, successData, common.OK)
+	response.WriteResp(c, successData, common.OK)
 
 }
 
 func (h *UserHandler) FindUserByNickname(c *gin.Context) {
 	var req dto.UserFindInfoReq
-	if err := c.ShouldBind(&req); err != nil {
+	if err := c.ShouldBindQuery(&req); err != nil {
 		// 用统一响应工具，避免硬编码（保持格式一致）
-		gin_util.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
 		return
 	}
 
 	res, err := h.userAppSrv.FindUserByNickname(&req)
 	if err != nil {
 		if errno, ok := err.(common.Errno); ok {
-			gin_util.WriteResp(c, nil, errno)
+			response.WriteResp(c, nil, errno)
 		} else {
 			// 兜底：未知错误封装为服务器错误
-			gin_util.WriteResp(c, nil, common.ServerErr.WithErr(err))
+			response.WriteResp(c, nil, common.ServerErr.WithErr(err))
 		}
 		return
 	}
@@ -89,23 +90,23 @@ func (h *UserHandler) FindUserByNickname(c *gin.Context) {
 		"message": "查找成功",
 		"data":    res, // 可选：返回前端传的昵称，提升体验
 	}
-	gin_util.WriteResp(c, successData, common.OK)
+	response.WriteResp(c, successData, common.OK)
 }
 
 func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 	var req dto.UserUpdateInfoReq
 	if err := c.ShouldBind(&req); err != nil {
 		// 用统一响应工具，避免硬编码（保持格式一致）
-		gin_util.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
 		return
 	}
 	res, err := h.userAppSrv.UpdateUserInfo(&req)
 	if err != nil {
 		if errno, ok := err.(common.Errno); ok {
-			gin_util.WriteResp(c, nil, errno)
+			response.WriteResp(c, nil, errno)
 		} else {
 			// 兜底：未知错误封装为服务器错误
-			gin_util.WriteResp(c, nil, common.ServerErr.WithErr(err))
+			response.WriteResp(c, nil, common.ServerErr.WithErr(err))
 		}
 		return
 	}
@@ -113,5 +114,32 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 		"message": "更新成功",
 		"data":    res, // 可选：返回前端传的昵称，提升体验
 	}
-	gin_util.WriteResp(c, successData, common.OK)
+	response.WriteResp(c, successData, common.OK)
+}
+
+func (h *UserHandler) Login(c *gin.Context) {
+	var req dto.UserLoginReq
+	if err := c.ShouldBind(&req); err != nil {
+		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数错误："+err.Error()))
+		return
+	}
+
+	user, err := h.userAppSrv.Login(&req)
+	if err != nil {
+		response.WriteResp(c, nil, common.AuthErr.WithMsg("账号或密码错误"))
+		return
+	}
+
+	// 2. 生成包含User对象的JWT Token
+	token, err := jwt.GenerateToken(user)
+	if err != nil {
+		response.WriteResp(c, nil, common.ServerErr.WithMsg("生成Token失败"))
+		return
+	}
+
+	// 3. 返回Token和用户信息（前端存储Token，后续请求自动携带）
+	response.WriteResp(c, gin.H{
+		"token": token,
+		"user":  user, // 可选：返回用户基本信息
+	}, common.OK)
 }

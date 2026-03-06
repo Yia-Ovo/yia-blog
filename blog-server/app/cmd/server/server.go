@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-26 19:58:36
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-01-30 04:44:04
+ * @LastEditTime: 2026-02-17 14:40:10
  * @FilePath: \yia-blog\blog-server\app\cmd\server\server.go
  * @Description:
  *
@@ -13,7 +13,7 @@ package server
 
 import (
 	"blog-server/api/router"
-	gin_util "blog-server/common/gin"
+	gin_util "blog-server/common/gin/init"
 	"blog-server/common/utils/logger"
 	"blog-server/config"
 	"context"
