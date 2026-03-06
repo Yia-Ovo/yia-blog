@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-26 07:44:28
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-16 03:03:55
+ * @LastEditTime: 2026-02-18 11:55:37
  * @FilePath: \yia-blog\blog-server\api\dto\user_dto.go
  * @Description:
  *
@@ -11,6 +11,11 @@
 package dto
 
 import "time"
+
+type UserLoginReq struct {
+	NickName string `json:"nick_name" binding:"required,min=1,max=16"` // 昵称：必填，2-16位
+	Password string `json:"password" binding:"required,min=6"`         // 密码：必填，至少6位
+}
 
 // UserRegisterReq 注册请求DTO：前端必须传这些参数，带Gin自动校验规则
 type UserRegisterReq struct {
@@ -30,7 +35,7 @@ type UserInfoData struct {
 	NickName  string    `json:"nick_name"` // 昵称
 	Avatar    string    `json:"avatar"`    // 头像
 	Status    int       `json:"status"`    // 用户状态（仅返回前端需要的字段）
-	Gender    *int      `json:"gender"`    // 性别
+	Gender    int       `json:"gender"`    // 性别
 	Signature string    `json:"signature"` // 个性签名
 	Email     string    `json:"email"`     // 邮箱
 	CreateAt  time.Time `json:"create_at"` // 创建时间
@@ -50,7 +55,7 @@ type UserUpdateInfoReq struct {
 	ID        int64  `json:"user_id" binding:"required"` // 用户ID
 	NickName  string `json:"nick_name"`                  // 昵称
 	Avatar    string `json:"avatar" `                    // 头像
-	Gender    *int   `json:"gender"`                     // 性别
+	Gender    int    `json:"gender"`                     // 性别
 	Signature string `json:"signature"`                  // 个性签名
 	Email     string `json:"email"`                      // 邮箱
 }
