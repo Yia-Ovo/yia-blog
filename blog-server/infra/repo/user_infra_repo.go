@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-01 04:59:06
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-16 02:23:47
+ * @LastEditTime: 2026-03-06 11:36:09
  * @FilePath: \yia-blog\blog-server\infra\repo\user_infra_repo.go
  * @Description:
  *
@@ -15,6 +15,7 @@ import (
 	"blog-server/domain/do"
 	"blog-server/domain/repo"
 	"blog-server/infra/model"
+	"context"
 	"time"
 
 	"go.uber.org/zap"
@@ -45,7 +46,7 @@ func (r *userInfraRepo) CreateUser(userDO *do.UserDO) error {
 	return r.db.Debug().Create(userModel).Error
 }
 
-func (r *userInfraRepo) FindUserByNickname(nickName string) (*do.UserDO, error) {
+func (r *userInfraRepo) FindUserByNickname(ctx context.Context, nickName string) (*do.UserDO, error) {
 	var userModel model.UserModel
 	// 查询一条记录，匹配第一个找到的字段
 	if err := r.db.Debug().Where("nick_name = ?", nickName).First(&userModel).Error; err != nil {
@@ -58,6 +59,7 @@ func (r *userInfraRepo) FindUserByNickname(nickName string) (*do.UserDO, error) 
 		NickName:  userModel.NickName,
 		Password:  userModel.Password,
 		Avatar:    userModel.Avatar,
+		Gender:    userModel.Gender,
 		Status:    userModel.Status,
 		CreateAt:  userModel.CreateAt,
 		UpdateAt:  userModel.UpdateAt,
@@ -93,4 +95,45 @@ func (r *userInfraRepo) FindUserByID(id int64) (*do.UserDO, error) {
 func (r *userInfraRepo) UpdateUserInfo(userDO *do.UserDO) error {
 	// GORM的Updates方法会自动忽略零值字段，仅更新非零字段
 	return r.db.Model(&do.UserDO{}).Where("id = ?", userDO.ID).Updates(userDO).Error
+}
+
+func (r *userInfraRepo) UpdateLastLoginInfo(ctx context.Context, userID int64, loginAt *time.Time) error {
+	// 1. 构造更新参数（匹配Model层字段名）
+	updateData := map[string]interface{}{
+		// "last_login_ip": loginIP,
+		"last_login_at": loginAt,    // GORM会自动处理time.Time到数据库时间类型的转换
+		"update_at":     time.Now(), // 同步更新修改时间（可选，根据你的业务规则）
+	}
+
+	// 2. 执行更新操作（使用WithContext传递上下文，保证链路追踪）
+	// Where条件：匹配用户ID + 未被软删除（根据你的软删除字段调整）
+	err := r.db.WithContext(ctx).
+		Model(&model.UserModel{}).
+		Where("id = ? AND deleted_at IS NULL", userID). // 排除软删除用户
+		Updates(updateData).
+		Error
+
+	// 3. 错误处理（区分“无记录更新”和“数据库异常”）
+	if err != nil {
+		logger.Error("func UpdateLastLoginInfo error",
+			zap.Int64("user_id", userID),
+			// zap.String("login_ip", loginIP),
+			zap.Time("login_at", *loginAt),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	// 4. 可选：检查是否真的更新了记录（防止用户ID不存在但无报错的情况）
+	// 如果你的业务需要严格校验，可添加以下逻辑
+	if r.db.RowsAffected == 0 {
+		logger.Warn("func UpdateLastLoginInfo no rows affected",
+			zap.Int64("user_id", userID),
+			// zap.String("login_ip", loginIP),
+		)
+		// 可选：返回自定义错误（比如repository.ErrUserNotFound）
+		// return repository.ErrUserNotFound
+	}
+
+	return nil
 }
