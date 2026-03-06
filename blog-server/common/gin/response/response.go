@@ -1,4 +1,4 @@
-package gin_util
+package response
 
 import (
 	"blog-server/common"
