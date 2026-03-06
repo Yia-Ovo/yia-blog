@@ -2,7 +2,7 @@
 * @Author: Yia 1372594487@qq.com
 * @Date: 2026-01-25 23:13:50
   - @LastEditors: Yia 1372594487@qq.com
-  - @LastEditTime: 2026-01-27 03:17:39
+  - @LastEditTime: 2026-02-17 14:39:42
   - @FilePath: \yia-blog\blog-server\middleware\auth.go
 
 * @Description:
@@ -19,8 +19,8 @@ package middleware
 import (
 	"blog-server/common"
 	"blog-server/common/consts"
+	"blog-server/common/gin/response"
 	"context"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -34,42 +34,24 @@ func AuthMiddleware(filter func(*gin.Context) bool, getTokenFun TokenFun) gin.Ha
 			ctx.Next()
 			return
 		}
+
 		token := ctx.GetHeader(consts.UserTokenKey)
 		if len(token) == 0 {
-			ctx.JSON(http.StatusUnauthorized, common.AuthErr)
+			response.WriteResp(ctx, nil, common.AuthErr.WithMsg("未携带用户Token，请先登录"))
 			ctx.Abort()
 			return
 		}
+
+		// 解析Token，获取完整的User对象
 		user, err := getTokenFun(ctx, token)
 		if err != nil {
-			ctx.JSON(http.StatusUnauthorized, common.AuthErr.WithErr(err))
+			response.WriteResp(ctx, nil, common.AuthErr.WithMsg(err.Error()))
 			ctx.Abort()
 			return
 		}
-		ctx.Set(consts.CustomerUserKey, user)
-		ctx.Next()
-	}
-}
 
-func AuthAdminMiddleware(filter func(*gin.Context) bool, getTokenFun TokenAdminFun) gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		if filter != nil && !filter(ctx) {
-			ctx.Next()
-			return
-		}
-		token := ctx.GetHeader(consts.AdminTokenKey)
-		if len(token) == 0 {
-			ctx.JSON(http.StatusUnauthorized, common.AuthErr)
-			ctx.Abort()
-			return
-		}
-		adminUser, err := getTokenFun(ctx, token)
-		if err != nil {
-			ctx.JSON(http.StatusUnauthorized, common.AuthErr.WithErr(err))
-			ctx.Abort()
-			return
-		}
-		ctx.Set(consts.AdminTokenKey, adminUser)
+		// 将完整User对象存入上下文（后续可直接取整个对象）
+		ctx.Set(consts.CustomerUserKey, user)
 		ctx.Next()
 	}
 }

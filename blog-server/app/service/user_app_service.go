@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 02:58:44
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-16 03:32:03
+ * @LastEditTime: 2026-03-06 11:51:22
  * @FilePath: \yia-blog\blog-server\app\service\user_app_service.go
  * @Description:
  *
@@ -14,12 +14,14 @@ package service
 import (
 	"blog-server/api/dto"
 	"blog-server/common"
+	"blog-server/common/utils/logger"
 	"blog-server/domain/do"
 	"blog-server/domain/service"
 	"blog-server/infra/repo"
 	"regexp"
 	"strconv"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -39,6 +41,28 @@ func NewUserAppService(db *gorm.DB) *UserAppService {
 	return &UserAppService{
 		userDomainSrv: userDomainSrv,
 	}
+}
+
+func (s *UserAppService) Login(req *dto.UserLoginReq) (*common.User, error) {
+	// 1. 参数校验：使用标准化错误
+	if req == nil {
+		return nil, common.LoginParamEmptyErr.WithMsg("缺少请求参数")
+	}
+	if req.NickName == "" {
+		return nil, common.LoginParamEmptyErr.WithMsg("用户名为空")
+	}
+	if req.Password == "" {
+		return nil, common.LoginParamEmptyErr.WithMsg("密码为空")
+	}
+	// 2. 调用领域服务执行登录
+	user, err := s.userDomainSrv.Login(req.NickName, req.Password)
+	if err != nil {
+		logger.Error("login failed", zap.Error(err))
+		// 领域层可能返回 UserNotFoundErr/LoginPasswordErr 等，直接返回标准化错误
+		return nil, err
+	}
+
+	return user, nil
 }
 
 // Register 注册接口的应用层编排（仅编排，无核心业务逻辑）
@@ -81,6 +105,7 @@ func (s *UserAppService) FindUserByNickname(req *dto.UserFindInfoReq) (*dto.User
 			ID:       userDO.ID,
 			NickName: userDO.NickName,
 			Avatar:   userDO.Avatar,
+			Gender:   userDO.Gender,
 			Status:   userDO.Status,
 			CreateAt: userDO.CreateAt,
 		},
@@ -102,11 +127,9 @@ func (s *UserAppService) UpdateUserInfo(req *dto.UserUpdateInfoReq) (*dto.UserFi
 	}
 
 	// 校验Gender：指针类型，非空时要校验值的合法性（比如性别只能是 0-未知 1-男 2-女）
-	if req.Gender != nil {
-		genderVal := *req.Gender
-		if genderVal < 0 || genderVal > 2 {
-			return nil, common.ParamErr.WithMsg("性别值不合法，只能是0(未知)/1(男)/2(女)，当前值：" + strconv.Itoa(genderVal))
-		}
+	genderVal := req.Gender
+	if genderVal < 0 || genderVal > 2 {
+		return nil, common.ParamErr.WithMsg("性别值不合法，只能是0(未知)/1(男)/2(女)，当前值：" + strconv.Itoa(genderVal))
 	}
 
 	// 校验Email：非空时校验格式合法性
@@ -118,7 +141,7 @@ func (s *UserAppService) UpdateUserInfo(req *dto.UserUpdateInfoReq) (*dto.UserFi
 	updateData := &do.UserDO{
 		NickName:  req.NickName,
 		Avatar:    req.Avatar,
-		Gender:    req.Gender, // 指针类型直接赋值，领域层需处理nil的情况（比如不更新）
+		Gender:    req.Gender,
 		Signature: req.Signature,
 		Email:     req.Email,
 	}
