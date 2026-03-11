@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-23 06:14:49
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-19 04:15:58
+ * @LastEditTime: 2026-03-11 16:06:57
  * @FilePath: \yia-blog\blog-server\common\errno.go
  * @Description:
  *
@@ -51,10 +51,12 @@ var (
 	RedisErr    = Errno{Code: 10001, Msg: "Redis Error"}
 
 	// 用户基础错误
-	UserNotFoundErr = Errno{Code: 11001, Msg: "User Not Found"}
-	UserExistErr    = Errno{Code: 11002, Msg: "User Already Exist"}
+	UserNotFoundErr        = Errno{Code: 11001, Msg: "User Not Found"}
+	UserExistErr           = Errno{Code: 11002, Msg: "User Already Exist"}
+	UserNickNameTooLongErr = Errno{Code: 11011, Msg: "User nickname too long"}
+	UserStatusInvalidErr   = Errno{Code: 11012, Msg: "User status invalid"}
 
-	// 登录专属标准化错误（新增）
+	// 登录专属标准化错误
 	LoginParamEmptyErr    = Errno{Code: 11003, Msg: "Login param empty"}  // 登录核心参数为空（用户名/密码）
 	LoginPasswordErr      = Errno{Code: 11004, Msg: "Password error"}     // 密码错误
 	LoginFreqLimitErr     = Errno{Code: 11005, Msg: "Login too frequent"} // 登录频率超限（防暴力破解）

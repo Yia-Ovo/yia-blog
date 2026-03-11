@@ -2,7 +2,9 @@ package response
 
 import (
 	"blog-server/common"
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,4 +25,8 @@ func WriteResp(ctx *gin.Context, data any, errno common.Errno) {
 		ErrMsg: errno.ErrMsg,
 		Data:   data,
 	})
+}
+
+func WithDBTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, 5*time.Second)
 }
