@@ -99,8 +99,9 @@ func (u *UserDomainService) Register(nickName string, password string) error {
 		Signature: "",              // 个性签名
 		Email:     "",              // 邮箱
 	}
+	ctx := context.Background()
 	// 3. 调用仓库接口，写入数据库（业务层不用管数据库细节）
-	if err := u.userRepo.CreateUser(userDO); err != nil {
+	if err := u.userRepo.CreateUser(ctx, userDO); err != nil {
 		logger.Error("仓库创建用户失败", zap.Error(err), zap.String("nickName", nickName))
 		return err
 	}
@@ -120,7 +121,8 @@ func (u *UserDomainService) FindUserByNickname(nickName string) (*do.UserDO, err
 }
 
 func (u *UserDomainService) FindUserByID(userId int64) (*do.UserDO, error) {
-	userDO, err := u.userRepo.FindUserByID(userId)
+	ctx := context.Background()
+	userDO, err := u.userRepo.FindUserByID(ctx, userId)
 	if err != nil {
 		logger.Warn("通过用户ID查询用户失败", zap.Error(err), zap.Int64("userId", userId))
 		return nil, err
@@ -147,7 +149,8 @@ func (u *UserDomainService) UpdateUserInfo(userId int64, updateData *do.UserDO) 
 	userDO.UpdateAt = time.Now()
 
 	// 4. 执行更新（Repo层需支持动态更新仅修改的字段）
-	err = u.userRepo.UpdateUserInfo(userDO)
+	ctx := context.Background()
+	err = u.userRepo.UpdateUserInfo(ctx, userDO)
 	if err != nil {
 		logger.Warn("更新用户信息失败", zap.Error(err), zap.Int64("userId", userId))
 		return err

@@ -17,9 +17,9 @@ import (
 )
 
 type UserRepo interface {
-	CreateUser(userDO *do.UserDO) error
+	CreateUser(ctx context.Context, userDO *do.UserDO) error
 	FindUserByNickname(ctx context.Context, nickName string) (*do.UserDO, error)
-	FindUserByID(id int64) (*do.UserDO, error)
-	UpdateUserInfo(userDO *do.UserDO) error
+	FindUserByID(ctx context.Context, id int64) (*do.UserDO, error)
+	UpdateUserInfo(ctx context.Context, userDO *do.UserDO) error
 	UpdateLastLoginInfo(ctx context.Context, id int64, loginAt *time.Time) error
 }
