@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 02:25:51
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-06 11:40:28
+ * @LastEditTime: 2026-03-13 23:49:30
  * @FilePath: \yia-blog\blog-server\domain\service\user_domain_service.go
  * @Description:
  *
@@ -120,8 +120,7 @@ func (u *UserDomainService) FindUserByNickname(nickName string) (*do.UserDO, err
 	return userDO, nil
 }
 
-func (u *UserDomainService) FindUserByID(userId int64) (*do.UserDO, error) {
-	ctx := context.Background()
+func (u *UserDomainService) FindUserByID(ctx context.Context, userId int64) (*do.UserDO, error) {
 	userDO, err := u.userRepo.FindUserByID(ctx, userId)
 	if err != nil {
 		logger.Warn("通过用户ID查询用户失败", zap.Error(err), zap.Int64("userId", userId))
@@ -131,7 +130,8 @@ func (u *UserDomainService) FindUserByID(userId int64) (*do.UserDO, error) {
 }
 
 func (u *UserDomainService) UpdateUserInfo(userId int64, updateData *do.UserDO) error {
-	userDO, err := u.FindUserByID(userId)
+	ctx := context.Background()
+	userDO, err := u.FindUserByID(ctx, userId)
 
 	if updateData.NickName != "" { // 字符串字段：非空则更新
 		userDO.NickName = updateData.NickName
@@ -149,7 +149,6 @@ func (u *UserDomainService) UpdateUserInfo(userId int64, updateData *do.UserDO) 
 	userDO.UpdateAt = time.Now()
 
 	// 4. 执行更新（Repo层需支持动态更新仅修改的字段）
-	ctx := context.Background()
 	err = u.userRepo.UpdateUserInfo(ctx, userDO)
 	if err != nil {
 		logger.Warn("更新用户信息失败", zap.Error(err), zap.Int64("userId", userId))

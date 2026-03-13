@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 03:11:10
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-06 11:18:19
+ * @LastEditTime: 2026-03-14 00:51:24
  * @FilePath: \yia-blog\blog-server\api\handler\user_handler.go
  * @Description:
  *
@@ -14,10 +14,16 @@ import (
 	"blog-server/api/dto"
 	"blog-server/app/service"
 	"blog-server/common"
+	"blog-server/common/consts"
 	"blog-server/common/gin/response"
 	"blog-server/common/utils/jwt"
+	"blog-server/common/utils/logger"
+	"context"
+	"fmt"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // UserHandler 用户接口处理函数：只处理HTTP相关逻辑
@@ -142,4 +148,80 @@ func (h *UserHandler) Login(c *gin.Context) {
 		"token": token,
 		"user":  user, // 可选：返回用户基本信息
 	}, common.OK)
+}
+
+func (h *UserHandler) GetInfo(c *gin.Context) {
+	var keys []string
+	for _, k := range c.Keys { // 遍历ctx的所有key
+		keys = append(keys, k.(string))
+	}
+	logger.Debug("GetInfo Handler - ctx所有keys",
+		zap.Any("all_keys", keys), // 看实际有哪些key
+	)
+
+	// ========== 先尝试取 consts.CustomerUserKey（中间件明确存了这个）==========
+	userObj, exists := c.Get(consts.CustomerUserKey) // "customer_user"
+	logger.Debug("GetInfo Handler 读取用户对象",
+		zap.String("target_key", consts.CustomerUserKey),
+		zap.Bool("exists", exists),
+		zap.Any("value", userObj),
+	)
+
+	// ========== 再尝试取 user_id（兼容）==========
+	userID, uidExists := c.Get("user_id")
+	logger.Debug("GetInfo Handler 读取user_id",
+		zap.String("target_key", "user_id"),
+		zap.Bool("exists", uidExists),
+		zap.Any("value", userID),
+	)
+
+	var req dto.UserGetInfoReq
+	// 1. 从 Gin Context 中获取用户ID（由 DefaultUserAuth 中间件存入）
+	userIdVal, exists1 := c.Get("userId")
+	if !exists1 {
+		logger.Warn("GetInfo Handler 未获取到user_id", zap.Bool("user_id_exists", exists1))
+		response.WriteResp(c, nil, common.LoginNotLoginErr)
+		return
+	}
+	userObj, exists2 := c.Get(consts.CustomerUserKey)
+	if !exists2 {
+		response.WriteResp(c, nil, common.LoginNotLoginErr)
+		return
+	}
+	logger.Debug("GetInfo Handler 读取上下文",
+		zap.Bool("user_id_exists", exists1),  // 是否存在user_id
+		zap.Any("user_id_value", userIdVal),  // user_id的值
+		zap.Bool("user_obj_exists", exists2), // 是否存在完整用户对象
+		zap.Any("user_obj_value", userObj),   // 完整用户对象
+	)
+	userId, ok := userIdVal.(int64)
+	if !ok {
+		logger.Error("GetInfo Handler user_id类型转换失败",
+			zap.Any("user_id_value", userId),
+			zap.String("expected_type", "uint"),
+			zap.String("actual_type", fmt.Sprintf("%T", userIdVal)),
+		)
+		response.WriteResp(c, nil, common.ServerErr.WithMsg("用户ID类型断言失败"))
+		return
+	}
+	req.ID = userId
+	// 2. 创建带超时的 Context（控制整个请求链路的超时）
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	defer cancel() // 必写：释放资源，避免内存泄漏
+
+	// 3. 调用 App 层方法（Handler 层不直接操作领域/数据库）
+	userEntity, err := h.userAppSrv.GetUserInfo(ctx, &req)
+	if err != nil {
+		// 根据错误类型返回对应响应
+		switch err {
+		case common.UserNotFoundErr:
+			logger.Error("GetInfo 查询用户失败", zap.Int64("user_id", userId), zap.Error(err))
+			response.WriteResp(c, nil, common.UserNotFoundErr)
+		default:
+			response.WriteResp(c, nil, common.ServerErr.WithErr(err))
+		}
+		return
+	}
+	// 4. 封装成功响应
+	response.WriteResp(c, userEntity, common.OK)
 }

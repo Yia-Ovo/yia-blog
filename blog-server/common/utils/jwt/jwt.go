@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-17 07:43:04
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-18 09:32:37
+ * @LastEditTime: 2026-03-13 18:35:55
  * @FilePath: \yia-blog\blog-server\common\utils\jwt\jwt.go
  * @Description:
  *
@@ -13,6 +13,7 @@ package jwt
 
 import (
 	"blog-server/common"
+	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -56,4 +57,22 @@ func ParseToken(tokenStr string) (*Claims, error) {
 		return claims, nil
 	}
 	return nil, jwt.ErrSignatureInvalid
+}
+
+// ParseTokenToUser 解析Token并返回common.User（通用工具函数，替代原GetUserFromJWT）
+func ParseTokenToUser(tokenStr string) (*common.User, error) {
+	claims, err := ParseToken(tokenStr)
+	if err != nil {
+		// 统一转换错误类型（便于上层处理）
+		switch {
+		case errors.Is(err, jwt.ErrSignatureInvalid):
+			return nil, common.LoginTokenInvalidErr
+		case errors.Is(err, jwt.ErrTokenExpired):
+			return nil, common.LoginTokenExpiredErr
+		default:
+			return nil, common.AuthErr
+		}
+	}
+
+	return &common.User{UserID: claims.UserID}, nil
 }

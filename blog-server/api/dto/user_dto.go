@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-26 07:44:28
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-11 15:13:46
+ * @LastEditTime: 2026-03-13 16:55:39
  * @FilePath: \yia-blog\blog-server\api\dto\user_dto.go
  * @Description:
  *
@@ -11,6 +11,16 @@
 package dto
 
 import "time"
+
+type UserGetInfoReq struct {
+	ID int64 `json:"user_id" binding:"required"`
+}
+
+type UserGetInfoRes struct {
+	Code int           `json:"code"` // 状态码：200成功，500失败，400参数错误
+	Msg  string        `json:"msg"`  // 提示信息：成功/失败原因
+	Data *UserInfoData `json:"data"` // 用户信息
+}
 
 type UserLoginReq struct {
 	NickName string `json:"nick_name" binding:"required,min=1,max=16"` // 昵称：必填，2-16位

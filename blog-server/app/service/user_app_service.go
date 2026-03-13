@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 02:58:44
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-06 11:51:22
+ * @LastEditTime: 2026-03-13 23:51:28
  * @FilePath: \yia-blog\blog-server\app\service\user_app_service.go
  * @Description:
  *
@@ -18,6 +18,7 @@ import (
 	"blog-server/domain/do"
 	"blog-server/domain/service"
 	"blog-server/infra/repo"
+	"context"
 	"regexp"
 	"strconv"
 
@@ -41,6 +42,48 @@ func NewUserAppService(db *gorm.DB) *UserAppService {
 	return &UserAppService{
 		userDomainSrv: userDomainSrv,
 	}
+}
+
+func (s *UserAppService) GetUserInfo(ctx context.Context, req *dto.UserGetInfoReq) (*dto.UserGetInfoRes, error) {
+	// 1. 应用层参数校验（前置拦截非法参数，减少领域层压力）
+	if req == nil {
+		return nil, common.ParamErr.WithMsg("请求参数不能为空")
+	}
+	if req.ID <= 0 {
+		return nil, common.ParamErr.WithMsg("用户ID不合法：" + strconv.Itoa(int(req.ID)))
+	}
+	// 2. 调用领域服务（核心逻辑交给领域层，应用层只做编排）
+	// 注意：领域层也要传递ctx，控制数据库操作超时
+	userDO, err := s.userDomainSrv.FindUserByID(ctx, req.ID)
+	if err != nil {
+		// 3. 错误分类处理
+		switch err {
+		// 匹配数据库无记录错误，封装为领域错误
+		case gorm.ErrRecordNotFound:
+			return nil, common.UserNotFoundErr.WithMsg("用户ID：" + strconv.Itoa(int(req.ID)) + " 不存在")
+		// 匹配定义的数据库错误
+		case common.DatabaseErr:
+			return nil, common.DatabaseErr.WithErr(err)
+		// 其他未知错误，封装为服务器错误
+		default:
+			return nil, common.ServerErr.WithErr(err)
+		}
+	}
+
+	// 5. 组装DTO返回（领域对象 -> 传输对象）
+	return &dto.UserGetInfoRes{
+		Data: &dto.UserInfoData{
+			ID:        userDO.ID,
+			NickName:  userDO.NickName,
+			Avatar:    userDO.Avatar,
+			Gender:    userDO.Gender,
+			Status:    userDO.Status,
+			Signature: userDO.Signature,
+			Email:     userDO.Email,
+			CreateAt:  userDO.CreateAt,
+		},
+	}, nil
+
 }
 
 func (s *UserAppService) Login(req *dto.UserLoginReq) (*common.User, error) {
@@ -156,9 +199,9 @@ func (s *UserAppService) UpdateUserInfo(req *dto.UserUpdateInfoReq) (*dto.UserFi
 			return nil, common.DatabaseErr.WithErr(err).WithMsg("更新用户信息失败")
 		}
 	}
-
+	ctx := context.Background()
 	// 4. 查询最新数据并返回
-	userDO, err := s.userDomainSrv.FindUserByID(req.ID)
+	userDO, err := s.userDomainSrv.FindUserByID(ctx, req.ID)
 	if err != nil {
 		return nil, common.DatabaseErr.WithErr(err).WithMsg("查询更新后用户信息失败")
 	}

@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-09 02:03:09
+ * @LastEditTime: 2026-03-14 00:48:24
  * @FilePath: \yia-blog\blog-server\api\router\router.go
  * @Description:
  *
@@ -14,6 +14,7 @@ import (
 	"blog-server/api/handler"
 	"blog-server/app/service"
 	"blog-server/config"
+	"blog-server/middleware"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -82,4 +83,13 @@ func (r *Router) userRouter(v1 *gin.RouterGroup) {
 	userGroup.GET("/findUserByNickname", userHandler.FindUserByNickname)
 	userGroup.GET("/updateUserInfo", userHandler.UpdateUserInfo)
 	userGroup.POST("/login", userHandler.Login)
+
+	// userGroup.Use(middleware.DefaultUserAuth()) // 使用中间件进行用户认证
+	// {
+	// 	userGroup.GET("/getInfo", userHandler.GetInfo) // GetInfo接口
+	// }
+	{
+		// 直接把中间件写在路由里，确保和Handler共用同一个ctx
+		userGroup.GET("/getInfo", middleware.DefaultUserAuth(), userHandler.GetInfo)
+	}
 }
