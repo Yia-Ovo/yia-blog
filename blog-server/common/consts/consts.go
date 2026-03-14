@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-25 23:37:43
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-17 14:42:13
+ * @LastEditTime: 2026-03-13 17:49:43
  * @FilePath: \yia-blog\blog-server\common\consts\consts.go
  * @Description:
  *
@@ -11,10 +11,10 @@
 package consts
 
 const (
-	UserTokenKey    = "User-Token"    // 前端请求头Token键
-	CustomerUserKey = "customer_user" // 上下文存储User对象的键
-	AdminTokenKey   = "Admin-Token"   // 管理员Token键
-	AdminUserKey    = "admin_user"    // 上下文存储AdminUser对象的键
+	UserTokenKey    = "Authorization"       // 用户Token请求头
+	AdminTokenKey   = "Admin-Authorization" // 管理员Token请求头
+	CustomerUserKey = "customer_user"       // Gin Context中存储用户信息的key
+	AdminUserKey    = "admin_user"          // Gin Context中存储管理员信息的key
 )
 
 const (

@@ -1,3 +1,13 @@
+/*
+ * @Author: Yia 1372594487@qq.com
+ * @Date: 2026-03-06 13:24:11
+ * @LastEditors: Yia 1372594487@qq.com
+ * @LastEditTime: 2026-03-13 17:37:25
+ * @FilePath: \yia-blog\blog-server\common\gin\response\response.go
+ * @Description:
+ *
+ * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
+ */
 package response
 
 import (

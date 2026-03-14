@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-01 04:59:06
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-11 16:57:19
+ * @LastEditTime: 2026-03-14 16:23:27
  * @FilePath: \yia-blog\blog-server\infra\repo\user_infra_repo.go
  * @Description:
  *
@@ -24,11 +24,11 @@ import (
 	"gorm.io/gorm"
 )
 
+// 私有结构体，实现domain/repo中的UserRepo接口
 type userInfraRepo struct {
 	db *gorm.DB
 }
 
-// 私有结构体，实现domain/repo中的UserRepo接口
 func NewUserInfraRepo(db *gorm.DB) repo.UserRepo {
 	return &userInfraRepo{db: db}
 }
@@ -105,11 +105,16 @@ func (r *userInfraRepo) FindUserByID(ctx context.Context, id int64) (*do.UserDO,
 		return nil, err
 	}
 	userDO := &do.UserDO{
-		ID:       int64(userModel.ID),
-		NickName: userModel.NickName,
-		Gender:   userModel.Gender,
-		Avatar:   userModel.Avatar,
-		Status:   userModel.Status,
+		ID:          int64(userModel.ID),
+		NickName:    userModel.NickName,
+		Avatar:      userModel.Avatar,
+		Gender:      userModel.Gender,
+		Status:      userModel.Status,
+		Signature:   userModel.Signature,
+		CreateAt:    userModel.CreateAt,
+		UpdateAt:    userModel.UpdateAt,
+		LastLoginAt: userModel.LastLoginAt,
+		Email:       userModel.Email,
 	}
 
 	return userDO, nil
