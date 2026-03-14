@@ -218,7 +218,6 @@ func (h *UserHandler) GetInfo(c *gin.Context) {
 		}
 		return
 	}
-
 	// 4. 封装成功响应
 	response.WriteResp(c, userEntity, common.OK)
 }
