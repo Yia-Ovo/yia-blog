@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-14 00:48:24
+ * @LastEditTime: 2026-03-31 02:02:15
  * @FilePath: \yia-blog\blog-server\api\router\router.go
  * @Description:
  *
@@ -84,12 +84,13 @@ func (r *Router) userRouter(v1 *gin.RouterGroup) {
 	userGroup.GET("/updateUserInfo", userHandler.UpdateUserInfo)
 	userGroup.POST("/login", userHandler.Login)
 
-	// userGroup.Use(middleware.DefaultUserAuth()) // 使用中间件进行用户认证
-	// {
-	// 	userGroup.GET("/getInfo", userHandler.GetInfo) // GetInfo接口
-	// }
+	userGroup.Use(middleware.DefaultUserAuth()) // 使用中间件进行用户认证
 	{
-		// 直接把中间件写在路由里，确保和Handler共用同一个ctx
-		userGroup.GET("/getInfo", middleware.DefaultUserAuth(), userHandler.GetInfo)
+		userGroup.GET("/getInfo", userHandler.GetInfo)      // GetInfo接口
+		userGroup.POST("/updatePWD", userHandler.UpdatePWD) // UpdatePWD接口
 	}
+	// {
+	// 直接把中间件写在路由里，确保和Handler共用同一个ctx
+	// userGroup.GET("/getInfo", middleware.DefaultUserAuth(), userHandler.GetInfo)
+	// }
 }

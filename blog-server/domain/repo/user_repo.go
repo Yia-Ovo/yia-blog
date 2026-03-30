@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 02:21:26
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-13 16:48:32
+ * @LastEditTime: 2026-03-31 01:57:46
  * @FilePath: \yia-blog\blog-server\domain\repo\user_repo.go
  * @Description:
  *
@@ -22,4 +22,5 @@ type UserRepo interface {
 	FindUserByID(ctx context.Context, id int64) (*do.UserDO, error)
 	UpdateUserInfo(ctx context.Context, userDO *do.UserDO) error
 	UpdateLastLoginInfo(ctx context.Context, id int64, loginAt *time.Time) error
+	UpdatePWD(ctx context.Context, id int64, password string) error
 }

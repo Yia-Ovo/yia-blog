@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 02:25:51
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-13 23:49:30
+ * @LastEditTime: 2026-03-31 03:46:13
  * @FilePath: \yia-blog\blog-server\domain\service\user_domain_service.go
  * @Description:
  *
@@ -36,11 +36,55 @@ func NewUserDomainService(userRepo repo.UserRepo) *UserDomainService {
 	}
 }
 
+func (u *UserDomainService) UpdatePWD(ctx context.Context, userId int64, newPassword string, oldPassword string) error {
+	userDO, err := u.userRepo.FindUserByID(ctx, userId)
+	if err != nil {
+		logger.Warn("通过用户ID查询用户失败", zap.Error(err), zap.Int64("userId", userId))
+		return err
+	}
+	// 1. 校验用户是否存在（兜底判断）
+	if userDO == nil {
+		logger.Warn("用户不存在", zap.Int64("userId", userId))
+		return common.UserNotFoundErr
+	}
+
+	// 2. 验证旧密码是否正确（对比数据库加密密码）
+	// userDO.Password 是数据库存储的 bcrypt 加密密文
+	if err := bcrypt.CompareHashAndPassword([]byte(userDO.Password), []byte(oldPassword)); err != nil {
+		logger.Warn("用户旧密码验证失败", zap.Int64("userId", userId))
+		return common.UserOldPasswordErr // 旧密码错误
+	}
+
+	// 3. 业务校验：新密码不能与旧密码相同
+	if newPassword == oldPassword {
+		logger.Warn("新密码与旧密码一致", zap.Int64("userId", userId))
+		return common.UserPasswordSameError // 新旧密码重复
+	}
+
+	// 4. 密码加密：使用 bcrypt 加密新密码（自动加盐，安全不可逆）
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		logger.Warn("新密码加密失败", zap.Error(err), zap.Int64("userId", userId))
+		return common.PasswordEncryptError // 加密异常
+	}
+
+	// 5. 数据库更新：调用仓储层更新密码
+	if err := u.userRepo.UpdatePWD(ctx, userId, string(hashedPassword)); err != nil {
+		logger.Warn("更新用户密码失败", zap.Error(err), zap.Int64("userId", userId))
+		return common.UpdatePasswordError // 更新失败
+	}
+
+	// 密码修改成功
+	logger.Info("用户密码修改成功", zap.Int64("userId", userId))
+
+	return nil
+}
+
 func (u *UserDomainService) Login(nickName string, password string) (*common.User, error) {
 	// 1. 调用仓储层查询用户（领域层不直接操作DB，通过仓储层抽象）
 	// 传递context，用于trace、超时控制
 	ctx := context.Background()
-	user, err := u.userRepo.FindUserByNickname(ctx, nickName)
+	userDO, err := u.userRepo.FindUserByNickname(ctx, nickName)
 	if err != nil {
 		// 仓储层错误：区分“查询失败”和“用户不存在”
 		if errors.Is(err, common.UserNotFoundErr) {
@@ -52,16 +96,16 @@ func (u *UserDomainService) Login(nickName string, password string) (*common.Use
 	}
 
 	// 2. 校验账号状态（核心业务规则）
-	if user.Status == consts.UserStatusDisabled { // 假设UserStatusDisabled=2（禁用）
+	if userDO.Status == consts.UserStatusDisabled { // 假设UserStatusDisabled=2（禁用）
 		return nil, errors.New("账号已被禁用，请联系管理员")
 	}
-	if user.Status == consts.UserStatusLocked { // 假设UserStatusLocked=3（锁定）
+	if userDO.Status == consts.UserStatusLocked { // 假设UserStatusLocked=3（锁定）
 		return nil, errors.New("账号已被锁定，请稍后重试")
 	}
 
 	// 3. 密码校验（核心：哈希比对，禁止明文存储/比对）
-	// user.Password 是数据库中存储的bcrypt哈希值，password是前端传入的明文
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	// userDO.Password 是数据库中存储的bcrypt哈希值，password是前端传入的明文
+	err = bcrypt.CompareHashAndPassword([]byte(userDO.Password), []byte(password))
 	if err != nil {
 		// 密码比对失败（包括哈希格式错误、密码不匹配）
 		return nil, errors.New("用户名或密码错误")
@@ -69,14 +113,14 @@ func (u *UserDomainService) Login(nickName string, password string) (*common.Use
 
 	// 4. 登录成功后的核心业务操作
 	// 例：更新最后登录时间、登录IP
-	updateErr := u.userRepo.UpdateLastLoginInfo(ctx, user.ID, user.LastLoginAt)
+	updateErr := u.userRepo.UpdateLastLoginInfo(ctx, userDO.ID, userDO.LastLoginAt)
 	if updateErr != nil {
 		// 此处可记录日志，但不阻断登录（非核心失败）
-		logger.Warn("更新登录信息失败", zap.Error(err), zap.Int64("user_id", user.ID))
+		logger.Warn("更新登录信息失败", zap.Error(err), zap.Int64("user_id", userDO.ID))
 	}
 
 	// 5. 返回用户信息（注意：脱敏，不返回密码等敏感字段）
-	commonUser := common.UserDOToUser(user)
+	commonUser := common.UserDOToUser(userDO)
 	return commonUser, nil
 }
 
@@ -102,7 +146,7 @@ func (u *UserDomainService) Register(nickName string, password string) error {
 	ctx := context.Background()
 	// 3. 调用仓库接口，写入数据库（业务层不用管数据库细节）
 	if err := u.userRepo.CreateUser(ctx, userDO); err != nil {
-		logger.Error("仓库创建用户失败", zap.Error(err), zap.String("nickName", nickName))
+		logger.Warn("仓库创建用户失败", zap.Error(err), zap.String("nickName", nickName))
 		return err
 	}
 
@@ -132,7 +176,10 @@ func (u *UserDomainService) FindUserByID(ctx context.Context, userId int64) (*do
 func (u *UserDomainService) UpdateUserInfo(userId int64, updateData *do.UserDO) error {
 	ctx := context.Background()
 	userDO, err := u.FindUserByID(ctx, userId)
-
+	if err != nil {
+		logger.Warn("通过用户ID查询用户失败", zap.Error(err), zap.Int64("userId", userId))
+		return err
+	}
 	if updateData.NickName != "" { // 字符串字段：非空则更新
 		userDO.NickName = updateData.NickName
 	}

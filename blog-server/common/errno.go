@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-23 06:14:49
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-11 16:06:57
+ * @LastEditTime: 2026-03-30 17:31:46
  * @FilePath: \yia-blog\blog-server\common\errno.go
  * @Description:
  *
@@ -65,4 +65,12 @@ var (
 	LoginTokenInvalidErr  = Errno{Code: 11008, Msg: "Token invalid"}      // 登录态token无效（伪造/篡改）
 	LoginNotLoginErr      = Errno{Code: 11009, Msg: "Not login"}          // 未登录（需要登录才能操作）
 	LoginCaptchaErr       = Errno{Code: 11010, Msg: "Captcha error"}      // 验证码错误/过期（可选）
+
+	// 修改密码专属错误
+	UserPwdParamEmptyErr      = Errno{Code: 11013, Msg: "Password param empty"}     // 修改密码参数为空
+	UserOldPasswordErr        = Errno{Code: 11014, Msg: "Old password error"}       // 旧密码校验失败
+	UserNewPasswordInvalidErr = Errno{Code: 11015, Msg: "New password invalid"}     // 新密码格式不合法
+	UserPasswordSameError     = Errno{Code: 11016, Msg: "New password same as old"} // 新密码与旧密码相同
+	PasswordEncryptError      = Errno{Code: 11017, Msg: "Password encrypt error"}   // 密码加密失败
+	UpdatePasswordError       = Errno{Code: 11018, Msg: "Update password error"}    // 更新密码失败
 )

@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-01 04:59:06
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-14 17:12:03
+ * @LastEditTime: 2026-03-31 03:42:54
  * @FilePath: \yia-blog\blog-server\infra\repo\user_infra_repo.go
  * @Description:
  *
@@ -31,6 +31,33 @@ type userInfraRepo struct {
 
 func NewUserInfraRepo(db *gorm.DB) repo.UserRepo {
 	return &userInfraRepo{db: db}
+}
+
+func (r *userInfraRepo) UpdatePWD(ctx context.Context, userID int64, password string) error {
+	ctx, cancel := response.WithDBTimeout(ctx)
+	defer cancel()
+
+	err := r.db.WithContext(ctx).
+		Model(&model.UserModel{}).
+		Where("id = ? AND deleted_at IS NULL", userID).
+		Update("password", password).
+		Error
+
+	if err != nil {
+		logger.Error("UpdateUserPassword failed",
+			zap.Int64("user_id", userID),
+			zap.Error(err))
+		return common.DatabaseErr.WithErr(err)
+	}
+	if r.db.RowsAffected == 0 {
+		logger.Warn("func UpdateLastLoginInfo no rows affected",
+			zap.Int64("user_id", userID),
+			// zap.String("login_ip", loginIP),
+		)
+		// return common.ErrUserNotFound
+	}
+	return nil
+
 }
 
 // 实现UserRepo接口的Create方法：创建用户（DO转Model+写入数据库）
@@ -107,6 +134,7 @@ func (r *userInfraRepo) FindUserByID(ctx context.Context, id int64) (*do.UserDO,
 	userDO := &do.UserDO{
 		ID:          int64(userModel.ID),
 		NickName:    userModel.NickName,
+		Password:    userModel.Password,
 		Avatar:      userModel.Avatar,
 		Gender:      userModel.Gender,
 		Status:      userModel.Status,
@@ -173,8 +201,8 @@ func (r *userInfraRepo) UpdateLastLoginInfo(ctx context.Context, userID int64, l
 			zap.Int64("user_id", userID),
 			// zap.String("login_ip", loginIP),
 		)
-		// 可选：返回自定义错误（比如repository.ErrUserNotFound）
-		// return repository.ErrUserNotFound
+		// 可选：返回自定义错误（比如common.ErrUserNotFound）
+		// return common.ErrUserNotFound
 	}
 
 	return nil

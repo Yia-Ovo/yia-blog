@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 02:58:44
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-14 17:11:01
+ * @LastEditTime: 2026-03-31 03:20:40
  * @FilePath: \yia-blog\blog-server\app\service\user_app_service.go
  * @Description:
  *
@@ -15,6 +15,7 @@ import (
 	"blog-server/api/dto"
 	"blog-server/common"
 	"blog-server/common/utils/logger"
+	"blog-server/common/utils/password.go"
 	"blog-server/domain/do"
 	"blog-server/domain/service"
 	"blog-server/infra/repo"
@@ -44,17 +45,37 @@ func NewUserAppService(db *gorm.DB) *UserAppService {
 	}
 }
 
-func (s *UserAppService) GetUserInfo(ctx context.Context, ID int64) (*dto.UserInfoData, error) {
+func (s *UserAppService) UpdatePWD(ctx context.Context, id int64, req *dto.UserUpdatePWDReq) error {
+	if req.OldPassword == "" {
+		return common.UserPwdParamEmptyErr.WithMsg("旧密码为空")
+	}
+	if req.NewPassword == "" {
+		return common.UserPwdParamEmptyErr.WithMsg("新密码为空")
+	}
+
+	if err := password.CheckPasswordFormat(req.NewPassword); err != nil {
+		return common.UserNewPasswordInvalidErr.WithMsg(err.Error())
+	}
+
+	err := s.userDomainSrv.UpdatePWD(ctx, id, req.NewPassword, req.OldPassword)
+	if err != nil {
+		logger.Warn("修改密码业务失败", zap.Int64("userId", id), zap.String("err", err.Error()))
+		return err
+	}
+	return nil
+}
+
+func (s *UserAppService) GetUserInfo(ctx context.Context, id int64) (*dto.UserInfoData, error) {
 
 	// 1. 调用领域服务（核心逻辑交给领域层，应用层只做编排）
 	// 注意：领域层也要传递ctx，控制数据库操作超时
-	userDO, err := s.userDomainSrv.FindUserByID(ctx, ID)
+	userDO, err := s.userDomainSrv.FindUserByID(ctx, id)
 	if err != nil {
 		// 2. 错误分类处理
 		switch err {
 		// 匹配数据库无记录错误，封装为领域错误
 		case gorm.ErrRecordNotFound:
-			return nil, common.UserNotFoundErr.WithMsg("用户ID：" + strconv.Itoa(int(ID)) + " 不存在")
+			return nil, common.UserNotFoundErr.WithMsg("用户ID：" + strconv.Itoa(int(id)) + " 不存在")
 		// 匹配定义的数据库错误
 		case common.DatabaseErr:
 			return nil, common.DatabaseErr.WithErr(err)

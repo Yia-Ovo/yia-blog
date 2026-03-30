@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 03:11:10
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-14 16:10:22
+ * @LastEditTime: 2026-03-31 02:31:26
  * @FilePath: \yia-blog\blog-server\api\handler\user_handler.go
  * @Description:
  *
@@ -37,6 +37,75 @@ func NewUserHandler(userAppSrv *service.UserAppService) *UserHandler {
 	return &UserHandler{
 		userAppSrv: userAppSrv, // 由外部注入，Handler不关心AppService的依赖
 	}
+}
+
+func (h *UserHandler) UpdatePWD(c *gin.Context) {
+	var req dto.UserUpdatePWDReq
+	// 1. 绑定请求参数
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// 用统一响应工具，避免硬编码（保持格式一致）
+		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		return
+	}
+	// 2. 从 Gin Context 中获取用户ID（由 DefaultUserAuth 中间件存入）
+	userIdVal, exists := c.Get("user_id") // 获取用户id
+	if !exists {
+		logger.Warn("GetInfo Handler 未获取到user_id", zap.Bool("user_id_exists", exists))
+		response.WriteResp(c, nil, common.LoginNotLoginErr)
+		return
+	}
+	// 3. ID断言
+	userId, ok := userIdVal.(int64)
+	if !ok {
+		logger.Error("GetInfo Handler user_id类型转换失败",
+			zap.Any("user_id_value", userId),
+			zap.String("expected_type", "uint"),
+			zap.String("actual_type", fmt.Sprintf("%T", userIdVal)),
+		)
+		response.WriteResp(c, nil, common.ServerErr.WithMsg("用户ID类型断言失败"))
+		return
+	}
+	// 4.创建带超时的Context
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	defer cancel() // 释放资源，避免内存泄漏
+	// 5. 调用应用层
+	err := h.userAppSrv.UpdatePWD(ctx, userId, &req)
+	if err != nil {
+		switch err {
+		// 用户不存在
+		case common.UserNotFoundErr:
+			logger.Error("UpdatePWD 查询用户不存在", zap.Int64("user_id", userId), zap.Error(err))
+			response.WriteResp(c, nil, common.UserNotFoundErr)
+		// 旧密码错误
+		case common.UserOldPasswordErr:
+			logger.Warn("UpdatePWD 旧密码验证失败", zap.Int64("user_id", userId))
+			response.WriteResp(c, nil, common.UserOldPasswordErr)
+		// 新密码格式错误
+		case common.UserNewPasswordInvalidErr:
+			logger.Warn("UpdatePWD 新密码格式不合法", zap.Int64("user_id", userId))
+			response.WriteResp(c, nil, common.UserNewPasswordInvalidErr)
+		// 新旧密码相同
+		case common.UserPasswordSameError:
+			logger.Warn("UpdatePWD 新密码与旧密码相同", zap.Int64("user_id", userId))
+			response.WriteResp(c, nil, common.UserPasswordSameError)
+		// 密码加密失败
+		case common.PasswordEncryptError:
+			logger.Error("UpdatePWD 密码加密失败", zap.Int64("user_id", userId), zap.Error(err))
+			response.WriteResp(c, nil, common.PasswordEncryptError)
+		// 更新密码失败
+		case common.UpdatePasswordError:
+			logger.Error("UpdatePWD 更新密码失败", zap.Int64("user_id", userId), zap.Error(err))
+			response.WriteResp(c, nil, common.UpdatePasswordError)
+		// ❗ 只有未知/系统错误，才返回500
+		default:
+			logger.Error("UpdatePWD 未知系统错误", zap.Int64("user_id", userId), zap.Error(err))
+			response.WriteResp(c, nil, common.ServerErr)
+		}
+		return
+	}
+	// 6. 成功响应,返回通用成功数据
+	response.WriteResp(c, nil, common.OK)
+
 }
 
 // Register 注册接口处理函数：POST /api/blog/v1/user/register
