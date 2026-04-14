@@ -2,7 +2,7 @@
 * @Author: Yia 1372594487@qq.com
 * @Date: 2026-01-25 23:13:50
   - @LastEditors: Yia 1372594487@qq.com
-  - @LastEditTime: 2026-03-14 17:14:54
+  - @LastEditTime: 2026-04-15 01:00:52
   - @FilePath: \yia-blog\blog-server\middleware\auth.go
 
 * @Description:
@@ -20,6 +20,7 @@ import (
 	"blog-server/common"
 	"blog-server/common/consts"
 	"blog-server/common/gin/response"
+	"blog-server/common/utils/convert"
 	"blog-server/common/utils/jwt"
 	"blog-server/common/utils/logger"
 	"context"
@@ -30,7 +31,7 @@ import (
 )
 
 // TokenFun 用户Token解析函数签名
-type TokenFun func(ctx context.Context, token string) (*common.User, common.Errno)
+type TokenFun func(ctx context.Context, token string) (*convert.User, common.Errno)
 
 // TokenAdminFun 管理员Token解析函数签名
 type TokenAdminFun func(ctx context.Context, token string) (*common.AdminUser, common.Errno)
@@ -96,7 +97,7 @@ func AuthMiddleware(filter func(*gin.Context) bool, getTokenFun TokenFun) gin.Ha
 		reqCtx := context.WithValue(ctx.Request.Context(), consts.CustomerUserKey, user)
 		ctx.Request = ctx.Request.WithContext(reqCtx) // 替换request的context
 		logger.Debug("用户信息已存入Gin上下文",
-			zap.Int64("user_id", user.UserID),
+			zap.Uint64("user_id", user.UserID),
 			zap.String("context_key", consts.CustomerUserKey),
 		)
 		// 6. 继续执行后续逻辑
@@ -111,7 +112,7 @@ func DefaultUserAuth() gin.HandlerFunc {
 }
 
 // token解析函数
-func ParseTokenToUser(ctx context.Context, tokenStr string) (*common.User, common.Errno) {
+func ParseTokenToUser(ctx context.Context, tokenStr string) (*convert.User, common.Errno) {
 	logger.Debug("进入ParseTokenToUser函数",
 		zap.String("token", tokenStr),
 	)

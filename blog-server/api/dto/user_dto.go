@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-26 07:44:28
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-31 02:10:19
+ * @LastEditTime: 2026-04-14 19:05:39
  * @FilePath: \yia-blog\blog-server\api\dto\user_dto.go
  * @Description:
  *
@@ -13,7 +13,7 @@ package dto
 import "time"
 
 type UserUpdatePWDReq struct {
-	ID          int64  `json:"-" binding:"-"`                                // 忽略前端传参，无校验
+	ID          uint64 `json:"-" binding:"-"`                                // 忽略前端传参，无校验
 	OldPassword string `json:"old_password" binding:"required,min=6,max=20"` // 旧密码：必填，至少6位
 	NewPassword string `json:"new_password" binding:"required,min=6,max=20"` // 新密码：必填，至少6位
 }
@@ -52,7 +52,7 @@ type UserRegisterRes struct {
 
 // 仅定义前端需要的字段，无敏感信息、无领域层依赖
 type UserInfoData struct {
-	ID          int64      `json:"id"`            // 用户ID
+	ID          uint64     `json:"id"`            // 用户ID
 	NickName    string     `json:"nick_name"`     // 昵称
 	Avatar      string     `json:"avatar"`        // 头像
 	Status      int        `json:"status"`        // 用户状态（仅返回前端需要的字段）
@@ -76,7 +76,7 @@ type UserFindInfoRes struct {
 }
 
 type UserUpdateInfoReq struct {
-	ID        int64  `json:"-" binding:"-"` // 用户ID
+	ID        uint64 `json:"-" binding:"-"` // 用户ID
 	NickName  string `json:"nick_name"`     // 昵称
 	Avatar    string `json:"avatar" `       // 头像
 	Gender    int    `json:"gender"`        // 性别

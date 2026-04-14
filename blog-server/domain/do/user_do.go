@@ -3,7 +3,7 @@ package do
 import "time"
 
 type UserDO struct {
-	ID          int64      `json:"id"`
+	ID          uint64     `json:"id"`
 	NickName    string     `json:"nick_name"`
 	Password    string     `json:"-"`
 	Avatar      string     `json:"avatar"`

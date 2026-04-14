@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-17 07:43:04
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-13 18:35:55
+ * @LastEditTime: 2026-04-15 00:40:28
  * @FilePath: \yia-blog\blog-server\common\utils\jwt\jwt.go
  * @Description:
  *
@@ -13,6 +13,7 @@ package jwt
 
 import (
 	"blog-server/common"
+	"blog-server/common/utils/convert"
 	"errors"
 	"time"
 
@@ -22,13 +23,13 @@ import (
 // Claims JWT载荷，包含UserID
 type Claims struct {
 	jwt.RegisteredClaims
-	UserID int64 `json:"user_id"`
+	UserID uint64 `json:"user_id"`
 }
 
 // 自定义密钥
 var jwtSecret = []byte("yia-blog-key-123456")
 
-func GenerateToken(user *common.User) (string, error) {
+func GenerateToken(user *convert.User) (string, error) {
 	expireTime := time.Now().Add(2 * time.Hour)
 	claims := Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -60,7 +61,7 @@ func ParseToken(tokenStr string) (*Claims, error) {
 }
 
 // ParseTokenToUser 解析Token并返回common.User（通用工具函数，替代原GetUserFromJWT）
-func ParseTokenToUser(tokenStr string) (*common.User, error) {
+func ParseTokenToUser(tokenStr string) (*convert.User, error) {
 	claims, err := ParseToken(tokenStr)
 	if err != nil {
 		// 统一转换错误类型（便于上层处理）
@@ -74,5 +75,14 @@ func ParseTokenToUser(tokenStr string) (*common.User, error) {
 		}
 	}
 
-	return &common.User{UserID: claims.UserID}, nil
+	return &convert.User{UserID: claims.UserID}, nil
+}
+
+// GetTokenRemainingTime 获取Token剩余有效期（秒）
+func GetTokenRemainingTime(tokenStr string) (int64, error) {
+	claims, err := ParseToken(tokenStr)
+	if err != nil {
+		return 0, err
+	}
+	return claims.ExpiresAt.Time.Unix() - time.Now().Unix(), nil
 }
