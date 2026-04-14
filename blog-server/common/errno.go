@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-23 06:14:49
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-30 17:31:46
+ * @LastEditTime: 2026-04-15 01:58:29
  * @FilePath: \yia-blog\blog-server\common\errno.go
  * @Description:
  *
@@ -56,6 +56,10 @@ var (
 	UserNickNameTooLongErr = Errno{Code: 11011, Msg: "User nickname too long"}
 	UserStatusInvalidErr   = Errno{Code: 11012, Msg: "User status invalid"}
 
+	// 用户状态专属
+	UserAccountDisabledErr = Errno{Code: 11019, Msg: "Account disabled"}         // 账号已禁用
+	LoginInfoUpdateErr     = Errno{Code: 11020, Msg: "Update login info failed"} // 更新登录信息失败
+
 	// 登录专属标准化错误
 	LoginParamEmptyErr    = Errno{Code: 11003, Msg: "Login param empty"}  // 登录核心参数为空（用户名/密码）
 	LoginPasswordErr      = Errno{Code: 11004, Msg: "Password error"}     // 密码错误
@@ -73,4 +77,25 @@ var (
 	UserPasswordSameError     = Errno{Code: 11016, Msg: "New password same as old"} // 新密码与旧密码相同
 	PasswordEncryptError      = Errno{Code: 11017, Msg: "Password encrypt error"}   // 密码加密失败
 	UpdatePasswordError       = Errno{Code: 11018, Msg: "Update password error"}    // 更新密码失败
+
+	//登出相关错误
+	LogoutSuccess    = Errno{Code: 200, Msg: "Logout success"}     // 登出成功
+	TokenInvalid     = Errno{Code: 401, Msg: "Token invalid"}      // Token无效
+	TokenExpired     = Errno{Code: 401, Msg: "Token expired"}      // Token过期
+	TokenInBlacklist = Errno{Code: 401, Msg: "Token in blacklist"} // Token在黑名单中
+	CacheNotExist    = Errno{Code: 401, Msg: "Cache not exist"}    // 缓存不存在
+
+	//Redis错误
+	RedisConnErr       = Errno{Code: 10001, Msg: "redis: connect failed"}     // 连接失败
+	RedisCmdErr        = Errno{Code: 10002, Msg: "redis: command not found"}  // 命令不存在执行失败
+	RedisTimeoutErr    = Errno{Code: 10003, Msg: "redis: command timeout"}    // 操作超时
+	RedisUnmarshalErr  = Errno{Code: 10004, Msg: "redis: unmarshal failed"}   // 反序列化失败
+	RedisMarshalErr    = Errno{Code: 10005, Msg: "redis: marshal failed"}     // 序列化失败
+	RedisScanErr       = Errno{Code: 10006, Msg: "redis: scan failed"}        // 扫描键失败
+	RedisDeleteErr     = Errno{Code: 10007, Msg: "redis: delete failed"}      // 删除键失败
+	RedisTokenBlackErr = Errno{Code: 10008, Msg: "redis: token black failed"} // 校验黑名单失败
+
+	// 文章相关错误
+	ArticleNotFoundErr = Errno{Code: 12001, Msg: "Article Not Found"} // 文章不存在
+
 )
