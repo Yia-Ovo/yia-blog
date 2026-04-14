@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 02:58:44
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-31 03:20:40
+ * @LastEditTime: 2026-04-15 02:23:06
  * @FilePath: \yia-blog\blog-server\app\service\user_app_service.go
  * @Description:
  *
@@ -14,14 +14,18 @@ package service
 import (
 	"blog-server/api/dto"
 	"blog-server/common"
+	"blog-server/common/utils/convert"
 	"blog-server/common/utils/logger"
 	"blog-server/common/utils/password.go"
+	"blog-server/config"
 	"blog-server/domain/do"
 	"blog-server/domain/service"
 	"blog-server/infra/repo"
 	"context"
 	"regexp"
 	"strconv"
+
+	"github.com/redis/go-redis/v9"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -34,18 +38,22 @@ type UserAppService struct {
 }
 
 // NewUserAppService 创建应用服务实例（初始化链路：DB → 仓库实现 → 领域服务 → 应用服务）
-func NewUserAppService(db *gorm.DB) *UserAppService {
-	// 1. 创建基础设施层的仓库实现（MySQL）
-	userInfraRepo := repo.NewUserInfraRepo(db)
-	// 2. 注入仓库实现到领域服务
-	userDomainSrv := service.NewUserDomainService(userInfraRepo)
-	// 3. 返回应用服务实例
+
+func NewUserAppService(db *gorm.DB, redisClient *redis.Client, conf *config.GlobalConfig) *UserAppService {
+	// MySQL数据仓储
+	userMysqlRepo := repo.NewUserMySQLRepo(db)
+	// Redis缓存仓储
+	userRedisRepo := repo.NewUserRedisRepo(redisClient, conf)
+
+	// 注入领域服务
+	userDomainSrv := service.NewUserDomainService(userMysqlRepo, userRedisRepo)
+
 	return &UserAppService{
 		userDomainSrv: userDomainSrv,
 	}
 }
 
-func (s *UserAppService) UpdatePWD(ctx context.Context, id int64, req *dto.UserUpdatePWDReq) error {
+func (s *UserAppService) UpdatePWD(ctx context.Context, id uint64, req *dto.UserUpdatePWDReq) error {
 	if req.OldPassword == "" {
 		return common.UserPwdParamEmptyErr.WithMsg("旧密码为空")
 	}
@@ -59,13 +67,13 @@ func (s *UserAppService) UpdatePWD(ctx context.Context, id int64, req *dto.UserU
 
 	err := s.userDomainSrv.UpdatePWD(ctx, id, req.NewPassword, req.OldPassword)
 	if err != nil {
-		logger.Warn("修改密码业务失败", zap.Int64("userId", id), zap.String("err", err.Error()))
+		logger.Warn("修改密码业务失败", zap.Uint64("userId", id), zap.String("err", err.Error()))
 		return err
 	}
 	return nil
 }
 
-func (s *UserAppService) GetUserInfo(ctx context.Context, id int64) (*dto.UserInfoData, error) {
+func (s *UserAppService) GetUserInfo(ctx context.Context, id uint64) (*dto.UserInfoData, error) {
 
 	// 1. 调用领域服务（核心逻辑交给领域层，应用层只做编排）
 	// 注意：领域层也要传递ctx，控制数据库操作超时
@@ -100,26 +108,27 @@ func (s *UserAppService) GetUserInfo(ctx context.Context, id int64) (*dto.UserIn
 
 }
 
-func (s *UserAppService) Login(req *dto.UserLoginReq) (*common.User, error) {
+func (s *UserAppService) Login(ctx context.Context, req *dto.UserLoginReq) (*convert.User, string, error) {
 	// 1. 参数校验：使用标准化错误
 	if req == nil {
-		return nil, common.LoginParamEmptyErr.WithMsg("缺少请求参数")
+		return nil, "", common.LoginParamEmptyErr
 	}
 	if req.NickName == "" {
-		return nil, common.LoginParamEmptyErr.WithMsg("用户名为空")
+		return nil, "", common.LoginParamEmptyErr
 	}
 	if req.Password == "" {
-		return nil, common.LoginParamEmptyErr.WithMsg("密码为空")
+		return nil, "", common.LoginParamEmptyErr
 	}
-	// 2. 调用领域服务执行登录
-	user, err := s.userDomainSrv.Login(req.NickName, req.Password)
+	// 2. 调用领域服务(ctx + 核心参数)
+	user, token, err := s.userDomainSrv.Login(ctx, req.NickName, req.Password)
 	if err != nil {
-		logger.Error("login failed", zap.Error(err))
-		// 领域层可能返回 UserNotFoundErr/LoginPasswordErr 等，直接返回标准化错误
-		return nil, err
+		logger.Error("用户登录失败", zap.String("nickname", req.NickName), zap.Error(err))
+		// 直接透传标准化错误码
+		return nil, "", err
 	}
-
-	return user, nil
+	// 3. 登录成功，返回 用户信息+Token 给api层
+	logger.Info("用户登录成功", zap.String("nickname", req.NickName), zap.Uint64("user_id", user.UserID))
+	return user, token, nil
 }
 
 // Register 注册接口的应用层编排（仅编排，无核心业务逻辑）
@@ -180,7 +189,7 @@ func (s *UserAppService) UpdateUserInfo(req *dto.UserUpdateInfoReq) (*dto.UserIn
 
 	// 校验ID：不仅非空，还要是正整数（覆盖binding:"required"的不足）
 	if req.ID <= 0 {
-		return nil, common.ParamErr.WithMsg("用户ID必须为正整数，当前值：" + strconv.FormatInt(req.ID, 10))
+		return nil, common.ParamErr.WithMsg("用户ID必须为正整数，当前值：" + strconv.FormatUint(req.ID, 10))
 	}
 
 	// 校验Gender：指针类型，非空时要校验值的合法性（比如性别只能是 0-未知 1-男 2-女）
@@ -208,7 +217,7 @@ func (s *UserAppService) UpdateUserInfo(req *dto.UserUpdateInfoReq) (*dto.UserIn
 	if err != nil {
 		switch {
 		case err == gorm.ErrRecordNotFound:
-			return nil, common.UserNotFoundErr.WithMsg("用户ID：" + strconv.FormatInt(req.ID, 10))
+			return nil, common.UserNotFoundErr.WithMsg("用户ID：" + strconv.FormatUint(req.ID, 10))
 		default:
 			return nil, common.DatabaseErr.WithErr(err).WithMsg("更新用户信息失败")
 		}

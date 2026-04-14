@@ -2,8 +2,8 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-01 04:59:06
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-31 03:42:54
- * @FilePath: \yia-blog\blog-server\infra\repo\user_infra_repo.go
+ * @LastEditTime: 2026-04-15 00:58:01
+ * @FilePath: \yia-blog\blog-server\infra\repo\user_mysql_repo.go
  * @Description:
  *
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
@@ -13,6 +13,7 @@ package repo
 import (
 	"blog-server/common"
 	"blog-server/common/gin/response"
+	"blog-server/common/utils/convert"
 	"blog-server/common/utils/logger"
 	"blog-server/domain/do"
 	"blog-server/domain/repo"
@@ -25,15 +26,15 @@ import (
 )
 
 // 私有结构体，实现domain/repo中的UserRepo接口
-type userInfraRepo struct {
+type userMysqlRepo struct {
 	db *gorm.DB
 }
 
-func NewUserInfraRepo(db *gorm.DB) repo.UserRepo {
-	return &userInfraRepo{db: db}
+func NewUserMySQLRepo(db *gorm.DB) repo.UserMysqlRepo {
+	return &userMysqlRepo{db: db}
 }
 
-func (r *userInfraRepo) UpdatePWD(ctx context.Context, userID int64, password string) error {
+func (r *userMysqlRepo) UpdatePWD(ctx context.Context, userID uint64, password string) error {
 	ctx, cancel := response.WithDBTimeout(ctx)
 	defer cancel()
 
@@ -45,13 +46,13 @@ func (r *userInfraRepo) UpdatePWD(ctx context.Context, userID int64, password st
 
 	if err != nil {
 		logger.Error("UpdateUserPassword failed",
-			zap.Int64("user_id", userID),
+			zap.Uint64("user_id", userID),
 			zap.Error(err))
 		return common.DatabaseErr.WithErr(err)
 	}
 	if r.db.RowsAffected == 0 {
 		logger.Warn("func UpdateLastLoginInfo no rows affected",
-			zap.Int64("user_id", userID),
+			zap.Uint64("user_id", userID),
 			// zap.String("login_ip", loginIP),
 		)
 		// return common.ErrUserNotFound
@@ -61,7 +62,7 @@ func (r *userInfraRepo) UpdatePWD(ctx context.Context, userID int64, password st
 }
 
 // 实现UserRepo接口的Create方法：创建用户（DO转Model+写入数据库）
-func (r *userInfraRepo) CreateUser(ctx context.Context, userDO *do.UserDO) error {
+func (r *userMysqlRepo) CreateUser(ctx context.Context, userDO *do.UserDO) error {
 
 	// 数据层校验：字段长度兜底（比如数据库nick_name字段是varchar(20)）
 	if len(userDO.NickName) > 20 {
@@ -93,7 +94,7 @@ func (r *userInfraRepo) CreateUser(ctx context.Context, userDO *do.UserDO) error
 	// GORM 会在插入成功后，自动把数据库生成的主键 ID、创建时间（gorm.Model 的 CreatedAt） 等字段回写到这个指针对象中
 }
 
-func (r *userInfraRepo) FindUserByNickname(ctx context.Context, nickName string) (*do.UserDO, error) {
+func (r *userMysqlRepo) FindUserByNickname(ctx context.Context, nickName string) (*do.UserDO, error) {
 	var userModel model.UserModel
 	ctx, cancel := response.WithDBTimeout(ctx)
 	defer cancel()
@@ -104,7 +105,7 @@ func (r *userInfraRepo) FindUserByNickname(ctx context.Context, nickName string)
 	}
 	// 把数据库实体Model转换成领域对象DO
 	userDO := &do.UserDO{
-		ID:        int64(userModel.ID),
+		ID:        uint64(userModel.ID),
 		NickName:  userModel.NickName,
 		Password:  userModel.Password,
 		Avatar:    userModel.Avatar,
@@ -123,49 +124,38 @@ func (r *userInfraRepo) FindUserByNickname(ctx context.Context, nickName string)
 	return userDO, nil
 }
 
-func (r *userInfraRepo) FindUserByID(ctx context.Context, id int64) (*do.UserDO, error) {
+func (r *userMysqlRepo) FindUserByID(ctx context.Context, userID uint64) (*do.UserDO, error) {
 	var userModel model.UserModel
 	ctx, cancel := response.WithDBTimeout(ctx)
 	defer cancel()
-	if err := r.db.WithContext(ctx).Debug().Where("id = ? AND deleted_at IS NULL", id).First(&userModel).Error; err != nil {
+	if err := r.db.WithContext(ctx).Debug().Where("id = ? AND deleted_at IS NULL", userID).First(&userModel).Error; err != nil {
 		logger.Error("func FindByID error", zap.Error(err))
 		return nil, err
 	}
-	userDO := &do.UserDO{
-		ID:          int64(userModel.ID),
-		NickName:    userModel.NickName,
-		Password:    userModel.Password,
-		Avatar:      userModel.Avatar,
-		Gender:      userModel.Gender,
-		Status:      userModel.Status,
-		Signature:   userModel.Signature,
-		CreateAt:    userModel.CreateAt,
-		UpdateAt:    userModel.UpdateAt,
-		LastLoginAt: userModel.LastLoginAt,
-		Email:       userModel.Email,
-	}
+
+	userDO := convert.UserModelToDO(&userModel)
 
 	return userDO, nil
 
 }
 
-func (r *userInfraRepo) UpdateUserInfo(ctx context.Context, userDO *do.UserDO) error {
+func (r *userMysqlRepo) UpdateUserInfo(ctx context.Context, userDO *do.UserDO) error {
 	ctx, cancel := response.WithDBTimeout(ctx)
 	defer cancel()
 	// GORM的Updates方法会自动忽略零值字段，仅更新非零字段
 	err := r.db.WithContext(ctx).Model(&model.UserModel{}).Where("id = ? AND deleted_at IS NULL", userDO.ID).Updates(userDO).Error
 	if err != nil {
-		logger.Error("UpdateUserInfo failed", zap.Int64("user_id", userDO.ID), zap.Error(err))
+		logger.Error("UpdateUserInfo failed", zap.Uint64("user_id", userDO.ID), zap.Error(err))
 		return err
 	}
 	if r.db.RowsAffected == 0 {
-		logger.Warn("UpdateUserInfo no rows affected", zap.Int64("user_id", userDO.ID))
+		logger.Warn("UpdateUserInfo no rows affected", zap.Uint64("user_id", userDO.ID))
 		return common.UserNotFoundErr
 	}
 	return nil
 }
 
-func (r *userInfraRepo) UpdateLastLoginInfo(ctx context.Context, userID int64, loginAt *time.Time) error {
+func (r *userMysqlRepo) UpdateLastLoginInfo(ctx context.Context, userID uint64, loginAt *time.Time) error {
 	ctx, cancel := response.WithDBTimeout(ctx)
 	defer cancel()
 	// 1. 构造更新参数（匹配Model层字段名）
@@ -186,7 +176,7 @@ func (r *userInfraRepo) UpdateLastLoginInfo(ctx context.Context, userID int64, l
 	// 3. 错误处理（区分“无记录更新”和“数据库异常”）
 	if err != nil {
 		logger.Error("func UpdateLastLoginInfo error",
-			zap.Int64("user_id", userID),
+			zap.Uint64("user_id", userID),
 			// zap.String("login_ip", loginIP),
 			zap.Time("login_at", *loginAt),
 			zap.Error(err),
@@ -198,7 +188,7 @@ func (r *userInfraRepo) UpdateLastLoginInfo(ctx context.Context, userID int64, l
 	// 如果你的业务需要严格校验，可添加以下逻辑
 	if r.db.RowsAffected == 0 {
 		logger.Warn("func UpdateLastLoginInfo no rows affected",
-			zap.Int64("user_id", userID),
+			zap.Uint64("user_id", userID),
 			// zap.String("login_ip", loginIP),
 		)
 		// 可选：返回自定义错误（比如common.ErrUserNotFound）

@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 03:11:10
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-31 02:31:26
+ * @LastEditTime: 2026-04-15 02:31:07
  * @FilePath: \yia-blog\blog-server\api\handler\user_handler.go
  * @Description:
  *
@@ -16,7 +16,6 @@ import (
 	"blog-server/common"
 	"blog-server/common/consts"
 	"blog-server/common/gin/response"
-	"blog-server/common/utils/jwt"
 	"blog-server/common/utils/logger"
 	"context"
 	"fmt"
@@ -55,7 +54,7 @@ func (h *UserHandler) UpdatePWD(c *gin.Context) {
 		return
 	}
 	// 3. ID断言
-	userId, ok := userIdVal.(int64)
+	userId, ok := userIdVal.(uint64)
 	if !ok {
 		logger.Error("GetInfo Handler user_id类型转换失败",
 			zap.Any("user_id_value", userId),
@@ -74,31 +73,31 @@ func (h *UserHandler) UpdatePWD(c *gin.Context) {
 		switch err {
 		// 用户不存在
 		case common.UserNotFoundErr:
-			logger.Error("UpdatePWD 查询用户不存在", zap.Int64("user_id", userId), zap.Error(err))
+			logger.Error("UpdatePWD 查询用户不存在", zap.Uint64("user_id", userId), zap.Error(err))
 			response.WriteResp(c, nil, common.UserNotFoundErr)
 		// 旧密码错误
 		case common.UserOldPasswordErr:
-			logger.Warn("UpdatePWD 旧密码验证失败", zap.Int64("user_id", userId))
+			logger.Warn("UpdatePWD 旧密码验证失败", zap.Uint64("user_id", userId))
 			response.WriteResp(c, nil, common.UserOldPasswordErr)
 		// 新密码格式错误
 		case common.UserNewPasswordInvalidErr:
-			logger.Warn("UpdatePWD 新密码格式不合法", zap.Int64("user_id", userId))
+			logger.Warn("UpdatePWD 新密码格式不合法", zap.Uint64("user_id", userId))
 			response.WriteResp(c, nil, common.UserNewPasswordInvalidErr)
 		// 新旧密码相同
 		case common.UserPasswordSameError:
-			logger.Warn("UpdatePWD 新密码与旧密码相同", zap.Int64("user_id", userId))
+			logger.Warn("UpdatePWD 新密码与旧密码相同", zap.Uint64("user_id", userId))
 			response.WriteResp(c, nil, common.UserPasswordSameError)
 		// 密码加密失败
 		case common.PasswordEncryptError:
-			logger.Error("UpdatePWD 密码加密失败", zap.Int64("user_id", userId), zap.Error(err))
+			logger.Error("UpdatePWD 密码加密失败", zap.Uint64("user_id", userId), zap.Error(err))
 			response.WriteResp(c, nil, common.PasswordEncryptError)
 		// 更新密码失败
 		case common.UpdatePasswordError:
-			logger.Error("UpdatePWD 更新密码失败", zap.Int64("user_id", userId), zap.Error(err))
+			logger.Error("UpdatePWD 更新密码失败", zap.Uint64("user_id", userId), zap.Error(err))
 			response.WriteResp(c, nil, common.UpdatePasswordError)
 		// ❗ 只有未知/系统错误，才返回500
 		default:
-			logger.Error("UpdatePWD 未知系统错误", zap.Int64("user_id", userId), zap.Error(err))
+			logger.Error("UpdatePWD 未知系统错误", zap.Uint64("user_id", userId), zap.Error(err))
 			response.WriteResp(c, nil, common.ServerErr)
 		}
 		return
@@ -193,30 +192,35 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 }
 
 func (h *UserHandler) Login(c *gin.Context) {
+	// 1. 绑定请求参数
 	var req dto.UserLoginReq
-	if err := c.ShouldBind(&req); err != nil {
-		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数错误："+err.Error()))
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// 参数绑定失败：返回标准参数错误
+		response.WriteResp(c, nil, common.ParamErr)
 		return
 	}
-
-	user, err := h.userAppSrv.Login(&req)
+	// 2. 调用应用层服务
+	user, token, err := h.userAppSrv.Login(c.Request.Context(), &req)
 	if err != nil {
-		response.WriteResp(c, nil, common.AuthErr.WithMsg("账号或密码错误"))
+		// 断言错误为自定义标准错误码
+		e, ok := err.(common.Errno)
+		if !ok {
+			// 非标准错误：返回服务器异常
+			response.WriteResp(c, nil, common.ServerErr.WithErr(err))
+			return
+		}
+		// 直接返回业务错误（用户名错误/密码错误/账号锁定等）
+		response.WriteResp(c, nil, e)
 		return
 	}
-
-	// 2. 生成包含User对象的JWT Token
-	token, err := jwt.GenerateToken(user)
-	if err != nil {
-		response.WriteResp(c, nil, common.ServerErr.WithMsg("生成Token失败"))
-		return
-	}
-
-	// 3. 返回Token和用户信息（前端存储Token，后续请求自动携带）
-	response.WriteResp(c, gin.H{
+	// 3. 登录成功：封装返回数据（用户信息 + Token）
+	respData := gin.H{
+		"user":  user,
 		"token": token,
-		"user":  user, // 可选：返回用户基本信息
-	}, common.OK)
+	}
+	// 4. 用你封装的 WriteResp 返回统一响应体
+	response.WriteResp(c, respData, common.OK)
+
 }
 
 func (h *UserHandler) GetInfo(c *gin.Context) {
@@ -260,7 +264,7 @@ func (h *UserHandler) GetInfo(c *gin.Context) {
 		zap.Any("user_obj_value", userObj),
 	)
 
-	userId, ok := userIdVal.(int64)
+	userId, ok := userIdVal.(uint64)
 	if !ok {
 		logger.Error("GetInfo Handler user_id类型转换失败",
 			zap.Any("user_id_value", userId),
@@ -280,7 +284,7 @@ func (h *UserHandler) GetInfo(c *gin.Context) {
 		// 根据错误类型返回对应响应
 		switch err {
 		case common.UserNotFoundErr:
-			logger.Error("GetInfo 查询用户失败", zap.Int64("user_id", userId), zap.Error(err))
+			logger.Error("GetInfo 查询用户失败", zap.Uint64("user_id", userId), zap.Error(err))
 			response.WriteResp(c, nil, common.UserNotFoundErr)
 		default:
 			response.WriteResp(c, nil, common.ServerErr.WithErr(err))

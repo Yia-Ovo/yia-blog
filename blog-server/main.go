@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-02-09 01:46:24
+ * @LastEditTime: 2026-04-14 18:10:48
  * @FilePath: \yia-blog\blog-server\main.go
  * @Description:
  *
@@ -15,7 +15,8 @@ import (
 	"blog-server/api/router"
 	"blog-server/app/cmd/server"
 	"blog-server/app/service"
-	"blog-server/common/db"
+	"blog-server/common/db/gorm"
+	"blog-server/common/db/redis"
 	"blog-server/common/utils/logger"
 	"blog-server/config"
 )
@@ -29,9 +30,11 @@ func main() {
 	// 确保日志文件被写入
 	defer logger.Sync()
 	// 初始化数据库
-	gormDB := db.InitGorm(conf)
+	gormDB := gorm.InitGorm(conf)
+	//
+	resDB := redis.InitRedis(conf)
 	// 初始化用户仓库
-	userAppSrv := service.NewUserAppService(gormDB)
+	userAppSrv := service.NewUserAppService(gormDB, resDB, conf)
 	// 初始化路由
 	r := router.NewRouter(conf, userAppSrv, func() error { return nil })
 	// 运行服务器

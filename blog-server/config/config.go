@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-01-31 04:23:15
+ * @LastEditTime: 2026-04-14 18:25:32
  * @FilePath: \yia-blog\blog-server\config\config.go
  * @Description:
  *
@@ -33,7 +33,6 @@ type GlobalConfig struct {
 	Mysql  *MysqlConfig `yaml:"mysql"`
 	Redis  RedisConfig  `yaml:"redis"`
 	Logger LoggerConfig `yaml:"logger"`
-	// 可追加数据库、Redis等其他配置
 }
 
 var (
@@ -101,11 +100,14 @@ type MysqlConfig struct {
 }
 
 type RedisConfig struct {
-	Addr    string `yaml:"addr"`     // Redis地址
-	PWD     string `yaml:"password"` // Redis密码
-	DBIndex int    `yaml:"db_index"` // 数据库索引
-	MaxIdle int    `yaml:"max_idle"` // 最大空闲连接数
-	MaxOpen int    `yaml:"max_open"` // 最大连接数
+	Addr                 string        `yaml:"addr"`                    // Redis地址
+	Password             string        `yaml:"password"`                // Redis密码
+	DBIndex              int           `yaml:"db_index"`                // 数据库索引
+	MaxIdle              int           `yaml:"max_idle"`                // 最大空闲连接数
+	MaxOpen              int           `yaml:"max_open"`                // 最大连接数
+	UserCacheExpire      time.Duration `yaml:"user_cache_expire"`       // 用户缓存过期时间（秒）
+	UserEmptyCacheExpire time.Duration `yaml:"user_empty_cache_expire"` // 用户缓存过期时间（秒）
+
 }
 
 type LoggerConfig struct {

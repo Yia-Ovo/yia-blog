@@ -1,4 +1,4 @@
-package db
+package gorm
 
 import (
 	"blog-server/common/utils/logger"
@@ -55,6 +55,6 @@ func InitGorm(conf *config.GlobalConfig) *gorm.DB {
 	if err != nil {
 		logger.Panic("sqlDB ping failed", zap.Error(err))
 	}
-	logger.Info("GORM初始化完成")
+	logger.Info("GORM init success")
 	return db
 }
