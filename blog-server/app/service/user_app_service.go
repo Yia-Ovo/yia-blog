@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 02:58:44
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-15 02:23:06
+ * @LastEditTime: 2026-04-16 09:55:43
  * @FilePath: \yia-blog\blog-server\app\service\user_app_service.go
  * @Description:
  *
@@ -19,13 +19,11 @@ import (
 	"blog-server/common/utils/password.go"
 	"blog-server/config"
 	"blog-server/domain/do"
+	"blog-server/domain/repo"
 	"blog-server/domain/service"
-	"blog-server/infra/repo"
 	"context"
 	"regexp"
 	"strconv"
-
-	"github.com/redis/go-redis/v9"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -39,15 +37,33 @@ type UserAppService struct {
 
 // NewUserAppService 创建应用服务实例（初始化链路：DB → 仓库实现 → 领域服务 → 应用服务）
 
-func NewUserAppService(db *gorm.DB, redisClient *redis.Client, conf *config.GlobalConfig) *UserAppService {
-	// MySQL数据仓储
-	userMysqlRepo := repo.NewUserMySQLRepo(db)
-	// Redis缓存仓储
-	userRedisRepo := repo.NewUserRedisRepo(redisClient, conf)
+// func NewUserAppService(db *gorm.DB, redisClient *redis.Client, conf *config.GlobalConfig) *UserAppService {
+// 	// MySQL数据仓储
+// 	userMysqlRepo := repo.NewUserMySQLRepo(db)
+// 	// Redis缓存仓储
+// 	userRedisRepo := repo.NewUserRedisRepo(redisClient, conf)
 
+// 	// 注入领域服务
+// 	userDomainSrv := service.NewUserDomainService(userMysqlRepo, userRedisRepo)
+
+// 	return &UserAppService{
+// 		userDomainSrv: userDomainSrv,
+// 	}
+// }
+
+func NewUserAppService(
+	// 全部传领域接口（IOC 从外面注入）
+	userMysqlRepo repo.UserMysqlRepo,
+	userRedisRepo repo.UserRedisRepo,
+	conf *config.GlobalConfig,
+) *UserAppService {
 	// 注入领域服务
-	userDomainSrv := service.NewUserDomainService(userMysqlRepo, userRedisRepo)
+	userDomainSrv := service.NewUserDomainService(
+		userMysqlRepo, // 传入接口
+		userRedisRepo, // 传入接口
+	)
 
+	// 返回复用给 app service 使用
 	return &UserAppService{
 		userDomainSrv: userDomainSrv,
 	}
@@ -129,6 +145,24 @@ func (s *UserAppService) Login(ctx context.Context, req *dto.UserLoginReq) (*con
 	// 3. 登录成功，返回 用户信息+Token 给api层
 	logger.Info("用户登录成功", zap.String("nickname", req.NickName), zap.Uint64("user_id", user.UserID))
 	return user, token, nil
+}
+
+func (s *UserAppService) Logout(ctx context.Context, userId uint64, token string) error {
+	// 1. 参数校验：使用标准化错误
+	if token == "" {
+		return common.TokenEmptyErr
+	}
+	// 2. 调用领域服务（失效当前登录Token）
+	err := s.userDomainSrv.Logout(ctx, userId, token)
+	if err != nil {
+		logger.Error("用户登出失败",
+			zap.Uint64("user_id", userId),
+			zap.Error(err))
+		return err
+	}
+	// 3. 登出成功，记录日志
+	logger.Info("用户登出成功", zap.Uint64("user_id", userId))
+	return nil
 }
 
 // Register 注册接口的应用层编排（仅编排，无核心业务逻辑）

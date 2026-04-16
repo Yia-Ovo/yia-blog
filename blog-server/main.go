@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-14 18:10:48
+ * @LastEditTime: 2026-04-16 09:58:45
  * @FilePath: \yia-blog\blog-server\main.go
  * @Description:
  *
@@ -17,24 +17,33 @@ import (
 	"blog-server/app/service"
 	"blog-server/common/db/gorm"
 	"blog-server/common/db/redis"
+	"blog-server/common/utils/jwt"
 	"blog-server/common/utils/logger"
 	"blog-server/config"
+	"blog-server/ioc"
 )
 
 func main() {
 	// 初始化配置
 	conf := config.InitConfig()
-
+	// 初始化JWT
+	jwt.Init(conf)
 	// 初始化日志
 	logger.InitLogger(conf)
 	// 确保日志文件被写入
 	defer logger.Sync()
 	// 初始化数据库
 	gormDB := gorm.InitGorm(conf)
-	//
+	//初始化redis
 	resDB := redis.InitRedis(conf)
+	// 初始化ioc容器
+	ioc.Init(gormDB, resDB, conf)
 	// 初始化用户仓库
-	userAppSrv := service.NewUserAppService(gormDB, resDB, conf)
+	userAppSrv := service.NewUserAppService(
+		ioc.GetUserMysqlRepo(), // 传入领域接口
+		ioc.GetUserRedisRepo(), // 传入领域接口
+		conf,
+	)
 	// 初始化路由
 	r := router.NewRouter(conf, userAppSrv, func() error { return nil })
 	// 运行服务器
