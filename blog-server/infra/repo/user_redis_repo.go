@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-10 04:57:16
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-15 01:41:20
+ * @LastEditTime: 2026-04-16 09:51:58
  * @FilePath: \yia-blog\blog-server\infra\repo\user_redis_repo.go
  * @Description:
  *
@@ -222,7 +222,7 @@ func (r *UserRedisRepo) AddTokenToBlackList(ctx context.Context, token string, e
 
 	key := buildBlackTokenKey(token)
 	if err := r.rdb.Set(ctx, key, onlineTokenValue, exp).Err(); err != nil {
-		logger.Error("redis add token to blacklist failed", zap.String("token_mask", maskToken(token)), zap.Error(err))
+		logger.Warn("redis add token to blacklist failed", zap.String("token_mask", maskToken(token)), zap.Error(err))
 		return common.RedisCmdErr.WithErr(err)
 	}
 	return nil
@@ -236,7 +236,7 @@ func (r *UserRedisRepo) IsTokenBlacklisted(ctx context.Context, token string) (b
 	key := buildBlackTokenKey(token)
 	count, err := r.rdb.Exists(ctx, key).Result()
 	if err != nil {
-		logger.Error("redis check black token failed", zap.String("token_mask", maskToken(token)), zap.Error(err))
+		logger.Warn("redis check black token failed", zap.String("token_mask", maskToken(token)), zap.Error(err))
 		return false, common.RedisTokenBlackErr.WithErr(err)
 	}
 

@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-08 20:28:25
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-09 18:36:20
+ * @LastEditTime: 2026-04-15 11:43:30
  * @FilePath: \yia-blog\blog-server\common\db\redis\redis_init.go
  * @Description:
  *
@@ -47,11 +47,15 @@ func InitRedis(conf *config.GlobalConfig) *redis.Client {
 		Addr:         redisConf.Addr,
 		Password:     redisConf.Password,
 		DB:           redisConf.DBIndex,
-		DialTimeout:  5 * time.Second,
-		ReadTimeout:  3 * time.Second,
-		WriteTimeout: 3 * time.Second,
-		PoolSize:     10,
-		MinIdleConns: 2,
+		DialTimeout:  redisConf.DialTimeout,
+		ReadTimeout:  redisConf.ReadTimeout,
+		WriteTimeout: redisConf.WriteTimeout,
+		// 连接池
+		PoolSize:        redisConf.PoolSize,        // 最大连接数（MaxOpen）
+		MinIdleConns:    redisConf.MinIdleConns,    // 最小空闲
+		MaxIdleConns:    redisConf.MaxIdleConns,    // 最大空闲（MaxIdle）
+		PoolTimeout:     redisConf.PoolTimeout,     // 获取连接超时
+		ConnMaxIdleTime: redisConf.ConnMaxIdleTime, // 空闲连接超时
 	})
 	// 校验连接
 	_, err := RDB.Ping(context.Background()).Result()

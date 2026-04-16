@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-14 18:25:32
+ * @LastEditTime: 2026-04-15 18:51:38
  * @FilePath: \yia-blog\blog-server\config\config.go
  * @Description:
  *
@@ -33,6 +33,7 @@ type GlobalConfig struct {
 	Mysql  *MysqlConfig `yaml:"mysql"`
 	Redis  RedisConfig  `yaml:"redis"`
 	Logger LoggerConfig `yaml:"logger"`
+	JWT    JWTConfig    `yaml:"jwt"`
 }
 
 var (
@@ -49,6 +50,13 @@ var (
 	// etcdClientCert string // 客户端证书路径
 	// etcdClientKey  string // 客户端密钥路径
 )
+
+type JWTConfig struct {
+	CustomSecret string        `yaml:"custom_secret"` // 自定义密钥（从配置文件读取）
+	AdminSecret  string        `yaml:"admin_secret"`  // 管理员密钥（从配置文件读取）
+	ExpireHour   time.Duration `yaml:"expire_hour"`   // Token 过期小时数（可配置）
+	Issuer       string        `yaml:"issuer"`        // 签发者
+}
 
 type ServerConfig struct {
 	HttpPort        int           `yaml:"http_port"`        // HTTP端口
@@ -100,11 +108,20 @@ type MysqlConfig struct {
 }
 
 type RedisConfig struct {
-	Addr                 string        `yaml:"addr"`                    // Redis地址
-	Password             string        `yaml:"password"`                // Redis密码
-	DBIndex              int           `yaml:"db_index"`                // 数据库索引
-	MaxIdle              int           `yaml:"max_idle"`                // 最大空闲连接数
-	MaxOpen              int           `yaml:"max_open"`                // 最大连接数
+	Addr     string `yaml:"addr"`     // Redis地址
+	Password string `yaml:"password"` // Redis密码
+	DBIndex  int    `yaml:"db_index"` // 数据库索引
+	//超时配置
+	DialTimeout  time.Duration `yaml:"dial_timeout"`  // 连接超时时间（秒）
+	ReadTimeout  time.Duration `yaml:"read_timeout"`  // 读取超时时间（秒）
+	WriteTimeout time.Duration `yaml:"write_timeout"` // 写入超时时间（秒）
+	// ====================== 连接池核心配置 ======================
+	PoolSize        int           `yaml:"pool_size"`          // 最大连接数
+	MinIdleConns    int           `yaml:"min_idle_conns"`     // 最小空闲连接
+	MaxIdleConns    int           `yaml:"max_idle_conns"`     // 最大空闲连接
+	PoolTimeout     time.Duration `yaml:"pool_timeout"`       // 获取连接超时时间
+	ConnMaxIdleTime time.Duration `yaml:"conn_max_idle_time"` // 空闲连接超时关闭
+	// 缓存过期配置
 	UserCacheExpire      time.Duration `yaml:"user_cache_expire"`       // 用户缓存过期时间（秒）
 	UserEmptyCacheExpire time.Duration `yaml:"user_empty_cache_expire"` // 用户缓存过期时间（秒）
 
