@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-23 06:14:49
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-15 01:58:29
+ * @LastEditTime: 2026-04-15 12:46:36
  * @FilePath: \yia-blog\blog-server\common\errno.go
  * @Description:
  *
@@ -82,6 +82,7 @@ var (
 	LogoutSuccess    = Errno{Code: 200, Msg: "Logout success"}     // 登出成功
 	TokenInvalid     = Errno{Code: 401, Msg: "Token invalid"}      // Token无效
 	TokenExpired     = Errno{Code: 401, Msg: "Token expired"}      // Token过期
+	TokenEmptyErr    = Errno{Code: 401, Msg: "Token empty"}        // Token为空
 	TokenInBlacklist = Errno{Code: 401, Msg: "Token in blacklist"} // Token在黑名单中
 	CacheNotExist    = Errno{Code: 401, Msg: "Cache not exist"}    // 缓存不存在
 

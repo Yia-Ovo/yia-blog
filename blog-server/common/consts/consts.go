@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-25 23:37:43
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-13 17:49:43
+ * @LastEditTime: 2026-04-16 08:02:41
  * @FilePath: \yia-blog\blog-server\common\consts\consts.go
  * @Description:
  *
@@ -11,10 +11,17 @@
 package consts
 
 const (
+	UserTokenBlackListPrefix  = "user:token:blacklist:"  // 用户Token黑名单
+	AdminTokenBlackListPrefix = "admin:token:blacklist:" // 管理员Token黑名单
+)
+
+const (
 	UserTokenKey    = "Authorization"       // 用户Token请求头
 	AdminTokenKey   = "Admin-Authorization" // 管理员Token请求头
 	CustomerUserKey = "customer_user"       // Gin Context中存储用户信息的key
 	AdminUserKey    = "admin_user"          // Gin Context中存储管理员信息的key
+	UserIDKey       = "user_id"             // Gin Context中存储用户ID的key
+	AdminIDKey      = "admin_id"            // Gin Context中存储管理员ID的key
 )
 
 const (

@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-01 04:59:06
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-15 00:58:01
+ * @LastEditTime: 2026-04-16 09:38:03
  * @FilePath: \yia-blog\blog-server\infra\repo\user_mysql_repo.go
  * @Description:
  *
@@ -30,7 +30,7 @@ type userMysqlRepo struct {
 	db *gorm.DB
 }
 
-func NewUserMySQLRepo(db *gorm.DB) repo.UserMysqlRepo {
+func NewUserMysqlRepo(db *gorm.DB) repo.UserMysqlRepo {
 	return &userMysqlRepo{db: db}
 }
 
