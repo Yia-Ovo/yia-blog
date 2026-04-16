@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 03:11:10
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-15 02:31:07
+ * @LastEditTime: 2026-04-15 13:09:51
  * @FilePath: \yia-blog\blog-server\api\handler\user_handler.go
  * @Description:
  *
@@ -19,6 +19,7 @@ import (
 	"blog-server/common/utils/logger"
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -220,6 +221,36 @@ func (h *UserHandler) Login(c *gin.Context) {
 	}
 	// 4. 用你封装的 WriteResp 返回统一响应体
 	response.WriteResp(c, respData, common.OK)
+
+}
+func (h *UserHandler) Logout(c *gin.Context) {
+	// 1. 从请求头获取 Token
+	token := c.GetHeader("Authorization")
+	// 兼容前端传 Bearer token 的情况
+	token = strings.TrimPrefix(token, "Bearer ")
+	if token == "" {
+		logger.Warn("Logout Handler 未获取到Token")
+		response.WriteResp(c, nil, common.ParamErr)
+		return
+	}
+
+	// 2. 从中间件获取当前登录用户ID
+	userId, _ := c.Get("userId")
+	// 3. 调用应用层：同时传 token + userId
+	err := h.userAppSrv.Logout(c.Request.Context(), userId.(uint64), token)
+	if err != nil {
+		e, ok := err.(common.Errno)
+		if !ok {
+			logger.Error("Logout Handler 未知系统错误", zap.Error(err))
+			response.WriteResp(c, nil, common.ServerErr.WithErr(err))
+			return
+		}
+		response.WriteResp(c, nil, e)
+		return
+	}
+
+	// 登出成功
+	response.WriteResp(c, nil, common.OK)
 
 }
 

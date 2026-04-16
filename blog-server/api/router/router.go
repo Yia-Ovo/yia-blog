@@ -88,6 +88,7 @@ func (r *Router) userRouter(v1 *gin.RouterGroup) {
 	{
 		userGroup.GET("/getInfo", userHandler.GetInfo)      // GetInfo接口
 		userGroup.POST("/updatePWD", userHandler.UpdatePWD) // UpdatePWD接口
+		userGroup.POST("/logout", userHandler.Logout)       // UpdatePWD接口
 	}
 	// {
 	// 直接把中间件写在路由里，确保和Handler共用同一个ctx

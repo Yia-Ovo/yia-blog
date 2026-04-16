@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 02:25:51
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-15 02:05:04
+ * @LastEditTime: 2026-04-15 13:13:08
  * @FilePath: \yia-blog\blog-server\domain\service\user_domain_service.go
  * @Description:
  *
@@ -130,6 +130,29 @@ func (u *UserDomainService) Login(ctx context.Context, nickName string, password
 		return nil, "", common.ServerErr.WithErr(err)
 	}
 	return commonUser, token, nil
+}
+func (u *UserDomainService) Logout(ctx context.Context, userId uint64, token string) error {
+	// 1. 【核心】将当前Token加入Redis黑名单（防止复用）
+	// 获取JWT剩余过期时间（和登录时的过期时间保持一致）
+	expireDuration, err := jwt.GetTokenRemainingTime(token)
+	if err != nil {
+		logger.Error("获取Token剩余时间失败", zap.Error(err))
+		return err
+	}
+	// 2. 将当前Token加入Redis黑名单
+	err = u.userRedisRepo.AddTokenToBlackList(ctx, token, expireDuration)
+	if err != nil {
+		logger.Warn("将Token加入黑名单失败", zap.Uint64("userId", userId), zap.Error(err))
+	}
+	// 3. 【全端下线】清空该用户所有在线Token
+	err = u.userRedisRepo.ClearUserAllOnlineToken(ctx, userId)
+	if err != nil {
+		logger.Error("清空用户在线Token失败", zap.Uint64("userId", userId), zap.Error(err))
+		return err
+	}
+
+	logger.Info("用户登出成功", zap.Uint64("userId", userId))
+	return nil
 }
 
 // Register 注册核心业务逻辑：密码bcrypt加密 → 封装DO → 调用仓库创建
