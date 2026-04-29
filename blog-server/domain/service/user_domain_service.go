@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 02:25:51
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-15 13:13:08
+ * @LastEditTime: 2026-04-21 00:32:11
  * @FilePath: \yia-blog\blog-server\domain\service\user_domain_service.go
  * @Description:
  *
@@ -18,6 +18,7 @@ import (
 	"blog-server/common/utils/logger"
 	"blog-server/domain/do"
 	"blog-server/domain/repo"
+	"blog-server/infra/model"
 	"context"
 	"errors"
 	"time"
@@ -77,8 +78,12 @@ func (u *UserDomainService) UpdatePWD(ctx context.Context, userId uint64, newPas
 		logger.Warn("更新用户密码失败", zap.Error(err), zap.Uint64("userId", userId))
 		return common.UpdatePasswordError // 更新失败
 	}
+	// 6. 缓存更新：删除用户缓存（缓存穿透）
+	err = u.userRedisRepo.DelUserFromRedis(ctx, userId)
+	if err != nil {
+		logger.Warn("删除用户缓存失败", zap.Error(err), zap.Uint64("userId", userId))
+	}
 
-	// 密码修改成功
 	logger.Info("用户密码修改成功", zap.Uint64("userId", userId))
 
 	return nil
@@ -86,7 +91,9 @@ func (u *UserDomainService) UpdatePWD(ctx context.Context, userId uint64, newPas
 
 func (u *UserDomainService) Login(ctx context.Context, nickName string, password string) (*convert.User, string, error) {
 	// 1. 调用仓储层查询用户（领域层不直接操作DB，通过仓储层抽象）
-	userDO, err := u.userMysqlRepo.FindUserByNickname(ctx, nickName)
+	userModel, err := u.userMysqlRepo.FindUserByNickname(ctx, nickName)
+	// 这里做一层转换
+	userDO := convert.UserModelToDO(userModel)
 	if err != nil {
 		// 仓储层错误：区分“查询失败”和“用户不存在”
 		if errors.Is(err, common.UserNotFoundErr) {
@@ -120,10 +127,17 @@ func (u *UserDomainService) Login(ctx context.Context, nickName string, password
 	if updateErr != nil {
 		logger.Warn("更新用户登录信息失败", zap.Uint64("user_id", userDO.ID), zap.Error(updateErr))
 	}
+	// 5. 缓存用户信息到Redis（缓存空值，防止缓存穿透）
+	if updateErr == nil {
+		delErr := u.userRedisRepo.DelUserFromRedis(ctx, userDO.ID)
+		if delErr != nil {
+			logger.Warn("删除登录用户缓存失败", zap.Error(delErr), zap.Uint64("userId", userDO.ID))
+		}
+	}
 
-	// 5. DO 转换为前端通用对象（脱敏）
+	// 6. DO 转换为前端通用对象（脱敏）
 	commonUser := convert.UserDOToUser(userDO)
-	// 6. 生成token并返回用户信息（注意：脱敏，不返回密码等敏感字段）
+	// 7. 生成token并返回用户信息（注意：脱敏，不返回密码等敏感字段）
 	token, err := jwt.GenerateToken(commonUser)
 	if err != nil {
 		logger.Error("生成用户Token失败", zap.Uint64("user_id", userDO.ID), zap.Error(err))
@@ -164,8 +178,9 @@ func (u *UserDomainService) Register(nickName string, password string) error {
 		return err // 加密失败，返回错误
 	}
 
-	// 2. 封装领域对象DO（默认状态1-正常，无头像，未登录）
-	userDO := &do.UserDO{
+	// 2. 创建userModel（默认状态1-正常，无头像，未登录）
+
+	userModel := &model.UserModel{
 		NickName:  nickName,
 		Password:  string(hashPwd), // 存储加密后的密码
 		Gender:    0,               // 0=保密，1=男，2=女
@@ -176,7 +191,7 @@ func (u *UserDomainService) Register(nickName string, password string) error {
 	}
 	ctx := context.Background()
 	// 3. 调用仓库接口，写入数据库（业务层不用管数据库细节）
-	if err := u.userMysqlRepo.CreateUser(ctx, userDO); err != nil {
+	if err := u.userMysqlRepo.CreateUser(ctx, userModel); err != nil {
 		logger.Warn("仓库创建用户失败", zap.Error(err), zap.String("nickName", nickName))
 		return err
 	}
@@ -187,11 +202,12 @@ func (u *UserDomainService) Register(nickName string, password string) error {
 func (u *UserDomainService) FindUserByNickname(nickName string) (*do.UserDO, error) {
 	ctx := context.Background()
 	// 调用注入的仓库接口查询（仓库实现由基础设施层提供）
-	userDO, err := u.userMysqlRepo.FindUserByNickname(ctx, nickName)
+	userModel, err := u.userMysqlRepo.FindUserByNickname(ctx, nickName)
 	if err != nil {
 		logger.Warn("通过用户昵称查询用户失败", zap.Error(err), zap.String("nickName", nickName))
 		return nil, err
 	}
+	userDO := convert.UserModelToDO(userModel)
 	return userDO, nil
 }
 
@@ -215,7 +231,7 @@ func (u *UserDomainService) FindUserByID(ctx context.Context, userId uint64) (*d
 	}
 
 	// 3. 查询数据库
-	userDO, err := u.userMysqlRepo.FindUserByID(ctx, userId)
+	userModel, err := u.userMysqlRepo.FindUserByID(ctx, userId)
 	if err != nil {
 		// 4. 数据库也不存在 → 写入【空值缓存】防穿透
 		_ = u.userRedisRepo.SetUserToRedis(ctx, userId, nil)
@@ -223,8 +239,10 @@ func (u *UserDomainService) FindUserByID(ctx context.Context, userId uint64) (*d
 		return nil, err
 	}
 
-	// 5. 数据库存在 → 写入【正常缓存】
+	// 5. 数据库存在 → 写入【正常缓存】 Cache Aside（旁路缓存）模式
 	_ = u.userRedisRepo.SetUserToRedis(ctx, userId, user)
+	// 6. Model 转换为 DO
+	userDO := convert.UserModelToDO(userModel)
 
 	return userDO, nil
 }
@@ -248,14 +266,20 @@ func (u *UserDomainService) UpdateUserInfo(userId uint64, updateData *do.UserDO)
 		userDO.Signature = updateData.Signature
 	}
 
-	// 3. 自动填充更新时间（通用字段，强制更新）
+	// 自动填充更新时间（通用字段，强制更新）
 	userDO.UpdateAt = time.Now()
 
-	// 4. 执行更新（Repo层需支持动态更新仅修改的字段）
-	err = u.userMysqlRepo.UpdateUserInfo(ctx, userDO)
+	userModel := convert.UserDOToModel(userDO)
+	// 执行更新（Repo层需支持动态更新仅修改的字段）
+	err = u.userMysqlRepo.UpdateUserInfo(ctx, userModel)
 	if err != nil {
 		logger.Warn("更新用户信息失败", zap.Error(err), zap.Uint64("userId", userId))
 		return err
+	}
+	// 删除缓存
+	err = u.userRedisRepo.DelUserFromRedis(ctx, userId)
+	if err != nil {
+		logger.Warn("删除用户缓存失败", zap.Error(err), zap.Uint64("userId", userId))
 	}
 
 	return nil

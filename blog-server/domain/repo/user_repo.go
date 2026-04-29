@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 02:21:26
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-14 18:50:32
+ * @LastEditTime: 2026-04-20 19:47:03
  * @FilePath: \yia-blog\blog-server\domain\repo\user_repo.go
  * @Description:
  *
@@ -11,17 +11,16 @@
 package repo
 
 import (
-	"blog-server/domain/do"
 	"blog-server/infra/model"
 	"context"
 	"time"
 )
 
 type UserMysqlRepo interface {
-	CreateUser(ctx context.Context, userDO *do.UserDO) error
-	FindUserByNickname(ctx context.Context, nickName string) (*do.UserDO, error)
-	FindUserByID(ctx context.Context, userID uint64) (*do.UserDO, error)
-	UpdateUserInfo(ctx context.Context, userDO *do.UserDO) error
+	CreateUser(ctx context.Context, userModel *model.UserModel) error
+	FindUserByNickname(ctx context.Context, nickName string) (*model.UserModel, error)
+	FindUserByID(ctx context.Context, userID uint64) (*model.UserModel, error)
+	UpdateUserInfo(ctx context.Context, userModel *model.UserModel) error
 	UpdateLastLoginInfo(ctx context.Context, userID uint64, loginAt *time.Time) error
 	UpdatePWD(ctx context.Context, userID uint64, password string) error
 }
