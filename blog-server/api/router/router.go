@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-29 08:35:35
+ * @LastEditTime: 2026-04-30 01:15:01
  * @FilePath: \yia-blog\blog-server\api\router\router.go
  * @Description:
  *
@@ -105,15 +105,15 @@ func (r *Router) categoryRouter(v1 *gin.RouterGroup) {
 	// 创建分类处理函数实例
 	categoryHandler := handler.NewCategoryHandler(r.categoryAppSrv)
 
-	// 公开接口：无需登录（查询分类列表、分类详情）
-	categoryGroup.GET("/list", categoryHandler.ListCategory)
-	categoryGroup.GET("/:id", categoryHandler.GetCategoryById)
+	// 公开接口：无需登录认证（和用户模块公开接口写法一致）
+	categoryGroup.GET("/listCategory", categoryHandler.ListCategory)       // 分页查询分类
+	categoryGroup.GET("/getCategoryById", categoryHandler.GetCategoryById) // 根据ID查询分类
 
-	// 私有接口：需要用户登录认证（创建、更新、删除分类）
+	// 私有接口：需要用户登录认证（和用户模块写法完全一致）
 	categoryGroup.Use(middleware.DefaultUserAuth())
 	{
-		categoryGroup.POST("", categoryHandler.CreateCategory)     // 创建分类
-		categoryGroup.POST("/:id", categoryHandler.UpdateCategory) // 更新分类
-		categoryGroup.POST("/:id", categoryHandler.DeleteCategory) // 删除分类
+		categoryGroup.POST("/createCategory", categoryHandler.CreateCategory) // 创建分类
+		categoryGroup.POST("/updateCategory", categoryHandler.UpdateCategory) // 更新分类
+		categoryGroup.POST("/deleteCategory", categoryHandler.DeleteCategory) // 删除分类
 	}
 }
