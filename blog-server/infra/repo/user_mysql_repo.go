@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-01 04:59:06
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-20 19:45:26
+ * @LastEditTime: 2026-04-30 01:41:23
  * @FilePath: \yia-blog\blog-server\infra\repo\user_mysql_repo.go
  * @Description:
  *
@@ -31,21 +31,25 @@ func NewUserMysqlRepo(db *gorm.DB) repo.UserMysqlRepo {
 	return &userMysqlRepo{db: db}
 }
 
+// userBaseQuery 用户基础查询（统一封装软删除条件，避免重复代码）
+func (r *userMysqlRepo) userBaseQuery(ctx context.Context) *gorm.DB {
+	return r.db.WithContext(ctx).Model(&model.UserModel{}).Where("deleted_at IS NULL")
+}
+
 // --------------------- 1. 更新密码 ---------------------
 func (r *userMysqlRepo) UpdatePWD(ctx context.Context, userID uint64, password string) error {
 	ctx, cancel := response.WithDBTimeout(ctx)
 	defer cancel()
-	err := r.db.WithContext(ctx).
-		Model(&model.UserModel{}).
-		Where("id = ? AND deleted_at IS NULL", userID).
-		Update("password", password).Error
+	result := r.userBaseQuery(ctx).
+		Where("id = ?", userID).
+		Update("password", password)
 
-	if err != nil {
+	if err := result.Error; err != nil {
 		logger.Error("UpdatePWD failed", zap.Uint64("user_id", userID), zap.Error(err))
 		return err
 	}
 	// 无数据更新：打Warn日志
-	if r.db.RowsAffected == 0 {
+	if result.RowsAffected == 0 {
 		logger.Warn("UpdatePWD no rows affected", zap.Uint64("user_id", userID))
 	}
 	return nil
@@ -54,6 +58,12 @@ func (r *userMysqlRepo) UpdatePWD(ctx context.Context, userID uint64, password s
 // --------------------- 2. 创建用户 ---------------------
 // 实现UserRepo接口的Create方法：创建用户（DO转Model+写入数据库）
 func (r *userMysqlRepo) CreateUser(ctx context.Context, userModel *model.UserModel) error {
+	// 空指针防护
+	if userModel == nil {
+		logger.Error("CreateUser: userModel is nil")
+		return gorm.ErrInvalidData
+	}
+
 	ctx, cancel := response.WithDBTimeout(ctx)
 	defer cancel()
 	if err := r.db.WithContext(ctx).Create(userModel).Error; err != nil {
@@ -69,8 +79,8 @@ func (r *userMysqlRepo) FindUserByNickname(ctx context.Context, nickName string)
 	defer cancel()
 
 	var userModel model.UserModel
-	err := r.db.WithContext(ctx).
-		Where("nick_name = ? AND deleted_at IS NULL", nickName).
+	err := r.userBaseQuery(ctx).
+		Where("nick_name = ?", nickName).
 		First(&userModel).Error
 
 	if err != nil {
@@ -91,8 +101,8 @@ func (r *userMysqlRepo) FindUserByID(ctx context.Context, userID uint64) (*model
 	defer cancel()
 
 	var userModel model.UserModel
-	err := r.db.WithContext(ctx).
-		Where("id = ? AND deleted_at IS NULL", userID).
+	err := r.userBaseQuery(ctx).
+		Where("id = ?", userID).
 		First(&userModel).Error
 
 	if err != nil {
@@ -104,24 +114,30 @@ func (r *userMysqlRepo) FindUserByID(ctx context.Context, userID uint64) (*model
 		return nil, err
 	}
 	return &userModel, nil
-
 }
 
 // --------------------- 5. 更新用户信息 ---------------------
 func (r *userMysqlRepo) UpdateUserInfo(ctx context.Context, userModel *model.UserModel) error {
+	// 空指针+非法ID校验
+	if userModel == nil || userModel.ID == 0 {
+		logger.Error("UpdateUserInfo: invalid userModel")
+		return gorm.ErrInvalidData
+	}
+
 	ctx, cancel := response.WithDBTimeout(ctx)
 	defer cancel()
 
-	err := r.db.WithContext(ctx).
-		Model(&model.UserModel{}).
-		Where("id = ? AND deleted_at IS NULL", userModel.ID).
-		Updates(userModel).Error
+	// 仅允许更新非敏感字段，防止意外修改密码，提升安全性
+	result := r.userBaseQuery(ctx).
+		Where("id = ?", userModel.ID).
+		Select("nick_name", "avatar", "gender", "signature", "email", "status", "update_at").
+		Updates(userModel)
 
-	if err != nil {
+	if err := result.Error; err != nil {
 		logger.Error("UpdateUserInfo failed", zap.Uint64("user_id", userModel.ID), zap.Error(err))
 		return err
 	}
-	if r.db.RowsAffected == 0 {
+	if result.RowsAffected == 0 {
 		logger.Warn("UpdateUserInfo no rows affected", zap.Uint64("user_id", userModel.ID))
 	}
 	return nil
@@ -138,16 +154,15 @@ func (r *userMysqlRepo) UpdateLastLoginInfo(ctx context.Context, userID uint64, 
 		"update_at":     time.Now(),
 	}
 
-	err := r.db.WithContext(ctx).
-		Model(&model.UserModel{}).
-		Where("id = ? AND deleted_at IS NULL", userID).
-		Updates(updateData).Error
+	result := r.userBaseQuery(ctx).
+		Where("id = ?", userID).
+		Updates(updateData)
 
-	if err != nil {
+	if err := result.Error; err != nil {
 		logger.Error("UpdateLastLoginInfo failed", zap.Uint64("user_id", userID), zap.Error(err))
 		return err
 	}
-	if r.db.RowsAffected == 0 {
+	if result.RowsAffected == 0 {
 		logger.Warn("UpdateLastLoginInfo no rows affected", zap.Uint64("user_id", userID))
 	}
 	return nil
