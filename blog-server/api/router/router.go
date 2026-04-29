@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-31 02:02:15
+ * @LastEditTime: 2026-04-29 08:35:35
  * @FilePath: \yia-blog\blog-server\api\router\router.go
  * @Description:
  *
@@ -26,16 +26,18 @@ type Router struct {
 	conf      *config.GlobalConfig
 	checkFunc func() error // 健康检查函数
 	// 注入用户应用服务
-	userAppSrv *service.UserAppService
+	userAppSrv     *service.UserAppService
+	categoryAppSrv *service.CategoryAppService
 }
 
-func NewRouter(conf *config.GlobalConfig, userAppSrv *service.UserAppService, checkFunc func() error) *Router {
+func NewRouter(conf *config.GlobalConfig, userAppSrv *service.UserAppService, categoryAppSrv *service.CategoryAppService, checkFunc func() error) *Router {
 	return &Router{
-		FullPPROF:  conf.Server.EnablePprof, // 是否开启pprof
-		rootPath:   "/api/blog",
-		conf:       conf,
-		checkFunc:  checkFunc,
-		userAppSrv: userAppSrv,
+		FullPPROF:      conf.Server.EnablePprof, // 是否开启pprof
+		rootPath:       "/api/blog",
+		conf:           conf,
+		checkFunc:      checkFunc,
+		userAppSrv:     userAppSrv,
+		categoryAppSrv: categoryAppSrv,
 	}
 }
 
@@ -94,4 +96,24 @@ func (r *Router) userRouter(v1 *gin.RouterGroup) {
 	// 直接把中间件写在路由里，确保和Handler共用同一个ctx
 	// userGroup.GET("/getInfo", middleware.DefaultUserAuth(), userHandler.GetInfo)
 	// }
+}
+
+// ---------------- 分类路由（完全对齐你的代码风格） ----------------
+func (r *Router) categoryRouter(v1 *gin.RouterGroup) {
+	// 分类子路由组：/api/blog/v1/category
+	categoryGroup := v1.Group("/category")
+	// 创建分类处理函数实例
+	categoryHandler := handler.NewCategoryHandler(r.categoryAppSrv)
+
+	// 公开接口：无需登录（查询分类列表、分类详情）
+	categoryGroup.GET("/list", categoryHandler.ListCategory)
+	categoryGroup.GET("/:id", categoryHandler.GetCategoryById)
+
+	// 私有接口：需要用户登录认证（创建、更新、删除分类）
+	categoryGroup.Use(middleware.DefaultUserAuth())
+	{
+		categoryGroup.POST("", categoryHandler.CreateCategory)     // 创建分类
+		categoryGroup.POST("/:id", categoryHandler.UpdateCategory) // 更新分类
+		categoryGroup.POST("/:id", categoryHandler.DeleteCategory) // 删除分类
+	}
 }
