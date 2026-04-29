@@ -2,6 +2,16 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-16 08:26:43
  * @LastEditors: Yia 1372594487@qq.com
+ * @LastEditTime: 2026-04-30 02:00:35
+ * @FilePath: \yia-blog\blog-server\infra\repo\admin_redis_repo.go
+ * @Description:
+ *
+ * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
+ */
+/*
+ * @Author: Yia 1372594487@qq.com
+ * @Date: 2026-04-16 08:26:43
+ * @LastEditors: Yia 1372594487@qq.com
  * @LastEditTime: 2026-04-16 09:51:43
  * @FilePath: \yia-blog\blog-server\infra\repo\admin_redis_repo.go
  * @Description:管理员 Redis 仓储实现
@@ -15,6 +25,7 @@ import (
 	"blog-server/common/gin/response"
 	"blog-server/common/utils/logger"
 	"blog-server/config"
+	"blog-server/infra/model"
 	"context"
 	"encoding/json"
 	"errors"
@@ -53,14 +64,14 @@ func buildAdminBlackTokenKey(token string) string {
 }
 
 // isEmptyAdmin 判断是否为【空管理员对象】（防穿透标记）
-func isEmptyAdmin(admin *model.AdminUserModel) bool {
+func isEmptyAdmin(admin *model.AdminModel) bool {
 	// 规则：管理员ID为0 或 用户名为空 → 判定为不存在的管理员
 	return admin == nil || admin.ID == 0
 }
 
 // ====================== 管理员信息缓存 ======================
 // GetAdminFromRedis 从Redis获取管理员信息
-func (r *AdminRedisRepo) GetAdminFromRedis(ctx context.Context, adminID uint64) (*model.AdminUserModel, error) {
+func (r *AdminRedisRepo) GetAdminFromRedis(ctx context.Context, adminID uint64) (*model.AdminModel, error) {
 	ctx, cancel := response.WithDBTimeout(ctx)
 	defer cancel()
 
@@ -79,7 +90,7 @@ func (r *AdminRedisRepo) GetAdminFromRedis(ctx context.Context, adminID uint64) 
 	}
 
 	// 3. 反序列化
-	var admin model.AdminUserModel
+	var admin model.AdminModel
 	if err := json.Unmarshal([]byte(data), &admin); err != nil {
 		logger.Error("redis unmarshal admin info failed", zap.Uint64("admin_id", adminID), zap.Error(err))
 		// 关键：反序列化失败，删除脏缓存
@@ -96,7 +107,7 @@ func (r *AdminRedisRepo) GetAdminFromRedis(ctx context.Context, adminID uint64) 
 	return &admin, nil
 }
 
-func (r *AdminRedisRepo) SetAdminToRedis(ctx context.Context, adminID uint64, admin *model.AdminUserModel) error {
+func (r *AdminRedisRepo) SetAdminToRedis(ctx context.Context, adminID uint64, admin *model.AdminModel) error {
 	ctx, cancel := response.WithDBTimeout(ctx)
 	defer cancel()
 
@@ -107,7 +118,7 @@ func (r *AdminRedisRepo) SetAdminToRedis(ctx context.Context, adminID uint64, ad
 	// 核心：空值处理
 	if isEmptyAdmin(admin) {
 		// 1. 空管理员：序列化空对象 + 短过期
-		emptyAdmin := &model.AdminUserModel{}
+		emptyAdmin := &model.AdminModel{}
 		data, err = json.Marshal(emptyAdmin)
 		if err != nil {
 			logger.Error("redis marshal empty admin failed", zap.Uint64("admin_id", adminID), zap.Error(err))

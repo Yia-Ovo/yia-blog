@@ -30,7 +30,8 @@ var (
 	UserMysqlRepo domainRepo.UserMysqlRepo // MySQL接口
 	UserRedisRepo domainRepo.UserRedisRepo // Redis接口
 	// ===================== 管理员端仓储 =====================
-	// AdminRedisRepo domainRepo.AdminRedisRepo // 管理员Redis接口
+	AdminMysqlRepo domainRepo.AdminMysqlRepo // MySQL接口
+	AdminRedisRepo domainRepo.AdminRedisRepo // 管理员Redis接口
 
 	// ===================== 分类端仓储 =====================
 	CategoryMysqlRepo domainRepo.CategoryMysqlRepo // MySQL接口
@@ -47,7 +48,9 @@ func Init(db *gorm.DB, rdb *redis.Client, conf *config.GlobalConfig) {
 	//user
 	UserMysqlRepo = infraRepo.NewUserMysqlRepo(db)
 	UserRedisRepo = infraRepo.NewUserRedisRepo(rdb, conf)
-	// AdminRedisRepo = infraRepo.NewAdminRedisRepo(rdb, conf)
+	// admin
+	AdminMysqlRepo = infraRepo.NewAdminMysqlRepo(db)
+	AdminRedisRepo = infraRepo.NewAdminRedisRepo(rdb, conf)
 
 	// category
 	CategoryMysqlRepo = infraRepo.NewCategoryMysqlRepo(db)
@@ -59,4 +62,5 @@ func GetUserRedisRepo() domainRepo.UserRedisRepo { return UserRedisRepo }
 
 func GetCategoryMysqlRepo() domainRepo.CategoryMysqlRepo { return CategoryMysqlRepo }
 
-// func GetAdminRedisRepo() domainRepo.AdminRedisRepo { return AdminRedisRepo }
+func GetAdminMysqlRepo() domainRepo.AdminMysqlRepo { return AdminMysqlRepo }
+func GetAdminRedisRepo() domainRepo.AdminRedisRepo { return AdminRedisRepo }
