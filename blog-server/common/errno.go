@@ -2,7 +2,17 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-23 06:14:49
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-15 12:46:36
+ * @LastEditTime: 2026-04-22 06:36:10
+ * @FilePath: \yia-blog\blog-server\common\errno.go
+ * @Description:
+ *
+ * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
+ */
+/*
+ * @Author: Yia 1372594487@qq.com
+ * @Date: 2026-01-23 06:14:49
+ * @LastEditors: Yia 1372594487@qq.com
+ * @LastEditTime: 2026-04-20 19:26:55
  * @FilePath: \yia-blog\blog-server\common\errno.go
  * @Description:
  *
@@ -96,7 +106,16 @@ var (
 	RedisDeleteErr     = Errno{Code: 10007, Msg: "redis: delete failed"}      // 删除键失败
 	RedisTokenBlackErr = Errno{Code: 10008, Msg: "redis: token black failed"} // 校验黑名单失败
 
+	// 分类相关错误
+	CategoryNotFoundErr    = Errno{Code: 13001, Msg: "Category Not Found"}
+	CategoryExistErr       = Errno{Code: 13002, Msg: "Category Already Exist"}
+	ErrCategoryNameEmpty   = Errno{Code: 13003, Msg: "Category Name Empty"}
+	ErrCategoryNameTooLong = Errno{Code: 13004, Msg: "Category Name Too Long"}
+	ErrCategorySortInvalid = Errno{Code: 13005, Msg: "Category Sort Invalid"}
+
 	// 文章相关错误
 	ArticleNotFoundErr = Errno{Code: 12001, Msg: "Article Not Found"} // 文章不存在
+
+	//
 
 )

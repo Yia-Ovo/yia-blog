@@ -44,8 +44,12 @@ func main() {
 		ioc.GetUserRedisRepo(), // 传入领域接口
 		conf,
 	)
+	// 初始化分页仓库
+	categoryAppSrv := service.NewCategoryAppService(
+		ioc.GetCategoryMysqlRepo(), // 传入领域接口
+	)
 	// 初始化路由
-	r := router.NewRouter(conf, userAppSrv, func() error { return nil })
+	r := router.NewRouter(conf, userAppSrv, categoryAppSrv, func() error { return nil })
 	// 运行服务器
 	app := server.NewApp(r)
 	app.Run()
