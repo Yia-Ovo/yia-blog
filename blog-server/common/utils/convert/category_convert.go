@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-18 17:49:49
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-29 08:29:40
+ * @LastEditTime: 2026-05-06 11:53:28
  * @FilePath: \yia-blog\blog-server\common\utils\convert\category_convert.go
  * @Description:
  *
@@ -83,4 +83,22 @@ func CategoryModelListToDO(list *[]model.CategoryModel) []do.CategoryDO {
 		})
 	}
 	return listDO
+}
+
+// CategoryModelListToDOList 模型列表转DO列表
+func CategoryModelListToDOList(list []model.CategoryModel) []do.CategoryDO {
+	res := make([]do.CategoryDO, 0, len(list))
+	for _, v := range list {
+		res = append(res, *CategoryModelToDO(&v))
+	}
+	return res
+}
+
+// CategoryDOListToModelList DO列表转模型列表
+func CategoryDOListToModelList(list []do.CategoryDO) []model.CategoryModel {
+	res := make([]model.CategoryModel, 0, len(list))
+	for _, v := range list {
+		res = append(res, *CategoryDOToModel(&v))
+	}
+	return res
 }

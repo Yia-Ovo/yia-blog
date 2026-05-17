@@ -11,7 +11,6 @@
 package repo
 
 import (
-	"blog-server/common/gin/response"
 	"blog-server/common/utils/convert"
 	"blog-server/common/utils/logger"
 	"blog-server/domain/do"
@@ -32,8 +31,7 @@ func NewCategoryMysqlRepo(db *gorm.DB) *categoryMysqlRepo {
 
 // --------------------- 1. 创建分类 ---------------------
 func (c *categoryMysqlRepo) CreateCategory(ctx context.Context, category *model.CategoryModel) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
+
 	if err := c.db.WithContext(ctx).Create(category).Error; err != nil {
 		logger.Error("CreateCategory failed", zap.String("name", category.Name), zap.Error(err))
 		return err
@@ -43,8 +41,6 @@ func (c *categoryMysqlRepo) CreateCategory(ctx context.Context, category *model.
 
 // --------------------- 2. 分类分页查询 ---------------------
 func (c *categoryMysqlRepo) ListCategoryByPage(ctx context.Context, query *do.CategoryQuery) ([]do.CategoryDO, int64, error) {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	var (
 		list   []model.CategoryModel
@@ -88,8 +84,7 @@ func (c *categoryMysqlRepo) ListCategoryByPage(ctx context.Context, query *do.Ca
 
 // --------------------- 3. 根据ID查询分类 ---------------------
 func (c *categoryMysqlRepo) GetCategoryById(ctx context.Context, id uint64) (*do.CategoryDO, error) {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
+
 	var category model.CategoryModel
 	err := c.db.WithContext(ctx).First(&category, id).Error
 
@@ -108,8 +103,7 @@ func (c *categoryMysqlRepo) GetCategoryById(ctx context.Context, id uint64) (*do
 
 // --------------------- 4. 删除分类（软删除） ---------------------
 func (c *categoryMysqlRepo) DeleteCategory(ctx context.Context, id uint64) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
+
 	err := c.db.WithContext(ctx).Delete(&model.CategoryModel{}, id).Error
 
 	if err != nil {
@@ -124,8 +118,7 @@ func (c *categoryMysqlRepo) DeleteCategory(ctx context.Context, id uint64) error
 
 // --------------------- 5. 更新分类 ---------------------
 func (c *categoryMysqlRepo) UpdateCategory(ctx context.Context, category *model.CategoryModel) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
+
 	err := c.db.WithContext(ctx).Save(category).Error
 
 	if err != nil {

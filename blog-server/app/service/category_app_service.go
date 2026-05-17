@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-17 15:17:22
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-29 08:23:41
+ * @LastEditTime: 2026-05-06 17:11:22
  * @FilePath: \yia-blog\blog-server\app\service\category_app_service.go
  * @Description:
  *
@@ -29,9 +29,10 @@ type CategoryAppService struct {
 // NewCategoryAppService 创建分类应用服务实例（IOC注入）
 func NewCategoryAppService(
 	categoryMysqlRepo repo.CategoryMysqlRepo,
+	categoryRedisRepo repo.CategoryRedisRepo,
 ) *CategoryAppService {
 	// 初始化领域服务
-	categoryDomainSrv := service.NewCategoryDomainService(categoryMysqlRepo)
+	categoryDomainSrv := service.NewCategoryDomainService(categoryMysqlRepo, categoryRedisRepo)
 
 	return &CategoryAppService{
 		categoryDomainSrv: categoryDomainSrv,
@@ -88,7 +89,6 @@ func (s *CategoryAppService) ListCategoryByPage(ctx context.Context, req *dto.Ca
 
 	// 3. DO 列表转换为响应数据
 	var respList []map[string]interface{}
-	// 如果你后续补充了 CategoryResp DTO，替换这里的结构体即可
 	for _, categoryDO := range categoryDOList {
 		respList = append(respList, map[string]interface{}{
 			"id":         categoryDO.ID,

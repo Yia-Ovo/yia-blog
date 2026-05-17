@@ -29,3 +29,12 @@ type CategoryMysqlRepo interface {
 	// DeleteCategory 软删除分类
 	DeleteCategory(ctx context.Context, id uint64) error
 }
+
+type CategoryRedisRepo interface {
+	GetCategoryFromRedis(ctx context.Context, categoryID uint64) (*model.CategoryModel, error)
+	SetCategoryToRedis(ctx context.Context, categoryID uint64, category *model.CategoryModel) error
+	DelCategoryFromRedis(ctx context.Context, categoryID uint64) error
+	GetCategoryListFromRedis(ctx context.Context) ([]model.CategoryModel, error)
+	SetCategoryListToRedis(ctx context.Context, categoryList []model.CategoryModel) error
+	DelCategoryListFromRedis(ctx context.Context) error
+}
