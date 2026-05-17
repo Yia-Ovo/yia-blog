@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-10 04:57:16
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-16 09:51:58
+ * @LastEditTime: 2026-05-17 09:54:08
  * @FilePath: \yia-blog\blog-server\infra\repo\user_redis_repo.go
  * @Description:
  *
@@ -12,7 +12,6 @@ package repo
 
 import (
 	"blog-server/common"
-	"blog-server/common/gin/response"
 	"blog-server/common/utils/logger"
 	"blog-server/config"
 	"blog-server/infra/model"
@@ -62,8 +61,6 @@ func isEmptyUser(user *model.UserModel) bool {
 // ====================== 用户信息缓存 ======================
 // GetUserFromRedis 从Redis获取用户信息
 func (r *UserRedisRepo) GetUserFromRedis(ctx context.Context, userID uint64) (*model.UserModel, error) {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	key := buildUserKey(userID)
 	data, err := r.rdb.Get(ctx, key).Result()
@@ -99,8 +96,6 @@ func (r *UserRedisRepo) GetUserFromRedis(ctx context.Context, userID uint64) (*m
 }
 
 func (r *UserRedisRepo) SetUserToRedis(ctx context.Context, userID uint64, user *model.UserModel) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	key := buildUserKey(userID)
 	var data []byte
@@ -136,8 +131,6 @@ func (r *UserRedisRepo) SetUserToRedis(ctx context.Context, userID uint64, user 
 
 // DelUserFromRedis 删除用户缓存（用户信息更新/删除时调用）
 func (r *UserRedisRepo) DelUserFromRedis(ctx context.Context, userID uint64) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	key := buildUserKey(userID)
 	if err := r.rdb.Del(ctx, key).Err(); err != nil {
@@ -152,8 +145,6 @@ func (r *UserRedisRepo) DelUserFromRedis(ctx context.Context, userID uint64) err
 // ====================== 在线令牌管理 ======================
 // SetOnlineToken 登录写入在线令牌
 func (r *UserRedisRepo) SetOnlineToken(ctx context.Context, userID uint64, token string, expire time.Duration) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	key := buildOnlineTokenKey(userID, token)
 	if err := r.rdb.Set(ctx, key, onlineTokenValue, expire).Err(); err != nil {
@@ -166,8 +157,6 @@ func (r *UserRedisRepo) SetOnlineToken(ctx context.Context, userID uint64, token
 
 // DelUserOnlineToken 单端下线（删除指定token）
 func (r *UserRedisRepo) DelUserOnlineToken(ctx context.Context, userID uint64, token string) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	key := buildOnlineTokenKey(userID, token)
 	if err := r.rdb.Del(ctx, key).Err(); err != nil {
@@ -179,8 +168,7 @@ func (r *UserRedisRepo) DelUserOnlineToken(ctx context.Context, userID uint64, t
 
 // ClearUserAllOnlineToken 登出时清空用户所有在线Token（全端下线）
 func (r *UserRedisRepo) ClearUserAllOnlineToken(ctx context.Context, userID uint64) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
+
 	pattern := fmt.Sprintf("%s%d:*", userOnlineKeyPrefix, userID)
 	var cursor uint64
 	var keys []string
@@ -217,8 +205,6 @@ func (r *UserRedisRepo) ClearUserAllOnlineToken(ctx context.Context, userID uint
 // ====================== 黑名单令牌管理 ======================
 // AddTokenToBlackList 【核心Logout】把当前token加入黑名单
 func (r *UserRedisRepo) AddTokenToBlackList(ctx context.Context, token string, exp time.Duration) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	key := buildBlackTokenKey(token)
 	if err := r.rdb.Set(ctx, key, onlineTokenValue, exp).Err(); err != nil {
@@ -230,8 +216,6 @@ func (r *UserRedisRepo) AddTokenToBlackList(ctx context.Context, token string, e
 
 // IsTokenBlacklisted 判断Token是否在黑名单
 func (r *UserRedisRepo) IsTokenBlacklisted(ctx context.Context, token string) (bool, error) {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	key := buildBlackTokenKey(token)
 	count, err := r.rdb.Exists(ctx, key).Result()

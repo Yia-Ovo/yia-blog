@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 02:58:44
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-16 09:55:43
+ * @LastEditTime: 2026-05-17 08:46:07
  * @FilePath: \yia-blog\blog-server\app\service\user_app_service.go
  * @Description:
  *
@@ -166,16 +166,16 @@ func (s *UserAppService) Logout(ctx context.Context, userId uint64, token string
 }
 
 // Register 注册接口的应用层编排（仅编排，无核心业务逻辑）
-func (s *UserAppService) Register(req *dto.UserRegisterReq) error {
+func (s *UserAppService) Register(ctx context.Context, req *dto.UserRegisterReq) error {
 	// 1. 先校验昵称是否已存在（调用领域服务）
-	_, err := s.userDomainSrv.FindUserByNickname(req.NickName)
+	_, err := s.userDomainSrv.FindUserByNickname(ctx, req.NickName)
 	if err == nil {
 		// 昵称已存在，返回标准化错误
 		return common.UserExistErr.WithMsg("昵称：" + req.NickName)
 	}
 
 	// 2. 调用领域服务执行注册
-	if err := s.userDomainSrv.Register(req.NickName, req.Password); err != nil {
+	if err := s.userDomainSrv.Register(ctx, req.NickName, req.Password); err != nil {
 		// 数据库错误，封装为标准化错误
 		return common.DatabaseErr.WithErr(err)
 	}
@@ -184,9 +184,9 @@ func (s *UserAppService) Register(req *dto.UserRegisterReq) error {
 }
 
 // FindUserByNickname 查询用户信息编排：调用领域层 → 封装响应DTO
-func (s *UserAppService) FindUserByNickname(req *dto.UserFindInfoReq) (*dto.UserInfoData, error) {
+func (s *UserAppService) FindUserByNickname(ctx context.Context, req *dto.UserFindInfoReq) (*dto.UserInfoData, error) {
 	// 1. 调用领域服务查询用户DO
-	userDO, err := s.userDomainSrv.FindUserByNickname(req.NickName)
+	userDO, err := s.userDomainSrv.FindUserByNickname(ctx, req.NickName)
 	if err != nil {
 		// 2. 错误分类：映射为标准化 Errno 错误
 		switch {
@@ -215,7 +215,7 @@ func (s *UserAppService) FindUserByNickname(req *dto.UserFindInfoReq) (*dto.User
 // 预编译邮箱正则（全局只编译一次，提升性能）
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 
-func (s *UserAppService) UpdateUserInfo(req *dto.UserUpdateInfoReq) (*dto.UserInfoData, error) {
+func (s *UserAppService) UpdateUserInfo(ctx context.Context, req *dto.UserUpdateInfoReq) (*dto.UserInfoData, error) {
 	// 1. 前置参数校验（核心：覆盖binding的不足+业务规则）
 	if req == nil {
 		return nil, common.ParamErr.WithMsg("更新用户信息请求参数不能为空")
@@ -247,7 +247,7 @@ func (s *UserAppService) UpdateUserInfo(req *dto.UserUpdateInfoReq) (*dto.UserIn
 	}
 
 	// 3. 调用领域服务+错误处理
-	err := s.userDomainSrv.UpdateUserInfo(req.ID, updateData)
+	err := s.userDomainSrv.UpdateUserInfo(ctx, req.ID, updateData)
 	if err != nil {
 		switch {
 		case err == gorm.ErrRecordNotFound:
@@ -256,7 +256,6 @@ func (s *UserAppService) UpdateUserInfo(req *dto.UserUpdateInfoReq) (*dto.UserIn
 			return nil, common.DatabaseErr.WithErr(err).WithMsg("更新用户信息失败")
 		}
 	}
-	ctx := context.Background()
 	// 4. 查询最新数据并返回
 	userDO, err := s.userDomainSrv.FindUserByID(ctx, req.ID)
 	if err != nil {

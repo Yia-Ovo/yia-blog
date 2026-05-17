@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-01 04:59:06
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-30 01:41:23
+ * @LastEditTime: 2026-05-17 09:52:21
  * @FilePath: \yia-blog\blog-server\infra\repo\user_mysql_repo.go
  * @Description:
  *
@@ -11,7 +11,6 @@
 package repo
 
 import (
-	"blog-server/common/gin/response"
 	"blog-server/common/utils/logger"
 	"blog-server/domain/repo"
 	"blog-server/infra/model"
@@ -38,8 +37,7 @@ func (r *userMysqlRepo) userBaseQuery(ctx context.Context) *gorm.DB {
 
 // --------------------- 1. 更新密码 ---------------------
 func (r *userMysqlRepo) UpdatePWD(ctx context.Context, userID uint64, password string) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
+
 	result := r.userBaseQuery(ctx).
 		Where("id = ?", userID).
 		Update("password", password)
@@ -64,8 +62,6 @@ func (r *userMysqlRepo) CreateUser(ctx context.Context, userModel *model.UserMod
 		return gorm.ErrInvalidData
 	}
 
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 	if err := r.db.WithContext(ctx).Create(userModel).Error; err != nil {
 		logger.Error("CreateUser failed", zap.String("nickname", userModel.NickName), zap.Error(err))
 		return err
@@ -75,8 +71,6 @@ func (r *userMysqlRepo) CreateUser(ctx context.Context, userModel *model.UserMod
 
 // --------------------- 3. 根据昵称查询用户 ---------------------
 func (r *userMysqlRepo) FindUserByNickname(ctx context.Context, nickName string) (*model.UserModel, error) {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	var userModel model.UserModel
 	err := r.userBaseQuery(ctx).
@@ -97,8 +91,6 @@ func (r *userMysqlRepo) FindUserByNickname(ctx context.Context, nickName string)
 
 // --------------------- 4. 根据ID查询用户 ---------------------
 func (r *userMysqlRepo) FindUserByID(ctx context.Context, userID uint64) (*model.UserModel, error) {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	var userModel model.UserModel
 	err := r.userBaseQuery(ctx).
@@ -124,9 +116,6 @@ func (r *userMysqlRepo) UpdateUserInfo(ctx context.Context, userModel *model.Use
 		return gorm.ErrInvalidData
 	}
 
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
-
 	// 仅允许更新非敏感字段，防止意外修改密码，提升安全性
 	result := r.userBaseQuery(ctx).
 		Where("id = ?", userModel.ID).
@@ -145,8 +134,6 @@ func (r *userMysqlRepo) UpdateUserInfo(ctx context.Context, userModel *model.Use
 
 // --------------------- 6. 更新最后登录信息 ---------------------
 func (r *userMysqlRepo) UpdateLastLoginInfo(ctx context.Context, userID uint64, loginAt *time.Time) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	// 构造更新参数（匹配Model层字段名）
 	updateData := map[string]interface{}{

@@ -2,9 +2,9 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 02:25:51
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-21 00:32:11
+ * @LastEditTime: 2026-05-17 08:43:57
  * @FilePath: \yia-blog\blog-server\domain\service\user_domain_service.go
- * @Description:
+ * @Description: 用户领域服务
  *
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
  */
@@ -145,6 +145,7 @@ func (u *UserDomainService) Login(ctx context.Context, nickName string, password
 	}
 	return commonUser, token, nil
 }
+
 func (u *UserDomainService) Logout(ctx context.Context, userId uint64, token string) error {
 	// 1. 【核心】将当前Token加入Redis黑名单（防止复用）
 	// 获取JWT剩余过期时间（和登录时的过期时间保持一致）
@@ -170,7 +171,7 @@ func (u *UserDomainService) Logout(ctx context.Context, userId uint64, token str
 }
 
 // Register 注册核心业务逻辑：密码bcrypt加密 → 封装DO → 调用仓库创建
-func (u *UserDomainService) Register(nickName string, password string) error {
+func (u *UserDomainService) Register(ctx context.Context, nickName string, password string) error {
 	// 1. 核心：明文密码加密（bcrypt，不可逆，生产级安全）
 	hashPwd, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -179,7 +180,6 @@ func (u *UserDomainService) Register(nickName string, password string) error {
 	}
 
 	// 2. 创建userModel（默认状态1-正常，无头像，未登录）
-
 	userModel := &model.UserModel{
 		NickName:  nickName,
 		Password:  string(hashPwd), // 存储加密后的密码
@@ -189,7 +189,6 @@ func (u *UserDomainService) Register(nickName string, password string) error {
 		Signature: "",              // 个性签名
 		Email:     "",              // 邮箱
 	}
-	ctx := context.Background()
 	// 3. 调用仓库接口，写入数据库（业务层不用管数据库细节）
 	if err := u.userMysqlRepo.CreateUser(ctx, userModel); err != nil {
 		logger.Warn("仓库创建用户失败", zap.Error(err), zap.String("nickName", nickName))
@@ -199,8 +198,7 @@ func (u *UserDomainService) Register(nickName string, password string) error {
 	return nil
 }
 
-func (u *UserDomainService) FindUserByNickname(nickName string) (*do.UserDO, error) {
-	ctx := context.Background()
+func (u *UserDomainService) FindUserByNickname(ctx context.Context, nickName string) (*do.UserDO, error) {
 	// 调用注入的仓库接口查询（仓库实现由基础设施层提供）
 	userModel, err := u.userMysqlRepo.FindUserByNickname(ctx, nickName)
 	if err != nil {
@@ -240,15 +238,14 @@ func (u *UserDomainService) FindUserByID(ctx context.Context, userId uint64) (*d
 	}
 
 	// 5. 数据库存在 → 写入【正常缓存】 Cache Aside（旁路缓存）模式
-	_ = u.userRedisRepo.SetUserToRedis(ctx, userId, user)
+	_ = u.userRedisRepo.SetUserToRedis(ctx, userId, userModel)
 	// 6. Model 转换为 DO
 	userDO := convert.UserModelToDO(userModel)
 
 	return userDO, nil
 }
 
-func (u *UserDomainService) UpdateUserInfo(userId uint64, updateData *do.UserDO) error {
-	ctx := context.Background()
+func (u *UserDomainService) UpdateUserInfo(ctx context.Context, userId uint64, updateData *do.UserDO) error {
 	userDO, err := u.FindUserByID(ctx, userId)
 	if err != nil {
 		logger.Warn("通过用户ID查询用户失败", zap.Error(err), zap.Uint64("userId", userId))
@@ -283,5 +280,4 @@ func (u *UserDomainService) UpdateUserInfo(userId uint64, updateData *do.UserDO)
 	}
 
 	return nil
-
 }
