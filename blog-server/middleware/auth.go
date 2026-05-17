@@ -2,7 +2,7 @@
 * @Author: Yia 1372594487@qq.com
 * @Date: 2026-01-25 23:13:50
   - @LastEditors: Yia 1372594487@qq.com
-  - @LastEditTime: 2026-04-16 10:12:19
+  - @LastEditTime: 2026-05-17 08:12:42
   - @FilePath: \yia-blog\blog-server\middleware\auth.go
 
 * @Description:
@@ -35,7 +35,7 @@ import (
 type TokenFun func(ctx context.Context, token string) (*convert.User, common.Errno)
 
 // TokenAdminFun 管理员Token解析函数签名
-type TokenAdminFun func(ctx context.Context, token string) (*convert.AdminUser, common.Errno)
+type TokenAdminFun func(ctx context.Context, token string) (*convert.Admin, common.Errno)
 
 // -------------------------- 用户认证中间件 --------------------------
 // AuthMiddleware 用户认证中间件（支持自定义过滤函数，跳过无需认证的接口）
@@ -185,12 +185,12 @@ func AdminAuthMiddleware(filter func(*gin.Context) bool, getTokenFun TokenAdminF
 
 		// 6. 存入上下文
 		ctx.Set(consts.AdminUserKey, admin)
-		ctx.Set(consts.AdminIDKey, admin.AdminID)
+		ctx.Set(consts.AdminIDKey, admin.ID)
 
 		reqCtx := context.WithValue(ctx.Request.Context(), consts.AdminUserKey, admin)
 		ctx.Request = ctx.Request.WithContext(reqCtx)
 
-		logger.Info("管理员认证成功", zap.Uint64("admin_id", admin.AdminID), zap.String("path", path))
+		logger.Info("管理员认证成功", zap.Uint64("admin_id", admin.ID), zap.String("path", path))
 		ctx.Next()
 	}
 }

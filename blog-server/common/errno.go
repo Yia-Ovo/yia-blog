@@ -114,7 +114,12 @@ var (
 	ErrCategorySortInvalid = Errno{Code: 13005, Msg: "Category Sort Invalid"}
 
 	// 文章相关错误
-	ArticleNotFoundErr = Errno{Code: 12001, Msg: "Article Not Found"} // 文章不存在
+	ArticleNotFoundErr     = Errno{Code: 12001, Msg: "Article Not Found"}      // 文章不存在
+	ErrArticleTitleEmpty   = Errno{Code: 12002, Msg: "Article Title Empty"}    // 文章标题为空
+	ErrArticleTitleTooLong = Errno{Code: 12003, Msg: "Article Title Too Long"} // 文章标题过长
+	ErrArticleSortInvalid  = Errno{Code: 12004, Msg: "Article Sort Invalid"}   // 文章排序值非法
+	ErrArticleContentEmpty = Errno{Code: 12005, Msg: "Article Content Empty"}  // 文章内容为空
+	ArticleExistErr        = Errno{Code: 12006, Msg: "Article Already Exist"}  // 文章已存在
 
 	//
 

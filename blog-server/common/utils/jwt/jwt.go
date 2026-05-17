@@ -68,7 +68,7 @@ func GenerateToken(user *convert.User) (string, error) {
 }
 
 // GenerateAdminToken 生成管理员Token
-func GenerateAdminToken(admin *convert.AdminUser) (string, error) {
+func GenerateAdminToken(admin *convert.Admin) (string, error) {
 	expireTime := time.Now().Add(tokenExpire * time.Hour)
 	claims := AdminClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -76,7 +76,7 @@ func GenerateAdminToken(admin *convert.AdminUser) (string, error) {
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    issuer,
 		},
-		ID: admin.AdminID,
+		ID: admin.ID,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -131,7 +131,7 @@ func ParseTokenToUserWithCtx(ctx context.Context, tokenStr string) (*convert.Use
 	return &convert.User{UserID: claims.UserID}, common.OK
 }
 
-func ParseTokenToAdminWithCtx(ctx context.Context, tokenStr string) (*convert.AdminUser, common.Errno) {
+func ParseTokenToAdminWithCtx(ctx context.Context, tokenStr string) (*convert.Admin, common.Errno) {
 	if tokenStr == "" {
 		return nil, common.LoginNotLoginErr
 	}
@@ -142,7 +142,7 @@ func ParseTokenToAdminWithCtx(ctx context.Context, tokenStr string) (*convert.Ad
 		}
 		return nil, common.AuthErr.WithMsg("管理员Token无效")
 	}
-	return &convert.AdminUser{AdminID: claims.ID}, common.OK
+	return &convert.Admin{ID: claims.ID}, common.OK
 }
 
 // ===================== 通用：获取Token剩余时间（支持用户+管理员） =====================

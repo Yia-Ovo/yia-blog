@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-15 18:51:38
+ * @LastEditTime: 2026-05-17 12:43:18
  * @FilePath: \yia-blog\blog-server\config\config.go
  * @Description:
  *
@@ -123,6 +123,7 @@ type RedisConfig struct {
 	ConnMaxIdleTime time.Duration `yaml:"conn_max_idle_time"` // 空闲连接超时关闭
 	// 缓存过期配置
 	UserCacheExpire      time.Duration `yaml:"user_cache_expire"`       // 用户缓存过期时间（秒）
+	AdminCacheExpire     time.Duration `yaml:"admin_cache_expire"`      // 管理员缓存过期时间（秒）
 	UserEmptyCacheExpire time.Duration `yaml:"user_empty_cache_expire"` // 用户缓存过期时间（秒）
 
 }

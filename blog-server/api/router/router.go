@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-30 01:15:01
+ * @LastEditTime: 2026-05-17 12:50:52
  * @FilePath: \yia-blog\blog-server\api\router\router.go
  * @Description:
  *
@@ -28,9 +28,11 @@ type Router struct {
 	// 注入用户应用服务
 	userAppSrv     *service.UserAppService
 	categoryAppSrv *service.CategoryAppService
+	articleAppSrv  *service.ArticleAppService
+	adminAppSrv    *service.AdminAppService
 }
 
-func NewRouter(conf *config.GlobalConfig, userAppSrv *service.UserAppService, categoryAppSrv *service.CategoryAppService, checkFunc func() error) *Router {
+func NewRouter(conf *config.GlobalConfig, userAppSrv *service.UserAppService, categoryAppSrv *service.CategoryAppService, articleAppSrv *service.ArticleAppService, adminAppService *service.AdminAppService, checkFunc func() error) *Router {
 	return &Router{
 		FullPPROF:      conf.Server.EnablePprof, // 是否开启pprof
 		rootPath:       "/api/blog",
@@ -38,6 +40,8 @@ func NewRouter(conf *config.GlobalConfig, userAppSrv *service.UserAppService, ca
 		checkFunc:      checkFunc,
 		userAppSrv:     userAppSrv,
 		categoryAppSrv: categoryAppSrv,
+		articleAppSrv:  articleAppSrv,
+		adminAppSrv:    adminAppService,
 	}
 }
 
@@ -73,7 +77,6 @@ func (r *Router) route(rg *gin.RouterGroup) {
 	}
 }
 
-// registerUserRouter 注册用户相关路由：模块化拆分，不污染核心代码
 func (r *Router) userRouter(v1 *gin.RouterGroup) {
 	// 用户子路由组：/api/blog/v1/user
 	userGroup := v1.Group("/user")
@@ -98,7 +101,27 @@ func (r *Router) userRouter(v1 *gin.RouterGroup) {
 	// }
 }
 
-// ---------------- 分类路由（完全对齐你的代码风格） ----------------
+// ---------------- 管理员路由 ----------------
+func (r *Router) adminRouter(v1 *gin.RouterGroup) {
+	// 管理员路由组：/api/blog/v1/admin
+	adminGroup := v1.Group("/admin")
+	// 创建管理员处理函数实例
+	adminHandler := handler.NewAdminHandler(r.adminAppSrv)
+
+	// 公开接口：无需管理员认证（仅登录接口）
+	adminGroup.POST("/login", adminHandler.Login)
+
+	// 私有接口：需要管理员登录认证（使用AdminAuth中间件）
+	adminGroup.Use(middleware.DefaultAdminAuth())
+	{
+		adminGroup.GET("/getInfo", adminHandler.GetInfo)                  // 获取管理员信息
+		adminGroup.POST("/updatePWD", adminHandler.UpdatePWD)             // 修改密码
+		adminGroup.POST("/logout", adminHandler.Logout)                   // 登出
+		adminGroup.POST("/updateAdminInfo", adminHandler.UpdateAdminInfo) // 更新信息
+	}
+}
+
+// ---------------- 分类路由 ----------------
 func (r *Router) categoryRouter(v1 *gin.RouterGroup) {
 	// 分类子路由组：/api/blog/v1/category
 	categoryGroup := v1.Group("/category")
@@ -115,5 +138,25 @@ func (r *Router) categoryRouter(v1 *gin.RouterGroup) {
 		categoryGroup.POST("/createCategory", categoryHandler.CreateCategory) // 创建分类
 		categoryGroup.POST("/updateCategory", categoryHandler.UpdateCategory) // 更新分类
 		categoryGroup.POST("/deleteCategory", categoryHandler.DeleteCategory) // 删除分类
+	}
+}
+
+// ---------------- 文章路由  ----------------
+func (r *Router) articleRouter(v1 *gin.RouterGroup) {
+	// 文章子路由组：/api/blog/v1/article
+	articleGroup := v1.Group("/article")
+	// 创建文章处理函数实例
+	articleHandler := handler.NewArticleHandler(r.articleAppSrv)
+
+	// 公开接口：无需登录认证（列表、详情查询）
+	articleGroup.GET("/listArticle", articleHandler.ListArticle)       // 分页查询文章
+	articleGroup.GET("/getArticleById", articleHandler.GetArticleById) // 根据ID查询文章详情
+
+	// 私有接口：需要用户登录认证（增删改）
+	articleGroup.Use(middleware.DefaultUserAuth())
+	{
+		articleGroup.POST("/createArticle", articleHandler.CreateArticle) // 创建文章
+		articleGroup.POST("/updateArticle", articleHandler.UpdateArticle) // 更新文章
+		articleGroup.POST("/deleteArticle", articleHandler.DeleteArticle) // 删除文章
 	}
 }

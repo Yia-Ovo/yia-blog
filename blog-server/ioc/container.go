@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-16 09:13:28
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-29 08:37:39
+ * @LastEditTime: 2026-05-14 01:21:01
  * @FilePath: \yia-blog\blog-server\ioc\container.go
  * @Description:IOC容器
  *
@@ -35,6 +35,13 @@ var (
 
 	// ===================== 分类端仓储 =====================
 	CategoryMysqlRepo domainRepo.CategoryMysqlRepo // MySQL接口
+	CategoryRedisRepo domainRepo.CategoryRedisRepo // Redis接口
+
+	// ===================== 文章端仓储 =====================
+	ArticleMysqlRepo domainRepo.ArticleMysqlRepo // MySQL接口
+	ArticleRedisRepo domainRepo.ArticleRedisRepo // Redis接口
+
+	// ===================== 评论端仓储 =====================
 )
 
 // Init 初始化IOC：绑定接口与实现
@@ -54,6 +61,11 @@ func Init(db *gorm.DB, rdb *redis.Client, conf *config.GlobalConfig) {
 
 	// category
 	CategoryMysqlRepo = infraRepo.NewCategoryMysqlRepo(db)
+	CategoryRedisRepo = infraRepo.NewCategoryRedisRepo(rdb, conf)
+
+	// article
+	ArticleMysqlRepo = infraRepo.NewArticleMysqlRepo(db)
+	ArticleRedisRepo = infraRepo.NewArticleRedisRepo(rdb, conf)
 }
 
 // ===================== 对外获取方法 =====================
@@ -61,6 +73,10 @@ func GetUserMysqlRepo() domainRepo.UserMysqlRepo { return UserMysqlRepo }
 func GetUserRedisRepo() domainRepo.UserRedisRepo { return UserRedisRepo }
 
 func GetCategoryMysqlRepo() domainRepo.CategoryMysqlRepo { return CategoryMysqlRepo }
+func GetCategoryRedisRepo() domainRepo.CategoryRedisRepo { return CategoryRedisRepo }
 
 func GetAdminMysqlRepo() domainRepo.AdminMysqlRepo { return AdminMysqlRepo }
 func GetAdminRedisRepo() domainRepo.AdminRedisRepo { return AdminRedisRepo }
+
+func GetArticleMysqlRepo() domainRepo.ArticleMysqlRepo { return ArticleMysqlRepo }
+func GetArticleRedisRepo() domainRepo.ArticleRedisRepo { return ArticleRedisRepo }
