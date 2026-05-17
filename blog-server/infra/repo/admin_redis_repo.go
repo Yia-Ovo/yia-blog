@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-16 08:26:43
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-30 02:00:35
+ * @LastEditTime: 2026-05-17 12:44:21
  * @FilePath: \yia-blog\blog-server\infra\repo\admin_redis_repo.go
  * @Description:
  *
@@ -22,7 +22,6 @@ package repo
 
 import (
 	"blog-server/common"
-	"blog-server/common/gin/response"
 	"blog-server/common/utils/logger"
 	"blog-server/config"
 	"blog-server/infra/model"
@@ -41,6 +40,9 @@ const (
 	adminOnlineKeyPrefix     = "blog:admin:online:"
 	adminBlackTokenKeyPrefix = "blog:admin:logout:black:"
 	adminOnlineTokenValue    = "1" // 管理员在线令牌标记值
+
+	adminInfoIDKey   = "admin:info:id:%d"   // 按ID缓存
+	adminInfoNameKey = "admin:info:name:%s" // 按用户名缓存
 )
 
 type AdminRedisRepo struct {
@@ -72,8 +74,6 @@ func isEmptyAdmin(admin *model.AdminModel) bool {
 // ====================== 管理员信息缓存 ======================
 // GetAdminFromRedis 从Redis获取管理员信息
 func (r *AdminRedisRepo) GetAdminFromRedis(ctx context.Context, adminID uint64) (*model.AdminModel, error) {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	key := buildAdminKey(adminID)
 	data, err := r.rdb.Get(ctx, key).Result()
@@ -108,8 +108,6 @@ func (r *AdminRedisRepo) GetAdminFromRedis(ctx context.Context, adminID uint64) 
 }
 
 func (r *AdminRedisRepo) SetAdminToRedis(ctx context.Context, adminID uint64, admin *model.AdminModel) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	key := buildAdminKey(adminID)
 	var data []byte
@@ -145,8 +143,6 @@ func (r *AdminRedisRepo) SetAdminToRedis(ctx context.Context, adminID uint64, ad
 
 // DelAdminFromRedis 删除管理员缓存
 func (r *AdminRedisRepo) DelAdminFromRedis(ctx context.Context, adminID uint64) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	key := buildAdminKey(adminID)
 	if err := r.rdb.Del(ctx, key).Err(); err != nil {
@@ -161,8 +157,6 @@ func (r *AdminRedisRepo) DelAdminFromRedis(ctx context.Context, adminID uint64) 
 // ====================== 管理员在线令牌管理 ======================
 // SetAdminOnlineToken 登录写入在线令牌
 func (r *AdminRedisRepo) SetAdminOnlineToken(ctx context.Context, adminID uint64, token string, expire time.Duration) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	key := buildAdminOnlineTokenKey(adminID, token)
 	if err := r.rdb.Set(ctx, key, adminOnlineTokenValue, expire).Err(); err != nil {
@@ -175,8 +169,6 @@ func (r *AdminRedisRepo) SetAdminOnlineToken(ctx context.Context, adminID uint64
 
 // DelAdminOnlineToken 单端下线（删除指定token）
 func (r *AdminRedisRepo) DelAdminOnlineToken(ctx context.Context, adminID uint64, token string) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	key := buildAdminOnlineTokenKey(adminID, token)
 	if err := r.rdb.Del(ctx, key).Err(); err != nil {
@@ -188,8 +180,7 @@ func (r *AdminRedisRepo) DelAdminOnlineToken(ctx context.Context, adminID uint64
 
 // ClearAdminAllOnlineToken 登出时清空管理员所有在线Token（全端下线）
 func (r *AdminRedisRepo) ClearAdminAllOnlineToken(ctx context.Context, adminID uint64) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
+
 	pattern := fmt.Sprintf("%s%d:*", adminOnlineKeyPrefix, adminID)
 	var cursor uint64
 	var keys []string
@@ -226,8 +217,6 @@ func (r *AdminRedisRepo) ClearAdminAllOnlineToken(ctx context.Context, adminID u
 // ====================== 管理员黑名单令牌管理 ======================
 // AddAdminTokenToBlackList 管理员登出加入黑名单
 func (r *AdminRedisRepo) AddAdminTokenToBlackList(ctx context.Context, token string, exp time.Duration) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	key := buildAdminBlackTokenKey(token)
 	if err := r.rdb.Set(ctx, key, adminOnlineTokenValue, exp).Err(); err != nil {
@@ -239,8 +228,6 @@ func (r *AdminRedisRepo) AddAdminTokenToBlackList(ctx context.Context, token str
 
 // IsAdminTokenBlacklisted 判断管理员Token是否在黑名单
 func (r *AdminRedisRepo) IsAdminTokenBlacklisted(ctx context.Context, token string) (bool, error) {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	key := buildAdminBlackTokenKey(token)
 	count, err := r.rdb.Exists(ctx, key).Result()
@@ -250,4 +237,62 @@ func (r *AdminRedisRepo) IsAdminTokenBlacklisted(ctx context.Context, token stri
 	}
 
 	return count > 0, nil
+}
+
+// GetAdminByNameFromRedis 根据用户名从缓存获取管理员信息
+func (r *AdminRedisRepo) GetAdminByNameFromRedis(ctx context.Context, username string) (*model.AdminModel, error) {
+	// 1. 拼接缓存Key
+	key := fmt.Sprintf(adminInfoNameKey, username)
+
+	// 2. 从Redis查询数据
+	data, err := r.rdb.Get(ctx, key).Bytes()
+	if err != nil {
+		// 缓存不存在：返回标准缓存不存在错误
+		if err == redis.Nil {
+			return nil, common.CacheNotExist
+		}
+		// Redis 异常：打印日志并返回错误
+		logger.Error("GetAdminByNameFromRedis 查询缓存失败",
+			zap.String("username", username),
+			zap.Error(err))
+		return nil, err
+	}
+
+	// 3. 反序列化（兼容空值缓存，防止缓存穿透）
+	var admin *model.AdminModel
+	if err := json.Unmarshal(data, &admin); err != nil {
+		logger.Error("GetAdminByNameFromRedis 反序列化失败",
+			zap.String("username", username),
+			zap.Error(err))
+		return nil, common.ServerErr
+	}
+
+	return admin, nil
+}
+
+// SetAdminByNameToRedis 根据用户名缓存管理员信息
+func (r *AdminRedisRepo) SetAdminByNameToRedis(ctx context.Context, username string, admin *model.AdminModel) error {
+	var expire time.Duration
+	// 1. 拼接缓存Key
+	key := fmt.Sprintf(adminInfoNameKey, username)
+
+	// 2. 序列化数据
+	data, err := json.Marshal(admin)
+	if err != nil {
+		logger.Error("SetAdminByNameToRedis 序列化失败",
+			zap.String("username", username),
+			zap.Error(err))
+		return common.ServerErr
+	}
+
+	// 3. 写入Redis，设置统一过期时间
+	expire = r.config.AdminCacheExpire
+	if err := r.rdb.Set(ctx, key, data, expire).Err(); err != nil {
+		logger.Error("SetAdminByNameToRedis 写入缓存失败",
+			zap.String("username", username),
+			zap.Error(err))
+		return err
+	}
+
+	return nil
 }

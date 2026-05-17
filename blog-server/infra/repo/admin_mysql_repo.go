@@ -12,7 +12,6 @@
 package repo
 
 import (
-	"blog-server/common/gin/response"
 	"blog-server/common/utils/logger"
 	"blog-server/domain/repo"
 	"blog-server/infra/model"
@@ -37,8 +36,6 @@ func (r *adminMysqlRepo) adminBaseQuery(ctx context.Context) *gorm.DB {
 
 // --------------------- 1. 更新密码 ---------------------
 func (r *adminMysqlRepo) UpdatePWD(ctx context.Context, adminID uint64, password string) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 	result := r.adminBaseQuery(ctx).
 		Where("id = ?", adminID).
 		Update("password", password)
@@ -61,8 +58,6 @@ func (r *adminMysqlRepo) CreateAdmin(ctx context.Context, adminModel *model.Admi
 		return gorm.ErrInvalidData
 	}
 
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 	if err := r.db.WithContext(ctx).Create(adminModel).Error; err != nil {
 		logger.Error("CreateAdmin failed", zap.String("admin_name", adminModel.AdminName), zap.Error(err))
 		return err
@@ -72,8 +67,6 @@ func (r *adminMysqlRepo) CreateAdmin(ctx context.Context, adminModel *model.Admi
 
 // --------------------- 3. 通过名称获取管理员信息 ---------------------
 func (r *adminMysqlRepo) FindAdminByName(ctx context.Context, adminName string) (*model.AdminModel, error) {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	var adminModel model.AdminModel
 	err := r.adminBaseQuery(ctx).
@@ -93,8 +86,6 @@ func (r *adminMysqlRepo) FindAdminByName(ctx context.Context, adminName string) 
 
 // --------------------- 4. 通过ID获取管理员信息 ---------------------
 func (r *adminMysqlRepo) FindAdminByID(ctx context.Context, adminID uint64) (*model.AdminModel, error) {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	var adminModel model.AdminModel
 	err := r.adminBaseQuery(ctx).
@@ -120,9 +111,6 @@ func (r *adminMysqlRepo) UpdateAdminInfo(ctx context.Context, adminModel *model.
 		return gorm.ErrInvalidData
 	}
 
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
-
 	// Restrict update fields to avoid accidental password modification
 	result := r.adminBaseQuery(ctx).
 		Where("id = ?", adminModel.ID).
@@ -141,8 +129,6 @@ func (r *adminMysqlRepo) UpdateAdminInfo(ctx context.Context, adminModel *model.
 
 // --------------------- 6. 更新管理员上次登录时间 ---------------------
 func (r *adminMysqlRepo) UpdateLastLoginInfo(ctx context.Context, adminID uint64, loginAt *time.Time) error {
-	ctx, cancel := response.WithDBTimeout(ctx)
-	defer cancel()
 
 	updateData := map[string]interface{}{
 		"last_login_at": loginAt,
