@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-25 23:37:43
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-17 09:00:19
+ * @LastEditTime: 2026-05-21 11:50:19
  * @FilePath: \yia-blog\blog-server\common\consts\consts.go
  * @Description:
  *
@@ -29,4 +29,9 @@ const (
 	UserStatusEnabled  = 1 // 正常启用
 	UserStatusDisabled = 2 // 禁用
 	UserStatusLocked   = 3 // 锁定
+
+	// 评论状态
+	CommentStatusPending  = 0 // 待审核
+	CommentStatusPassed   = 1 // 已通过
+	CommentStatusRejected = 2 // 已拒绝
 )

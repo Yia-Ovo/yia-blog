@@ -125,6 +125,8 @@ type RedisConfig struct {
 	UserCacheExpire      time.Duration `yaml:"user_cache_expire"`       // 用户缓存过期时间（秒）
 	AdminCacheExpire     time.Duration `yaml:"admin_cache_expire"`      // 管理员缓存过期时间（秒）
 	UserEmptyCacheExpire time.Duration `yaml:"user_empty_cache_expire"` // 用户缓存过期时间（秒）
+	LikeCacheExpire      time.Duration `yaml:"like_cache_expire"`       // 点赞缓存过期时间（秒）
+	LikeRecordExpire     time.Duration `yaml:"like_record_expire"`      // 点赞记录缓存过期时间（秒）
 
 }
 
