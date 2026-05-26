@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-16 09:13:28
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-14 01:21:01
+ * @LastEditTime: 2026-05-26 00:25:53
  * @FilePath: \yia-blog\blog-server\ioc\container.go
  * @Description:IOC容器
  *
@@ -11,8 +11,10 @@
 package ioc
 
 import (
+	appSrv "blog-server/app/service"
 	"blog-server/config"
 	domainRepo "blog-server/domain/repo"
+	domainSrv "blog-server/domain/service"
 	infraRepo "blog-server/infra/repo"
 
 	"github.com/redis/go-redis/v9"
@@ -42,6 +44,11 @@ var (
 	ArticleRedisRepo domainRepo.ArticleRedisRepo // Redis接口
 
 	// ===================== 评论端仓储 =====================
+	CommentMysqlRepo domainRepo.CommentMysqlRepo // MySQL接口
+	CommentRedisRepo domainRepo.CommentRedisRepo // Redis接口
+
+	CommentDomainService *domainSrv.CommentDomainService // 评论领域服务
+	CommentAppService    *appSrv.CommentAppService       // 评论应用服务
 )
 
 // Init 初始化IOC：绑定接口与实现
@@ -66,6 +73,14 @@ func Init(db *gorm.DB, rdb *redis.Client, conf *config.GlobalConfig) {
 	// article
 	ArticleMysqlRepo = infraRepo.NewArticleMysqlRepo(db)
 	ArticleRedisRepo = infraRepo.NewArticleRedisRepo(rdb, conf)
+	// comment
+	CommentMysqlRepo = infraRepo.NewCommentMysqlRepo(db)
+	CommentRedisRepo = infraRepo.NewCommentRedisRepo(rdb, conf)
+
+	// 1. 初始化评论领域服务（仅依赖 MySQL 仓储，纯净DDD）
+	CommentDomainService = domainSrv.NewCommentDomainService(CommentMysqlRepo)
+	// 2. 初始化评论应用服务（依赖 领域服务 + Redis 仓储）
+	CommentAppService = appSrv.NewCommentAppService(CommentDomainService, CommentRedisRepo)
 }
 
 // ===================== 对外获取方法 =====================
@@ -80,3 +95,9 @@ func GetAdminRedisRepo() domainRepo.AdminRedisRepo { return AdminRedisRepo }
 
 func GetArticleMysqlRepo() domainRepo.ArticleMysqlRepo { return ArticleMysqlRepo }
 func GetArticleRedisRepo() domainRepo.ArticleRedisRepo { return ArticleRedisRepo }
+
+func GetCommentMysqlRepo() domainRepo.CommentMysqlRepo { return CommentMysqlRepo }
+func GetCommentRedisRepo() domainRepo.CommentRedisRepo { return CommentRedisRepo }
+
+func GetCommentDomainService() *domainSrv.CommentDomainService { return CommentDomainService }
+func GetCommentAppService() *appSrv.CommentAppService          { return CommentAppService }

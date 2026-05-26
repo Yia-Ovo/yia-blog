@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-17 12:50:52
+ * @LastEditTime: 2026-05-26 14:40:39
  * @FilePath: \yia-blog\blog-server\api\router\router.go
  * @Description:
  *
@@ -30,9 +30,10 @@ type Router struct {
 	categoryAppSrv *service.CategoryAppService
 	articleAppSrv  *service.ArticleAppService
 	adminAppSrv    *service.AdminAppService
+	commentAppSrv  *service.CommentAppService
 }
 
-func NewRouter(conf *config.GlobalConfig, userAppSrv *service.UserAppService, categoryAppSrv *service.CategoryAppService, articleAppSrv *service.ArticleAppService, adminAppService *service.AdminAppService, checkFunc func() error) *Router {
+func NewRouter(conf *config.GlobalConfig, userAppSrv *service.UserAppService, categoryAppSrv *service.CategoryAppService, articleAppSrv *service.ArticleAppService, adminAppService *service.AdminAppService, commentAppService *service.CommentAppService, checkFunc func() error) *Router {
 	return &Router{
 		FullPPROF:      conf.Server.EnablePprof, // 是否开启pprof
 		rootPath:       "/api/blog",
@@ -158,5 +159,29 @@ func (r *Router) articleRouter(v1 *gin.RouterGroup) {
 		articleGroup.POST("/createArticle", articleHandler.CreateArticle) // 创建文章
 		articleGroup.POST("/updateArticle", articleHandler.UpdateArticle) // 更新文章
 		articleGroup.POST("/deleteArticle", articleHandler.DeleteArticle) // 删除文章
+	}
+}
+
+// ---------------- 评论路由 ----------------
+func (r *Router) commentRouter(v1 *gin.RouterGroup) {
+	// 评论子路由组：/api/blog/v1/comment
+	commentGroup := v1.Group("/comment")
+	// 创建评论处理器
+	commentHandler := handler.NewCommentHandler(r.commentAppSrv)
+
+	// 公开接口：无需登录认证（列表、详情、评论数）
+	commentGroup.GET("/listComment", commentHandler.ListCommentByPage)                 // 分页查询评论
+	commentGroup.GET("/getCommentById", commentHandler.GetCommentByID)                 // 根据ID查询评论
+	commentGroup.GET("/getArticleCommentCount", commentHandler.GetArticleCommentCount) // 获取文章评论数
+
+	// 私有接口：需要用户登录认证（增删改、点赞）
+	commentGroup.Use(middleware.DefaultUserAuth())
+	{
+		// 🔥 完全对齐你文章的写法：全部 POST，无DELETE/PUT
+		commentGroup.POST("/createComment", commentHandler.CreateComment)  // 创建评论
+		commentGroup.POST("/updateComment", commentHandler.UpdateComment)  // 更新评论
+		commentGroup.POST("/deleteComment", commentHandler.DeleteComment)  // 删除评论
+		commentGroup.POST("/likeComment", commentHandler.LikeComment)      // 点赞评论
+		commentGroup.POST("/unlikeComment", commentHandler.DisLikeComment) // 取消点赞
 	}
 }

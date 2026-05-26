@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-23 06:14:49
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-22 06:36:10
+ * @LastEditTime: 2026-05-23 09:18:06
  * @FilePath: \yia-blog\blog-server\common\errno.go
  * @Description:
  *
@@ -121,6 +121,12 @@ var (
 	ErrArticleContentEmpty = Errno{Code: 12005, Msg: "Article Content Empty"}  // 文章内容为空
 	ArticleExistErr        = Errno{Code: 12006, Msg: "Article Already Exist"}  // 文章已存在
 
-	//
+	// 评论相关错误 (14000)
+	CommentNotFoundErr      = Errno{Code: 14001, Msg: "Comment Not Found"}      // 评论不存在
+	ErrCommentNicknameEmpty = Errno{Code: 14002, Msg: "Comment Nickname Empty"} // 评论昵称为空
+	ErrCommentContentEmpty  = Errno{Code: 14003, Msg: "Comment Content Empty"}  // 评论内容为空
+	ErrCommentAlreadyLiked  = Errno{Code: 14004, Msg: "Comment Already Liked"}  // 已点赞该评论
+	ErrCommentNotLiked      = Errno{Code: 14005, Msg: "Comment Not Liked"}      // 未点赞该评论
+	ErrCommentStatusInvalid = Errno{Code: 14006, Msg: "Comment Status Invalid"} // 评论状态非法
 
 )

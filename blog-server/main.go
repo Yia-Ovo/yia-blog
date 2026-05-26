@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-17 08:11:01
+ * @LastEditTime: 2026-05-26 00:10:51
  * @FilePath: \yia-blog\blog-server\main.go
  * @Description:
  *
@@ -44,24 +44,30 @@ func main() {
 		ioc.GetUserRedisRepo(), // 传入领域接口
 		conf,
 	)
+
+	// 初始化管理员应用服务
+	adminAppSrv := service.NewAdminAppService(
+		ioc.GetAdminMysqlRepo(),
+		ioc.GetAdminRedisRepo(),
+		ioc.Conf,
+	)
 	// 初始化分页仓库
 	categoryAppSrv := service.NewCategoryAppService(
 		ioc.GetCategoryMysqlRepo(), // 传入领域接口
 		ioc.GetCategoryRedisRepo(), // 传入领域接口
 	)
+	// 初始化文章应用服务
 	articleAppSrv := service.NewArticleAppService(
 		ioc.GetArticleMysqlRepo(), // 传入领域接口
 		ioc.GetArticleRedisRepo(), // 传入领域接口
 	)
-
-	// 初始化管理员应用服务
-	adminAppService := service.NewAdminAppService(
-		ioc.GetAdminMysqlRepo(),
-		ioc.GetAdminRedisRepo(),
-		ioc.Conf,
+	// 初始化评论应用服务
+	commentAppSrv := service.NewCommentAppService(
+		ioc.GetCommentDomainService(),
+		ioc.GetCommentRedisRepo(),
 	)
 	// 初始化路由
-	r := router.NewRouter(conf, userAppSrv, categoryAppSrv, articleAppSrv, adminAppService, func() error { return nil })
+	r := router.NewRouter(conf, userAppSrv, categoryAppSrv, articleAppSrv, adminAppSrv, commentAppSrv, func() error { return nil })
 	// 运行服务器
 	app := server.NewApp(r)
 	app.Run()
