@@ -2,37 +2,22 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-14 18:30:10
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-15 00:47:37
+ * @LastEditTime: 2026-05-29 13:46:10
  * @FilePath: \yia-blog\blog-server\common\utils\convert\user_convert.go
- * @Description:用户模型定义 + 全类型转换（DO/Model/通用User）
- 查询流向 (Read)
-	MySQL (Repo) -> do.UserDO (Domain) -> 转换 -> 业务逻辑使用
-	Redis (Repo) -> model.UserModel (Infra) -> 转换 -> 业务逻辑使用
- 缓存流向 (Cache)
-	Domain 层拿到 DO 后，不能直接把 DO 塞给 Redis。
-	正确流程：Domain 层把 DO 转换 为 Model -> 调用 Repo -> 写入 Redis。
+ * @Description:
  *
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
-*/
-
+ */
 package convert
 
 import (
+	"blog-server/api/dto"
 	"blog-server/domain/do"
 	"blog-server/infra/model"
-	"time"
 )
 
-type User struct {
-	UserID        uint64     `json:"user_id"`
-	NickName      string     `json:"nick_name"`
-	Status        int        `json:"status"`
-	LastLoginIP   string     `json:"last_login_ip,omitempty"`
-	LastLoginTime *time.Time `json:"last_login_time,omitempty"`
-}
+// ====================== Model ↔ DO（数据库/Redis <-> 领域） ======================
 
-// ====================== 1. Redis/数据库 Model ↔ 领域 DO（缓存核心） ======================
-// UserModelToDO model.UserModel → do.UserDO
 func UserModelToDO(m *model.UserModel) *do.UserDO {
 	if m == nil || m.ID == 0 {
 		return nil
@@ -46,16 +31,15 @@ func UserModelToDO(m *model.UserModel) *do.UserDO {
 		Avatar:      m.Avatar,
 		Gender:      m.Gender,
 		Signature:   m.Signature,
+		Email:       m.Email,
 		CreateAt:    m.CreateAt,
 		UpdateAt:    m.UpdateAt,
-		Email:       m.Email,
 	}
 }
 
-// UserDO2Model do.UserDO → model.UserModel
 func UserDOToModel(d *do.UserDO) *model.UserModel {
 	if d == nil || d.ID == 0 {
-		return &model.UserModel{} // 空对象，缓存空值用
+		return &model.UserModel{}
 	}
 	return &model.UserModel{
 		ID:          d.ID,
@@ -63,31 +47,46 @@ func UserDOToModel(d *do.UserDO) *model.UserModel {
 		Password:    d.Password,
 		Status:      d.Status,
 		LastLoginAt: d.LastLoginAt,
+		Avatar:      d.Avatar,
+		Gender:      d.Gender,
+		Signature:   d.Signature,
+		Email:       d.Email,
 		CreateAt:    d.CreateAt,
 		UpdateAt:    d.UpdateAt,
-		// 补充你所有字段
 	}
 }
 
-// ====================== 2. 领域 DO → 前端通用 User ======================
-// UserDOToUser do.UserDO → convert.User
-func UserDOToUser(do *do.UserDO) *User {
+// ====================== DO → DTO（领域 -> 前端返回） ======================
+
+// UserDOToUserInfoDTO 用于用户详情接口
+func UserDOToUserInfoDTO(do *do.UserDO) *dto.UserInfoData {
 	if do == nil {
 		return nil
 	}
+	return &dto.UserInfoData{
+		ID:          do.ID,
+		NickName:    do.NickName,
+		Avatar:      do.Avatar,
+		Status:      do.Status,
+		Gender:      do.Gender,
+		Signature:   do.Signature,
+		Email:       do.Email,
+		CreateAt:    do.CreateAt,
+		UpdateAt:    do.UpdateAt,
+		LastLoginAt: do.LastLoginAt,
+	}
+}
 
-	user := &User{
+// UserDOToLoginUserDTO 用于登录返回（精简字段，JWT 存储）
+// 替代你原来冗余的 convert.User
+func UserDOToLoginUserDTO(do *do.UserDO) *dto.LoginUserDTO {
+	if do == nil {
+		return nil
+	}
+	return &dto.LoginUserDTO{
 		UserID:      do.ID,
 		NickName:    do.NickName,
 		Status:      do.Status,
-		LastLoginIP: "",
+		LastLoginAt: do.LastLoginAt,
 	}
-
-	if do.LastLoginAt != nil && !do.LastLoginAt.IsZero() {
-		user.LastLoginTime = do.LastLoginAt
-	} else {
-		user.LastLoginTime = nil
-	}
-
-	return user
 }

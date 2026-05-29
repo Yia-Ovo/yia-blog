@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-26 07:44:28
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-14 19:05:39
+ * @LastEditTime: 2026-05-29 13:47:12
  * @FilePath: \yia-blog\blog-server\api\dto\user_dto.go
  * @Description:
  *
@@ -12,79 +12,67 @@ package dto
 
 import "time"
 
-type UserUpdatePWDReq struct {
-	ID          uint64 `json:"-" binding:"-"`                                // 忽略前端传参，无校验
-	OldPassword string `json:"old_password" binding:"required,min=6,max=20"` // 旧密码：必填，至少6位
-	NewPassword string `json:"new_password" binding:"required,min=6,max=20"` // 新密码：必填，至少6位
-}
-
-type UserUpdatePWDRes struct {
-	Code int           `json:"code"` // 状态码：200成功，500失败，400参数错误
-	Msg  string        `json:"msg"`  // 提示信息：成功/失败原因
-	Data *UserInfoData `json:"data"` // 用户信息
-}
-
-type UserGetInfoReq struct {
-}
-
-type UserGetInfoRes struct {
-	Code int           `json:"code"` // 状态码：200成功，500失败，400参数错误
-	Msg  string        `json:"msg"`  // 提示信息：成功/失败原因
-	Data *UserInfoData `json:"data"` // 用户信息
+// ------------------------------ 请求 DTO（入参） ------------------------------
+type UserRegisterReq struct {
+	NickName string `json:"nick_name" binding:"required,min=1,max=16"`
+	Password string `json:"password" binding:"required,min=6,max=20"`
 }
 
 type UserLoginReq struct {
-	NickName string `json:"nick_name" binding:"required,min=1,max=16"` // 昵称：必填，2-16位
-	Password string `json:"password" binding:"required,min=6,max=20"`  // 密码：必填，至少6位
+	NickName string `json:"nick_name" binding:"required,min=1,max=16"`
+	Password string `json:"password" binding:"required,min=6,max=20"`
 }
 
-// UserRegisterReq 注册请求DTO：前端必须传这些参数，带Gin自动校验规则
-type UserRegisterReq struct {
-	NickName string `json:"nick_name" binding:"required,min=1,max=16"` // 昵称：必填，2-16位
-	Password string `json:"password" binding:"required,min=6,max=20"`  // 密码：必填，至少6位
-}
-
-// UserRegisterRes 注册响应DTO：后端固定返回这个格式给前端
-type UserRegisterRes struct {
-	Code int    `json:"code"` // 状态码：200成功，500失败，400参数错误
-	Msg  string `json:"msg"`  // 提示信息：成功/失败原因
-}
-
-// 仅定义前端需要的字段，无敏感信息、无领域层依赖
-type UserInfoData struct {
-	ID          uint64     `json:"id"`            // 用户ID
-	NickName    string     `json:"nick_name"`     // 昵称
-	Avatar      string     `json:"avatar"`        // 头像
-	Status      int        `json:"status"`        // 用户状态（仅返回前端需要的字段）
-	Gender      int        `json:"gender"`        // 性别
-	Signature   string     `json:"signature"`     // 个性签名
-	Email       string     `json:"email"`         // 邮箱
-	CreateAt    time.Time  `json:"create_at"`     // 创建时间
-	UpdateAt    time.Time  `json:"update_at"`     // 更新时间
-	LastLoginAt *time.Time `json:"last_login_at"` // 最后登录时间
-
-}
-
-// UserFindInfoReq 查询用户信息请求DTO：前端必须传这些参数，带Gin自动校验规则
-type UserFindInfoReq struct {
-	NickName string `form:"nick_name" query:"nick_name" binding:"required,min=1,max=16"`
-}
-type UserFindInfoRes struct {
-	Code int           `json:"code"` // 状态码：200成功，500失败，400参数错误
-	Msg  string        `json:"msg"`  // 提示信息：成功/失败原因
-	Data *UserInfoData `json:"data"` // 用户信息
+type UserUpdatePWDReq struct {
+	OldPassword string `json:"old_password" binding:"required,min=6,max=20"`
+	NewPassword string `json:"new_password" binding:"required,min=6,max=20"`
 }
 
 type UserUpdateInfoReq struct {
-	ID        uint64 `json:"-" binding:"-"` // 用户ID
-	NickName  string `json:"nick_name"`     // 昵称
-	Avatar    string `json:"avatar" `       // 头像
-	Gender    int    `json:"gender"`        // 性别
-	Signature string `json:"signature"`     // 个性签名
-	Email     string `json:"email"`         // 邮箱
+	NickName  string `json:"nick_name"`
+	Avatar    string `json:"avatar"`
+	Gender    int    `json:"gender"`
+	Signature string `json:"signature"`
+	Email     string `json:"email"`
 }
 
-type UserUpdateInfoRes struct {
-	Code int    `json:"code"` // 状态码：200成功，500失败，400参数错误
-	Msg  string `json:"msg"`  // 提示信息：成功/失败原因
+type UserFindInfoReq struct {
+	NickName string `form:"nick_name" query:"nick_name" binding:"required,min=1,max=16"`
+}
+
+// ------------------------------ 响应 DTO（出参） ------------------------------
+
+// UserInfoData 标准用户详情（所有接口共用）
+type UserInfoData struct {
+	ID          uint64     `json:"id"`
+	NickName    string     `json:"nick_name"`
+	Avatar      string     `json:"avatar"`
+	Status      int        `json:"status"`
+	Gender      int        `json:"gender"`
+	Signature   string     `json:"signature"`
+	Email       string     `json:"email"`
+	CreateAt    time.Time  `json:"create_at"`
+	UpdateAt    time.Time  `json:"update_at"`
+	LastLoginAt *time.Time `json:"last_login_at"`
+}
+
+// LoginUserDTO 专门给 JWT 生成 Token 使用
+type LoginUserDTO struct {
+	UserID      uint64     `json:"user_id"`
+	NickName    string     `json:"nick_name"`
+	Status      int        `json:"status"`
+	LastLoginAt *time.Time `json:"last_login_at,omitempty"`
+}
+
+// ------------------------------ 通用统一响应（全局复用，删除冗余结构体） ------------------------------
+type BaseResponse struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+}
+
+// DataResponse 带 data 的通用返回
+type DataResponse struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data any    `json:"data,omitempty"`
 }
