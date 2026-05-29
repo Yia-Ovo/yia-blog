@@ -69,19 +69,19 @@ func ArticleDOToModel(d *do.ArticleDO) *model.ArticleModel {
 }
 
 // ArticleModelListToDO 模型列表转DO列表
-func ArticleModelListToDOList(list *[]model.ArticleModel) []do.ArticleDO {
-	res := make([]do.ArticleDO, 0, len(*list))
-	for _, v := range *list {
-		res = append(res, *ArticleModelToDO(&v))
+func ArticleModelListToDOList(list []*model.ArticleModel) []do.ArticleDO {
+	res := make([]do.ArticleDO, 0, len(list))
+	for _, v := range list {
+		res = append(res, *ArticleModelToDO(v))
 	}
 	return res
 }
 
 // ArticleDOListToModelList DO列表转模型列表
-func ArticleDOListToModelList(list *[]do.ArticleDO) []model.ArticleModel {
-	res := make([]model.ArticleModel, 0, len(*list))
+func ArticleDOListToModelList(list *[]do.ArticleDO) []*model.ArticleModel {
+	res := make([]*model.ArticleModel, 0, len(*list))
 	for _, v := range *list {
-		res = append(res, *ArticleDOToModel(&v))
+		res = append(res, ArticleDOToModel(&v))
 	}
 	return res
 }

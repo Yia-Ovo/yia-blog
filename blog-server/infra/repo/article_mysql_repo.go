@@ -2,17 +2,15 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-05-07 02:04:38
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-07 05:23:46
+ * @LastEditTime: 2026-05-29 16:52:21
  * @FilePath: \yia-blog\blog-server\infra\repo\article_mysql_repo.go
- * @Description:
- *
+ * @Description: 文章 MySQL 仓储层
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
  */
 
 package repo
 
 import (
-	"blog-server/common/utils/convert"
 	"blog-server/common/utils/logger"
 	"blog-server/domain/do"
 	"blog-server/infra/model"
@@ -32,7 +30,6 @@ func NewArticleMysqlRepo(db *gorm.DB) *articleMysqlRepo {
 
 // --------------------- 1. 创建文章 ---------------------
 func (a *articleMysqlRepo) CreateArticle(ctx context.Context, article *model.ArticleModel) error {
-
 	if err := a.db.WithContext(ctx).Create(article).Error; err != nil {
 		logger.Error("CreateArticle failed", zap.String("title", article.Title), zap.Error(err))
 		return err
@@ -41,16 +38,14 @@ func (a *articleMysqlRepo) CreateArticle(ctx context.Context, article *model.Art
 }
 
 // --------------------- 2. 文章分页查询 ---------------------
-func (a *articleMysqlRepo) ListArticleByPage(ctx context.Context, query *do.ArticleQuery) ([]do.ArticleDO, int64, error) {
-
+func (a *articleMysqlRepo) ListArticleByPage(ctx context.Context, query *do.ArticleQuery) ([]*model.ArticleModel, int64, error) {
 	var (
-		list   []model.ArticleModel
-		total  int64
-		db     = a.db.WithContext(ctx).Model(&model.ArticleModel{})
-		listDO []do.ArticleDO
+		list  []*model.ArticleModel
+		total int64
+		db    = a.db.WithContext(ctx).Model(&model.ArticleModel{})
 	)
 
-	// 1. 拼接查询条件（动态SQL）
+	// 1. 拼接查询条件
 	if query.Title != "" {
 		db = db.Where("title LIKE ?", "%"+query.Title+"%")
 	}
@@ -70,7 +65,7 @@ func (a *articleMysqlRepo) ListArticleByPage(ctx context.Context, query *do.Arti
 		return nil, 0, err
 	}
 	if total == 0 {
-		return listDO, 0, nil
+		return []*model.ArticleModel{}, 0, nil
 	}
 
 	// 3. 分页查询
@@ -80,18 +75,17 @@ func (a *articleMysqlRepo) ListArticleByPage(ctx context.Context, query *do.Arti
 		Limit(query.PageSize).
 		Offset(offset).
 		Find(&list).Error
+
 	if err != nil {
 		logger.Error("ListArticleByPage find failed", zap.Any("query", query), zap.Error(err))
 		return nil, 0, err
 	}
 
-	listDO = convert.ArticleModelListToDOList(&list)
-	return listDO, total, nil
+	return list, total, nil
 }
 
 // --------------------- 3. 根据ID查询文章 ---------------------
-func (a *articleMysqlRepo) GetArticleById(ctx context.Context, id uint64) (*do.ArticleDO, error) {
-
+func (a *articleMysqlRepo) GetArticleById(ctx context.Context, id uint64) (*model.ArticleModel, error) {
 	var article model.ArticleModel
 	err := a.db.WithContext(ctx).First(&article, id).Error
 
@@ -104,13 +98,11 @@ func (a *articleMysqlRepo) GetArticleById(ctx context.Context, id uint64) (*do.A
 		return nil, err
 	}
 
-	articleDO := convert.ArticleModelToDO(&article)
-	return articleDO, nil
+	return &article, nil
 }
 
 // --------------------- 4. 删除文章（软删除） ---------------------
 func (a *articleMysqlRepo) DeleteArticle(ctx context.Context, id uint64) error {
-
 	err := a.db.WithContext(ctx).Delete(&model.ArticleModel{}, id).Error
 
 	if err != nil {
@@ -125,7 +117,6 @@ func (a *articleMysqlRepo) DeleteArticle(ctx context.Context, id uint64) error {
 
 // --------------------- 5. 更新文章 ---------------------
 func (a *articleMysqlRepo) UpdateArticle(ctx context.Context, article *model.ArticleModel) error {
-
 	err := a.db.WithContext(ctx).Save(article).Error
 
 	if err != nil {

@@ -1,3 +1,12 @@
+/*
+ * @Author: Yia 1372594487@qq.com
+ * @Date: 2026-05-29 17:00:00
+ * @LastEditors: Yia 1372594487@qq.com
+ * @LastEditTime: 2026-05-29 16:55:51
+ * @FilePath: \yia-blog\blog-server\app\service\article_app_service.go
+ * @Description: 文章应用服务 - 业务编排、缓存处理、流程调度
+ * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
+ */
 package service
 
 import (
@@ -12,31 +21,31 @@ import (
 	"go.uber.org/zap"
 )
 
+// ArticleAppService 应用服务：仅做流程编排 + 缓存处理
 type ArticleAppService struct {
-	articleDomainSrv *service.ArticleDomainService
+	articleDomainService *service.ArticleDomainService // 领域服务（纯业务）
+	articleRedisRepo     repo.ArticleRedisRepo         // 缓存仓储（应用层编排）
 }
 
-// NewArticleAppService 创建文章应用服务实例（IOC注入）
+// NewArticleAppService 构造函数：依赖外部注入，无强耦合
 func NewArticleAppService(
-	articleMysqlRepo repo.ArticleMysqlRepo,
-	articleRedisRepo repo.ArticleRedisRepo,
+	domainService *service.ArticleDomainService,
+	redisRepo repo.ArticleRedisRepo,
 ) *ArticleAppService {
-	// 初始化领域服务
-	articleDomainSrv := service.NewArticleDomainService(articleMysqlRepo, articleRedisRepo)
-
 	return &ArticleAppService{
-		articleDomainSrv: articleDomainSrv,
+		articleDomainService: domainService,
+		articleRedisRepo:     redisRepo,
 	}
 }
 
-// CreateArticle 创建文章
+// CreateArticle 创建文章：调用领域服务
 func (s *ArticleAppService) CreateArticle(ctx context.Context, req *dto.CreateArticleReq) error {
-	// 1. 应用层基础参数校验
 	if req == nil {
-		return common.ParamErr.WithMsg("创建文章请求参数不能为空")
+		logger.Warn("创建文章参数为空")
+		return common.ParamErr
 	}
 
-	// 2. DTO 转换为 DO（领域对象）
+	// DTO 转换为领域对象
 	articleDO := &do.ArticleDO{
 		AdminID:       req.AdminID,
 		Title:         req.Title,
@@ -52,22 +61,24 @@ func (s *ArticleAppService) CreateArticle(ctx context.Context, req *dto.CreateAr
 		PublishAt:     req.PublishAt,
 	}
 
-	// 3. 调用领域服务（核心逻辑交给领域层）
-	err := s.articleDomainSrv.CreateArticle(ctx, articleDO)
+	// 1. 执行核心业务逻辑
+	err := s.articleDomainService.CreateArticle(ctx, articleDO)
 	if err != nil {
-		logger.Error("创建文章应用服务失败",
-			zap.String("article_title", req.Title),
-			zap.Error(err),
-		)
+		logger.Error("创建文章失败", zap.String("title", req.Title), zap.Error(err))
 		return err
 	}
 
+	logger.Info("创建文章成功", zap.String("title", req.Title))
 	return nil
 }
 
 // ListArticleByPage 分页查询文章
 func (s *ArticleAppService) ListArticleByPage(ctx context.Context, req *dto.ArticlePageQuery) (*dto.PageResult, error) {
-	// 1. DTO 转换为领域查询对象
+	if req == nil {
+		logger.Warn("文章分页查询参数为空")
+		return nil, common.ParamErr
+	}
+
 	query := &do.ArticleQuery{
 		PageNum:    req.PageNum,
 		PageSize:   req.PageSize,
@@ -77,18 +88,14 @@ func (s *ArticleAppService) ListArticleByPage(ctx context.Context, req *dto.Arti
 		IsTop:      req.IsTop,
 	}
 
-	// 2. 调用领域服务
-	articleDOList, total, err := s.articleDomainSrv.ListArticleByPage(ctx, query)
+	// 调用领域服务
+	articleDOList, total, err := s.articleDomainService.ListArticleByPage(ctx, query)
 	if err != nil {
-		logger.Error("分页查询文章应用服务失败",
-			zap.Int("page_num", req.PageNum),
-			zap.Int("page_size", req.PageSize),
-			zap.Error(err),
-		)
+		logger.Error("分页查询文章失败", zap.Error(err))
 		return nil, err
 	}
 
-	// 3. DO 列表转换为响应数据
+	// 组装返回
 	var respList []map[string]interface{}
 	for _, articleDO := range articleDOList {
 		respList = append(respList, map[string]interface{}{
@@ -109,33 +116,30 @@ func (s *ArticleAppService) ListArticleByPage(ctx context.Context, req *dto.Arti
 		})
 	}
 
-	// 4. 封装通用分页返回结果
 	pages := (total + int64(req.PageSize) - 1) / int64(req.PageSize)
-	result := &dto.PageResult{
+	return &dto.PageResult{
 		Total:    total,
 		Pages:    int(pages),
 		List:     respList,
 		PageNum:  req.PageNum,
 		PageSize: req.PageSize,
-	}
-
-	return result, nil
+	}, nil
 }
 
 // GetArticleById 根据ID查询文章详情
 func (s *ArticleAppService) GetArticleById(ctx context.Context, id uint64) (map[string]interface{}, error) {
-	// 1. 调用领域服务
-	articleDO, err := s.articleDomainSrv.GetArticleById(ctx, id)
+	if id <= 0 {
+		logger.Warn("文章ID非法")
+		return nil, common.ParamErr
+	}
+
+	articleDO, err := s.articleDomainService.GetArticleById(ctx, id)
 	if err != nil {
-		logger.Error("根据ID查询文章应用服务失败",
-			zap.Uint64("article_id", id),
-			zap.Error(err),
-		)
+		logger.Error("查询文章详情失败", zap.Uint64("id", id), zap.Error(err))
 		return nil, err
 	}
 
-	// 2. 组装返回数据（对齐分类返回格式）
-	resp := map[string]interface{}{
+	return map[string]interface{}{
 		"id":             articleDO.ID,
 		"admin_id":       articleDO.AdminID,
 		"title":          articleDO.Title,
@@ -154,19 +158,16 @@ func (s *ArticleAppService) GetArticleById(ctx context.Context, id uint64) (map[
 		"publish_at":     articleDO.PublishAt,
 		"create_at":      articleDO.CreateAt,
 		"update_at":      articleDO.UpdateAt,
-	}
-
-	return resp, nil
+	}, nil
 }
 
-// UpdateArticle 更新文章
+// UpdateArticle 更新文章：调用领域服务
 func (s *ArticleAppService) UpdateArticle(ctx context.Context, req *dto.UpdateArticleReq) error {
-	// 1. 应用层参数校验
 	if req.ID <= 0 {
-		return common.ParamErr.WithMsg("文章ID不合法")
+		logger.Warn("文章ID非法")
+		return common.ParamErr
 	}
 
-	// 2. 组装 DO
 	articleDO := &do.ArticleDO{
 		ID:            req.ID,
 		Title:         req.Title,
@@ -182,30 +183,29 @@ func (s *ArticleAppService) UpdateArticle(ctx context.Context, req *dto.UpdateAr
 		PublishAt:     req.PublishAt,
 	}
 
-	// 3. 调用领域服务
-	err := s.articleDomainSrv.UpdateArticle(ctx, articleDO)
+	err := s.articleDomainService.UpdateArticle(ctx, articleDO)
 	if err != nil {
-		logger.Error("更新文章应用服务失败",
-			zap.Uint64("article_id", req.ID),
-			zap.Error(err),
-		)
+		logger.Error("更新文章失败", zap.Uint64("id", req.ID), zap.Error(err))
 		return err
 	}
 
+	logger.Info("更新文章成功", zap.Uint64("id", req.ID))
 	return nil
 }
 
-// DeleteArticle 删除文章
+// DeleteArticle 删除文章：调用领域服务
 func (s *ArticleAppService) DeleteArticle(ctx context.Context, id uint64) error {
-	// 1. 调用领域服务
-	err := s.articleDomainSrv.DeleteArticle(ctx, id)
+	if id <= 0 {
+		logger.Warn("文章ID非法")
+		return common.ParamErr
+	}
+
+	err := s.articleDomainService.DeleteArticle(ctx, id)
 	if err != nil {
-		logger.Error("删除文章应用服务失败",
-			zap.Uint64("article_id", id),
-			zap.Error(err),
-		)
+		logger.Error("删除文章失败", zap.Uint64("id", id), zap.Error(err))
 		return err
 	}
 
+	logger.Info("删除文章成功", zap.Uint64("id", id))
 	return nil
 }

@@ -21,9 +21,9 @@ type ArticleMysqlRepo interface {
 	// CreateArticle 创建文章
 	CreateArticle(ctx context.Context, articleModel *model.ArticleModel) error
 	// ListArticleByPage 文章分页查询
-	ListArticleByPage(ctx context.Context, query *do.ArticleQuery) ([]do.ArticleDO, int64, error)
+	ListArticleByPage(ctx context.Context, query *do.ArticleQuery) ([]*model.ArticleModel, int64, error)
 	// GetArticleById 根据ID查询文章
-	GetArticleById(ctx context.Context, id uint64) (*do.ArticleDO, error)
+	GetArticleById(ctx context.Context, id uint64) (*model.ArticleModel, error)
 	// DeleteArticle 删除文章（软删除）
 	DeleteArticle(ctx context.Context, id uint64) error
 	// UpdateArticle 更新文章
