@@ -2,19 +2,27 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-26 00:10:51
+ * @LastEditTime: 2026-05-29 14:23:14
  * @FilePath: \yia-blog\blog-server\main.go
  * @Description:
  *
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
  */
-
+/*
+ * @Author: Yia 1372594487@qq.com
+ * @Date: 2026-01-21 11:32:32
+ * @LastEditors: Yia 1372594487@qq.com
+ * @LastEditTime: 2026-05-27 14:47:41
+ * @FilePath: \yia-blog\blog-server\main.go
+ * @Description:
+ *
+ * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
+ */
 package main
 
 import (
 	"blog-server/api/router"
 	"blog-server/app/cmd/server"
-	"blog-server/app/service"
 	"blog-server/common/db/gorm"
 	"blog-server/common/db/redis"
 	"blog-server/common/utils/jwt"
@@ -24,51 +32,24 @@ import (
 )
 
 func main() {
-	// 初始化配置
+	// 1. 基础初始化
 	conf := config.InitConfig()
-	// 初始化JWT
 	jwt.Init(conf)
-	// 初始化日志
 	logger.InitLogger(conf)
-	// 确保日志文件被写入
 	defer logger.Sync()
-	// 初始化数据库
-	gormDB := gorm.InitGorm(conf)
-	//初始化redis
-	resDB := redis.InitRedis(conf)
-	// 初始化ioc容器
-	ioc.Init(gormDB, resDB, conf)
-	// 初始化用户仓库
-	userAppSrv := service.NewUserAppService(
-		ioc.GetUserMysqlRepo(), // 传入领域接口
-		ioc.GetUserRedisRepo(), // 传入领域接口
-		conf,
-	)
 
-	// 初始化管理员应用服务
-	adminAppSrv := service.NewAdminAppService(
-		ioc.GetAdminMysqlRepo(),
-		ioc.GetAdminRedisRepo(),
-		ioc.Conf,
-	)
-	// 初始化分页仓库
-	categoryAppSrv := service.NewCategoryAppService(
-		ioc.GetCategoryMysqlRepo(), // 传入领域接口
-		ioc.GetCategoryRedisRepo(), // 传入领域接口
-	)
-	// 初始化文章应用服务
-	articleAppSrv := service.NewArticleAppService(
-		ioc.GetArticleMysqlRepo(), // 传入领域接口
-		ioc.GetArticleRedisRepo(), // 传入领域接口
-	)
-	// 初始化评论应用服务
-	commentAppSrv := service.NewCommentAppService(
-		ioc.GetCommentDomainService(),
-		ioc.GetCommentRedisRepo(),
-	)
-	// 初始化路由
-	r := router.NewRouter(conf, userAppSrv, categoryAppSrv, articleAppSrv, adminAppSrv, commentAppSrv, func() error { return nil })
-	// 运行服务器
+	// 2. 数据存储
+	db := gorm.InitGorm(conf)
+	rdb := redis.InitRedis(conf)
+
+	// 3. 初始化 IOC 容器（自动注入所有依赖）
+	c := ioc.NewContainer(db, rdb, conf)
+	ioc.AppContainer = c // 赋值给全局访问点
+
+	// 4. 初始化路由（只传容器）
+	r := router.NewRouter(conf, c, func() error { return nil })
+
+	// 5. 启动服务
 	app := server.NewApp(r)
 	app.Run()
 }

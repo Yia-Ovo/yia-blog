@@ -2,9 +2,9 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-16 09:13:28
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-26 00:25:53
+ * @LastEditTime: 2026-05-29 16:00:41
  * @FilePath: \yia-blog\blog-server\ioc\container.go
- * @Description:IOC容器
+ * @Description:
  *
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
  */
@@ -21,83 +21,83 @@ import (
 	"gorm.io/gorm"
 )
 
-// 全局单例：托管所有仓储实现
-var (
-	// 基础全局依赖
-	Conf  *config.GlobalConfig
-	DB    *gorm.DB
-	Redis *redis.Client
+var AppContainer *Container
 
-	// ===================== 用户端仓储 =====================
-	UserMysqlRepo domainRepo.UserMysqlRepo // MySQL接口
-	UserRedisRepo domainRepo.UserRedisRepo // Redis接口
-	// ===================== 管理员端仓储 =====================
-	AdminMysqlRepo domainRepo.AdminMysqlRepo // MySQL接口
-	AdminRedisRepo domainRepo.AdminRedisRepo // 管理员Redis接口
+// Container 真正的DI容器，所有依赖放在结构体里
+type Container struct {
+	// 基础
+	Config *config.GlobalConfig
+	DB     *gorm.DB
+	Redis  *redis.Client
 
-	// ===================== 分类端仓储 =====================
-	CategoryMysqlRepo domainRepo.CategoryMysqlRepo // MySQL接口
-	CategoryRedisRepo domainRepo.CategoryRedisRepo // Redis接口
+	// Repo 仓储
+	UserRepo      domainRepo.UserMysqlRepo
+	UserRedis     domainRepo.UserRedisRepo
+	AdminRepo     domainRepo.AdminMysqlRepo
+	AdminRedis    domainRepo.AdminRedisRepo
+	CategoryRepo  domainRepo.CategoryMysqlRepo
+	CategoryRedis domainRepo.CategoryRedisRepo
+	ArticleRepo   domainRepo.ArticleMysqlRepo
+	ArticleRedis  domainRepo.ArticleRedisRepo
+	CommentRepo   domainRepo.CommentMysqlRepo
+	CommentRedis  domainRepo.CommentRedisRepo
 
-	// ===================== 文章端仓储 =====================
-	ArticleMysqlRepo domainRepo.ArticleMysqlRepo // MySQL接口
-	ArticleRedisRepo domainRepo.ArticleRedisRepo // Redis接口
+	// Domain 领域服务
+	CommentDomain *domainSrv.CommentDomainService
+	// Admain 领域服务
+	AdminDomain *domainSrv.AdminDomainService
+	// User 领域服务
+	UserDomain *domainSrv.UserDomainService
+	// Category 领域服务
+	CategoryDomain *domainSrv.CategoryDomainService
+	// Article 领域服务
+	ArticleDomain *domainSrv.ArticleDomainService
 
-	// ===================== 评论端仓储 =====================
-	CommentMysqlRepo domainRepo.CommentMysqlRepo // MySQL接口
-	CommentRedisRepo domainRepo.CommentRedisRepo // Redis接口
-
-	CommentDomainService *domainSrv.CommentDomainService // 评论领域服务
-	CommentAppService    *appSrv.CommentAppService       // 评论应用服务
-)
-
-// Init 初始化IOC：绑定接口与实现
-func Init(db *gorm.DB, rdb *redis.Client, conf *config.GlobalConfig) {
-	// 1. 赋值基础依赖
-	DB = db
-	Redis = rdb
-	Conf = conf
-
-	// 2. 初始化基础设施实现
-	//user
-	UserMysqlRepo = infraRepo.NewUserMysqlRepo(db)
-	UserRedisRepo = infraRepo.NewUserRedisRepo(rdb, conf)
-	// admin
-	AdminMysqlRepo = infraRepo.NewAdminMysqlRepo(db)
-	AdminRedisRepo = infraRepo.NewAdminRedisRepo(rdb, conf)
-
-	// category
-	CategoryMysqlRepo = infraRepo.NewCategoryMysqlRepo(db)
-	CategoryRedisRepo = infraRepo.NewCategoryRedisRepo(rdb, conf)
-
-	// article
-	ArticleMysqlRepo = infraRepo.NewArticleMysqlRepo(db)
-	ArticleRedisRepo = infraRepo.NewArticleRedisRepo(rdb, conf)
-	// comment
-	CommentMysqlRepo = infraRepo.NewCommentMysqlRepo(db)
-	CommentRedisRepo = infraRepo.NewCommentRedisRepo(rdb, conf)
-
-	// 1. 初始化评论领域服务（仅依赖 MySQL 仓储，纯净DDD）
-	CommentDomainService = domainSrv.NewCommentDomainService(CommentMysqlRepo)
-	// 2. 初始化评论应用服务（依赖 领域服务 + Redis 仓储）
-	CommentAppService = appSrv.NewCommentAppService(CommentDomainService, CommentRedisRepo)
+	// App 应用服务
+	UserApp     *appSrv.UserAppService
+	AdminApp    *appSrv.AdminAppService
+	CategoryApp *appSrv.CategoryAppService
+	ArticleApp  *appSrv.ArticleAppService
+	CommentApp  *appSrv.CommentAppService
 }
 
-// ===================== 对外获取方法 =====================
-func GetUserMysqlRepo() domainRepo.UserMysqlRepo { return UserMysqlRepo }
-func GetUserRedisRepo() domainRepo.UserRedisRepo { return UserRedisRepo }
+// NewContainer 容器构造函数：自动依赖注入（DDD 标准）
+func NewContainer(
+	db *gorm.DB,
+	rdb *redis.Client,
+	conf *config.GlobalConfig,
+) *Container {
+	c := &Container{
+		Config: conf,
+		DB:     db,
+		Redis:  rdb,
+	}
 
-func GetCategoryMysqlRepo() domainRepo.CategoryMysqlRepo { return CategoryMysqlRepo }
-func GetCategoryRedisRepo() domainRepo.CategoryRedisRepo { return CategoryRedisRepo }
+	// ========== 初始化仓储 ==========
+	c.UserRepo = infraRepo.NewUserMysqlRepo(db)
+	c.UserRedis = infraRepo.NewUserRedisRepo(rdb, conf)
 
-func GetAdminMysqlRepo() domainRepo.AdminMysqlRepo { return AdminMysqlRepo }
-func GetAdminRedisRepo() domainRepo.AdminRedisRepo { return AdminRedisRepo }
+	c.AdminRepo = infraRepo.NewAdminMysqlRepo(db)
+	c.AdminRedis = infraRepo.NewAdminRedisRepo(rdb, conf)
 
-func GetArticleMysqlRepo() domainRepo.ArticleMysqlRepo { return ArticleMysqlRepo }
-func GetArticleRedisRepo() domainRepo.ArticleRedisRepo { return ArticleRedisRepo }
+	c.CategoryRepo = infraRepo.NewCategoryMysqlRepo(db)
+	c.CategoryRedis = infraRepo.NewCategoryRedisRepo(rdb, conf)
 
-func GetCommentMysqlRepo() domainRepo.CommentMysqlRepo { return CommentMysqlRepo }
-func GetCommentRedisRepo() domainRepo.CommentRedisRepo { return CommentRedisRepo }
+	c.ArticleRepo = infraRepo.NewArticleMysqlRepo(db)
+	c.ArticleRedis = infraRepo.NewArticleRedisRepo(rdb, conf)
 
-func GetCommentDomainService() *domainSrv.CommentDomainService { return CommentDomainService }
-func GetCommentAppService() *appSrv.CommentAppService          { return CommentAppService }
+	c.CommentRepo = infraRepo.NewCommentMysqlRepo(db)
+	c.CommentRedis = infraRepo.NewCommentRedisRepo(rdb, conf)
+
+	// ========== 初始化领域服务 ==========
+	c.CommentDomain = domainSrv.NewCommentDomainService(c.CommentRepo)
+
+	// ========== 初始化应用服务 ==========
+	c.UserApp = appSrv.NewUserAppService(c.UserDomain, c.UserRedis)
+	c.AdminApp = appSrv.NewAdminAppService(c.AdminDomain, c.AdminRedis)
+	c.CategoryApp = appSrv.NewCategoryAppService(c.CategoryDomain, c.CategoryRedis)
+	c.ArticleApp = appSrv.NewArticleAppService(c.ArticleDomain, c.ArticleRedis)
+	c.CommentApp = appSrv.NewCommentAppService(c.CommentDomain, c.CommentRedis)
+
+	return c
+}

@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-26 14:40:39
+ * @LastEditTime: 2026-05-29 14:58:01
  * @FilePath: \yia-blog\blog-server\api\router\router.go
  * @Description:
  *
@@ -12,47 +12,42 @@ package router
 
 import (
 	"blog-server/api/handler"
-	"blog-server/app/service"
 	"blog-server/config"
+	"blog-server/ioc"
 	"blog-server/middleware"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
+// Router 只依赖容器，不再依赖一堆服务
 type Router struct {
 	FullPPROF bool
 	rootPath  string
 	conf      *config.GlobalConfig
-	checkFunc func() error // 健康检查函数
-	// 注入用户应用服务
-	userAppSrv     *service.UserAppService
-	categoryAppSrv *service.CategoryAppService
-	articleAppSrv  *service.ArticleAppService
-	adminAppSrv    *service.AdminAppService
-	commentAppSrv  *service.CommentAppService
+	c         *ioc.Container // 唯一依赖：容器
+	checkFunc func() error
 }
 
-func NewRouter(conf *config.GlobalConfig, userAppSrv *service.UserAppService, categoryAppSrv *service.CategoryAppService, articleAppSrv *service.ArticleAppService, adminAppService *service.AdminAppService, commentAppService *service.CommentAppService, checkFunc func() error) *Router {
+// NewRouter 构造函数极简
+func NewRouter(
+	conf *config.GlobalConfig,
+	c *ioc.Container,
+	checkFunc func() error,
+) *Router {
 	return &Router{
-		FullPPROF:      conf.Server.EnablePprof, // 是否开启pprof
-		rootPath:       "/api/blog",
-		conf:           conf,
-		checkFunc:      checkFunc,
-		userAppSrv:     userAppSrv,
-		categoryAppSrv: categoryAppSrv,
-		articleAppSrv:  articleAppSrv,
-		adminAppSrv:    adminAppService,
+		FullPPROF: conf.Server.EnablePprof,
+		rootPath:  "/api/blog",
+		conf:      conf,
+		c:         c,
+		checkFunc: checkFunc,
 	}
 }
 
-// 健康检查处理函数,用于实现服务器的健康检查端点。客户端可以请求这个端点来检查服务器是否正常运行。
-func (r *Router) checkServer() func(*gin.Context) {
+func (r *Router) checkServer() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if err := r.checkFunc(); err != nil {
-			ctx.JSON(500, gin.H{
-				"message": err.Error(),
-			})
+			ctx.JSON(500, gin.H{"message": err.Error()})
 			return
 		}
 		ctx.JSON(http.StatusOK, gin.H{})
@@ -63,125 +58,99 @@ func (r *Router) Register(engine *gin.Engine) {
 	if r.conf.Server.EnablePprof {
 		SetupPprof(engine, "/debug/pprof")
 	}
-	engine.Any("/ping", r.checkServer()) // 健康检查
+	engine.Any("/ping", r.checkServer())
 
 	root := engine.Group(r.rootPath)
-	// 注册路由
 	r.route(root)
 }
 
 func (r *Router) route(rg *gin.RouterGroup) {
-	// 版本化路由组：/api/blog/v1
 	v1 := rg.Group("/v1")
 	{
-		r.userRouter(v1) // 新增：注册用户路由
+		r.userRouter(v1)
+		r.adminRouter(v1)
+		r.categoryRouter(v1)
+		r.articleRouter(v1)
+		r.commentRouter(v1)
 	}
 }
 
+// ===================== 路由内部从容器取服务 =====================
 func (r *Router) userRouter(v1 *gin.RouterGroup) {
-	// 用户子路由组：/api/blog/v1/user
-	userGroup := v1.Group("/user")
-	// 创建用户处理函数实例
-	userHandler := handler.NewUserHandler(r.userAppSrv)
-	// 绑定POST请求：/api/blog/v1/user/register → userHandler.Register
-	userGroup.POST("/register", userHandler.Register)
-	// 绑定POST请求：/api/blog/v1/user/findUserByNickname → userHandler.FindUserByNickname
-	userGroup.GET("/findUserByNickname", userHandler.FindUserByNickname)
-	userGroup.GET("/updateUserInfo", userHandler.UpdateUserInfo)
-	userGroup.POST("/login", userHandler.Login)
+	g := v1.Group("/user")
+	h := handler.NewUserHandler(r.c.UserApp)
 
-	userGroup.Use(middleware.DefaultUserAuth()) // 使用中间件进行用户认证
+	g.POST("/register", h.Register)
+	g.GET("/findUserByNickname", h.FindUserByNickname)
+	g.POST("/login", h.Login)
+
+	g.Use(middleware.DefaultUserAuth())
 	{
-		userGroup.GET("/getInfo", userHandler.GetInfo)      // GetInfo接口
-		userGroup.POST("/updatePWD", userHandler.UpdatePWD) // UpdatePWD接口
-		userGroup.POST("/logout", userHandler.Logout)       // UpdatePWD接口
+		g.GET("/getInfo", h.GetInfo)
+		g.POST("/updatePWD", h.UpdatePWD)
+		g.POST("/logout", h.Logout)
+		g.POST("/updateUserInfo", h.UpdateUserInfo) // 改成 POST + 登录后
 	}
-	// {
-	// 直接把中间件写在路由里，确保和Handler共用同一个ctx
-	// userGroup.GET("/getInfo", middleware.DefaultUserAuth(), userHandler.GetInfo)
-	// }
 }
 
-// ---------------- 管理员路由 ----------------
 func (r *Router) adminRouter(v1 *gin.RouterGroup) {
-	// 管理员路由组：/api/blog/v1/admin
-	adminGroup := v1.Group("/admin")
-	// 创建管理员处理函数实例
-	adminHandler := handler.NewAdminHandler(r.adminAppSrv)
+	g := v1.Group("/admin")
+	h := handler.NewAdminHandler(r.c.AdminApp)
 
-	// 公开接口：无需管理员认证（仅登录接口）
-	adminGroup.POST("/login", adminHandler.Login)
-
-	// 私有接口：需要管理员登录认证（使用AdminAuth中间件）
-	adminGroup.Use(middleware.DefaultAdminAuth())
+	g.POST("/login", h.Login)
+	g.Use(middleware.DefaultAdminAuth())
 	{
-		adminGroup.GET("/getInfo", adminHandler.GetInfo)                  // 获取管理员信息
-		adminGroup.POST("/updatePWD", adminHandler.UpdatePWD)             // 修改密码
-		adminGroup.POST("/logout", adminHandler.Logout)                   // 登出
-		adminGroup.POST("/updateAdminInfo", adminHandler.UpdateAdminInfo) // 更新信息
+		g.GET("/getInfo", h.GetInfo)
+		g.POST("/updatePWD", h.UpdatePWD)
+		g.POST("/logout", h.Logout)
+		g.POST("/updateAdminInfo", h.UpdateAdminInfo)
 	}
 }
 
-// ---------------- 分类路由 ----------------
 func (r *Router) categoryRouter(v1 *gin.RouterGroup) {
-	// 分类子路由组：/api/blog/v1/category
-	categoryGroup := v1.Group("/category")
-	// 创建分类处理函数实例
-	categoryHandler := handler.NewCategoryHandler(r.categoryAppSrv)
+	g := v1.Group("/category")
+	h := handler.NewCategoryHandler(r.c.CategoryApp)
 
-	// 公开接口：无需登录认证（和用户模块公开接口写法一致）
-	categoryGroup.GET("/listCategory", categoryHandler.ListCategory)       // 分页查询分类
-	categoryGroup.GET("/getCategoryById", categoryHandler.GetCategoryById) // 根据ID查询分类
+	g.GET("/listCategory", h.ListCategory)
+	g.GET("/getCategoryById", h.GetCategoryById)
 
-	// 私有接口：需要用户登录认证（和用户模块写法完全一致）
-	categoryGroup.Use(middleware.DefaultUserAuth())
+	g.Use(middleware.DefaultUserAuth())
 	{
-		categoryGroup.POST("/createCategory", categoryHandler.CreateCategory) // 创建分类
-		categoryGroup.POST("/updateCategory", categoryHandler.UpdateCategory) // 更新分类
-		categoryGroup.POST("/deleteCategory", categoryHandler.DeleteCategory) // 删除分类
+		g.POST("/createCategory", h.CreateCategory)
+		g.POST("/updateCategory", h.UpdateCategory)
+		g.POST("/deleteCategory", h.DeleteCategory)
 	}
 }
 
-// ---------------- 文章路由  ----------------
 func (r *Router) articleRouter(v1 *gin.RouterGroup) {
-	// 文章子路由组：/api/blog/v1/article
-	articleGroup := v1.Group("/article")
-	// 创建文章处理函数实例
-	articleHandler := handler.NewArticleHandler(r.articleAppSrv)
+	g := v1.Group("/article")
+	h := handler.NewArticleHandler(r.c.ArticleApp)
 
-	// 公开接口：无需登录认证（列表、详情查询）
-	articleGroup.GET("/listArticle", articleHandler.ListArticle)       // 分页查询文章
-	articleGroup.GET("/getArticleById", articleHandler.GetArticleById) // 根据ID查询文章详情
+	g.GET("/listArticle", h.ListArticle)
+	g.GET("/getArticleById", h.GetArticleById)
 
-	// 私有接口：需要用户登录认证（增删改）
-	articleGroup.Use(middleware.DefaultUserAuth())
+	g.Use(middleware.DefaultUserAuth())
 	{
-		articleGroup.POST("/createArticle", articleHandler.CreateArticle) // 创建文章
-		articleGroup.POST("/updateArticle", articleHandler.UpdateArticle) // 更新文章
-		articleGroup.POST("/deleteArticle", articleHandler.DeleteArticle) // 删除文章
+		g.POST("/createArticle", h.CreateArticle)
+		g.POST("/updateArticle", h.UpdateArticle)
+		g.POST("/deleteArticle", h.DeleteArticle)
 	}
 }
 
-// ---------------- 评论路由 ----------------
 func (r *Router) commentRouter(v1 *gin.RouterGroup) {
-	// 评论子路由组：/api/blog/v1/comment
-	commentGroup := v1.Group("/comment")
-	// 创建评论处理器
-	commentHandler := handler.NewCommentHandler(r.commentAppSrv)
+	g := v1.Group("/comment")
+	h := handler.NewCommentHandler(r.c.CommentApp)
 
-	// 公开接口：无需登录认证（列表、详情、评论数）
-	commentGroup.GET("/listComment", commentHandler.ListCommentByPage)                 // 分页查询评论
-	commentGroup.GET("/getCommentById", commentHandler.GetCommentByID)                 // 根据ID查询评论
-	commentGroup.GET("/getArticleCommentCount", commentHandler.GetArticleCommentCount) // 获取文章评论数
+	g.GET("/listComment", h.ListCommentByPage)
+	g.GET("/getCommentById", h.GetCommentByID)
+	g.GET("/getArticleCommentCount", h.GetArticleCommentCount)
 
-	// 私有接口：需要用户登录认证（增删改、点赞）
-	commentGroup.Use(middleware.DefaultUserAuth())
+	g.Use(middleware.DefaultUserAuth())
 	{
-		// 🔥 完全对齐你文章的写法：全部 POST，无DELETE/PUT
-		commentGroup.POST("/createComment", commentHandler.CreateComment)  // 创建评论
-		commentGroup.POST("/updateComment", commentHandler.UpdateComment)  // 更新评论
-		commentGroup.POST("/deleteComment", commentHandler.DeleteComment)  // 删除评论
-		commentGroup.POST("/likeComment", commentHandler.LikeComment)      // 点赞评论
-		commentGroup.POST("/unlikeComment", commentHandler.DisLikeComment) // 取消点赞
+		g.POST("/createComment", h.CreateComment)
+		g.POST("/updateComment", h.UpdateComment)
+		g.POST("/deleteComment", h.DeleteComment)
+		g.POST("/likeComment", h.LikeComment)
+		g.POST("/unlikeComment", h.DisLikeComment)
 	}
 }
