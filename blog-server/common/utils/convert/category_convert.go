@@ -86,19 +86,19 @@ func CategoryModelListToDO(list *[]model.CategoryModel) []do.CategoryDO {
 }
 
 // CategoryModelListToDOList 模型列表转DO列表
-func CategoryModelListToDOList(list []model.CategoryModel) []do.CategoryDO {
+func CategoryModelListToDOList(list []*model.CategoryModel) []do.CategoryDO {
 	res := make([]do.CategoryDO, 0, len(list))
 	for _, v := range list {
-		res = append(res, *CategoryModelToDO(&v))
+		res = append(res, *CategoryModelToDO(v))
 	}
 	return res
 }
 
 // CategoryDOListToModelList DO列表转模型列表
-func CategoryDOListToModelList(list []do.CategoryDO) []model.CategoryModel {
+func CategoryDOListToModelList(list []*do.CategoryDO) []model.CategoryModel {
 	res := make([]model.CategoryModel, 0, len(list))
 	for _, v := range list {
-		res = append(res, *CategoryDOToModel(&v))
+		res = append(res, *CategoryDOToModel(v))
 	}
 	return res
 }

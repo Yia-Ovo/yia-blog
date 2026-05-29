@@ -1,3 +1,14 @@
+/*
+ * @Author: Yia 1372594487@qq.com
+ * @Date: 2026-04-17 15:22:25
+ * @LastEditors: Yia 1372594487@qq.com
+ * @LastEditTime: 2026-05-29 16:24:51
+ * @FilePath: \yia-blog\blog-server\domain\service\category_domain_service.go
+ * @Description:
+ *
+ * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
+ */
+
 package service
 
 import (
@@ -6,182 +17,133 @@ import (
 	"blog-server/common/utils/logger"
 	"blog-server/domain/do"
 	"blog-server/domain/repo"
-	"blog-server/infra/model"
 	"context"
-	"errors"
 
 	"go.uber.org/zap"
 )
 
+// CategoryDomainService 纯净领域服务：仅依赖MySQL仓储，仅处理业务规则
 type CategoryDomainService struct {
 	categoryMysqlRepo repo.CategoryMysqlRepo
-	categoryRedisRepo repo.CategoryRedisRepo
 }
 
-func NewCategoryDomainService(
-	categoryRepo repo.CategoryMysqlRepo,
-	categoryRedisRepo repo.CategoryRedisRepo,
-) *CategoryDomainService {
+// NewCategoryDomainService 构造函数：仅注入MySQL依赖
+func NewCategoryDomainService(categoryMysqlRepo repo.CategoryMysqlRepo) *CategoryDomainService {
 	return &CategoryDomainService{
-		categoryMysqlRepo: categoryRepo,
-		categoryRedisRepo: categoryRedisRepo,
+		categoryMysqlRepo: categoryMysqlRepo,
 	}
 }
 
-// CreateCategory 创建分类
+// CreateCategory 创建分类：仅业务校验 + 数据库操作
 func (c *CategoryDomainService) CreateCategory(ctx context.Context, categoryDO *do.CategoryDO) error {
+	// 业务规则校验
 	if categoryDO.Name == "" {
-		logger.Warn("创建分类失败：名称不能为空", zap.String("category_name", categoryDO.Name))
-		return common.ErrCategoryNameEmpty
-	}
-	if len(categoryDO.Name) > 64 {
-		logger.Warn("创建分类失败：名称超长",
-			zap.String("category_name", categoryDO.Name),
-			zap.Uint64("length", uint64(len(categoryDO.Name))),
-		)
-		return common.ErrCategoryNameTooLong
-	}
-	if categoryDO.Sort < 0 {
-		logger.Warn("创建分类失败：排序值非法", zap.Int("sort", categoryDO.Sort))
-		return common.ErrCategorySortInvalid
+		logger.Warn("创建分类失败：分类名称不能为空")
+		return common.ParamErr
 	}
 
+	// DO转Model
 	categoryModel := convert.CategoryDOToModel(categoryDO)
 
+	// 调用MySQL仓储
 	err := c.categoryMysqlRepo.CreateCategory(ctx, categoryModel)
 	if err != nil {
-		logger.Error("创建分类数据库操作失败",
-			zap.String("category_name", categoryDO.Name),
-			zap.Error(err),
-		)
-		return err
+		logger.Error("创建分类数据库操作失败", zap.String("name", categoryDO.Name), zap.Error(err))
+		return common.DatabaseErr
 	}
 
-	_ = c.categoryRedisRepo.DelCategoryListFromRedis(ctx)
-	logger.Info("创建分类成功，缓存已刷新", zap.String("category_name", categoryDO.Name))
+	logger.Info("创建分类成功", zap.String("name", categoryDO.Name))
 	return nil
 }
 
+// ListCategoryByPage 分类分页查询：仅参数校验 + 数据库查询
 func (c *CategoryDomainService) ListCategoryByPage(ctx context.Context, query *do.CategoryQuery) ([]do.CategoryDO, int64, error) {
-	if query.PageNum < 1 {
+	// 分页参数合法性校验
+	if query.PageNum <= 0 {
 		query.PageNum = 1
 	}
-	if query.PageSize < 1 || query.PageSize > 100 {
+	if query.PageSize <= 0 || query.PageSize > 50 {
 		query.PageSize = 10
 	}
 
-	cacheList, err := c.categoryRedisRepo.GetCategoryListFromRedis(ctx)
-	if err == nil {
-		logger.Info("分类列表命中缓存", zap.Int("cache_count", len(cacheList)))
-		return convert.CategoryModelListToDOList(cacheList), int64(len(cacheList)), nil
-	}
-	// 缓存不存在/异常，降级查询数据库
-	if !errors.Is(err, common.CacheNotExist) {
-		logger.Warn("分类列表缓存异常，降级查询DB", zap.Error(err))
-	}
-
-	// 调用仓储层查询DB
-	list, total, err := c.categoryMysqlRepo.ListCategoryByPage(ctx, query)
+	// 查询数据库
+	modelList, total, err := c.categoryMysqlRepo.ListCategoryByPage(ctx, query)
 	if err != nil {
-		logger.Error("分页查询分类失败",
-			zap.Int("page_num", query.PageNum),
-			zap.Int("page_size", query.PageSize),
-			zap.Error(err),
-		)
+		logger.Error("分页查询分类失败", zap.Any("query", query), zap.Error(err))
 		return nil, 0, common.DatabaseErr
 	}
 
-	modelList := convert.CategoryDOListToModelList(list)
-	_ = c.categoryRedisRepo.SetCategoryListToRedis(ctx, modelList)
-
 	logger.Info("分页查询分类成功", zap.Int64("total", total))
-	return list, total, nil
+	return convert.CategoryModelListToDOList(modelList), total, nil
 }
 
+// GetCategoryById 根据ID查询分类：仅参数校验 + 数据库查询
 func (c *CategoryDomainService) GetCategoryById(ctx context.Context, id uint64) (*do.CategoryDO, error) {
+	// 参数校验
 	if id <= 0 {
-		logger.Warn("根据ID查询分类失败：ID非法", zap.Uint64("category_id", id))
+		logger.Warn("根据ID查询分类失败：ID非法", zap.Uint64("id", id))
 		return nil, common.ParamErr
 	}
 
-	categoryModel, err := c.categoryRedisRepo.GetCategoryFromRedis(ctx, id)
-	if err == nil {
-		logger.Info("分类详情命中缓存", zap.Uint64("category_id", id))
-		return convert.CategoryModelToDO(categoryModel), nil
-	}
-	// 缓存不存在/异常，降级查询数据库
-	if !errors.Is(err, common.CacheNotExist) {
-		logger.Warn("分类详情缓存异常，降级查询DB", zap.Uint64("category_id", id), zap.Error(err))
-	}
-
-	// 调用仓储层查询DB
-	categoryDO, err := c.categoryMysqlRepo.GetCategoryById(ctx, id)
+	// 查询数据库
+	// 1. 先接收 model
+	model, err := c.categoryMysqlRepo.GetCategoryById(ctx, id)
 	if err != nil {
-		logger.Error("根据ID查询分类失败", zap.Uint64("category_id", id), zap.Error(err))
+		logger.Error("根据ID查询分类失败", zap.Uint64("id", id), zap.Error(err))
 		return nil, common.DatabaseErr
 	}
 
-	if categoryDO == nil {
-		// 数据不存在：写入空值缓存，防缓存穿透
-		_ = c.categoryRedisRepo.SetCategoryToRedis(ctx, id, &model.CategoryModel{})
-		logger.Warn("分类不存在，写入空值缓存", zap.Uint64("category_id", id))
+	if model == nil {
+		logger.Warn("分类不存在", zap.Uint64("id", id))
 		return nil, common.CategoryNotFoundErr
 	}
 
-	// 数据存在：写入正常缓存
-	model := convert.CategoryDOToModel(categoryDO)
-	_ = c.categoryRedisRepo.SetCategoryToRedis(ctx, id, model)
-
-	logger.Info("根据ID查询分类成功", zap.Uint64("category_id", id))
-	return categoryDO, nil
+	// 2. 再调用 convert 转成 DO
+	logger.Info("根据ID查询分类成功", zap.Uint64("id", id))
+	return convert.CategoryModelToDO(model), nil
 }
 
+// UpdateCategory 更新分类：仅业务校验 + 数据库操作
 func (c *CategoryDomainService) UpdateCategory(ctx context.Context, categoryDO *do.CategoryDO) error {
+	// 业务规则校验
 	if categoryDO.ID <= 0 {
-		logger.Warn("更新分类失败：ID不能为空", zap.Uint64("category_id", categoryDO.ID))
+		logger.Warn("更新分类失败：ID非法", zap.Uint64("id", categoryDO.ID))
 		return common.ParamErr
 	}
 	if categoryDO.Name == "" {
-		logger.Warn("更新分类失败：名称不能为空", zap.Uint64("category_id", categoryDO.ID))
-		return common.ParamErr
-	}
-	if len(categoryDO.Name) > 64 {
-		logger.Warn("更新分类失败：名称超长", zap.Uint64("category_id", categoryDO.ID))
-		return common.ParamErr
-	}
-	if categoryDO.Sort < 0 {
-		logger.Warn("更新分类失败：排序值非法", zap.Uint64("category_id", categoryDO.ID))
+		logger.Warn("更新分类失败：名称不能为空", zap.Uint64("id", categoryDO.ID))
 		return common.ParamErr
 	}
 
+	// DO转Model
 	categoryModel := convert.CategoryDOToModel(categoryDO)
 
+	// 更新数据库
 	err := c.categoryMysqlRepo.UpdateCategory(ctx, categoryModel)
 	if err != nil {
-		logger.Error("更新分类数据库操作失败", zap.Uint64("category_id", categoryDO.ID), zap.Error(err))
+		logger.Error("更新分类数据库操作失败", zap.Uint64("id", categoryDO.ID), zap.Error(err))
 		return common.DatabaseErr
 	}
 
-	_ = c.categoryRedisRepo.DelCategoryFromRedis(ctx, categoryDO.ID)
-	_ = c.categoryRedisRepo.DelCategoryListFromRedis(ctx)
-	logger.Info("更新分类成功，缓存已删除", zap.Uint64("category_id", categoryDO.ID))
+	logger.Info("更新分类成功", zap.Uint64("id", categoryDO.ID))
 	return nil
 }
 
+// DeleteCategory 删除分类(软删除)：仅参数校验 + 数据库操作
 func (c *CategoryDomainService) DeleteCategory(ctx context.Context, id uint64) error {
+	// 参数校验
 	if id <= 0 {
-		logger.Warn("删除分类失败：ID非法", zap.Uint64("category_id", id))
+		logger.Warn("删除分类失败：ID非法", zap.Uint64("id", id))
 		return common.ParamErr
 	}
 
+	// 删除数据库数据（软删除）
 	err := c.categoryMysqlRepo.DeleteCategory(ctx, id)
 	if err != nil {
-		logger.Error("删除分类数据库操作失败", zap.Uint64("category_id", id), zap.Error(err))
+		logger.Error("删除分类数据库操作失败", zap.Uint64("id", id), zap.Error(err))
 		return common.DatabaseErr
 	}
 
-	_ = c.categoryRedisRepo.DelCategoryFromRedis(ctx, id)
-	_ = c.categoryRedisRepo.DelCategoryListFromRedis(ctx)
-	logger.Info("删除分类成功，缓存已删除", zap.Uint64("category_id", id))
+	logger.Info("删除分类成功", zap.Uint64("id", id))
 	return nil
 }

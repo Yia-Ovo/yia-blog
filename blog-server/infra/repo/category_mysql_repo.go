@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-17 15:34:17
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-20 19:45:26
+ * @LastEditTime: 2026-05-29 16:33:52
  * @FilePath: \yia-blog\blog-server\infra\repo\category_mysql_repo.go
  * @Description:
  *
@@ -11,7 +11,6 @@
 package repo
 
 import (
-	"blog-server/common/utils/convert"
 	"blog-server/common/utils/logger"
 	"blog-server/domain/do"
 	"blog-server/infra/model"
@@ -40,13 +39,12 @@ func (c *categoryMysqlRepo) CreateCategory(ctx context.Context, category *model.
 }
 
 // --------------------- 2. 分类分页查询 ---------------------
-func (c *categoryMysqlRepo) ListCategoryByPage(ctx context.Context, query *do.CategoryQuery) ([]do.CategoryDO, int64, error) {
+func (c *categoryMysqlRepo) ListCategoryByPage(ctx context.Context, query *do.CategoryQuery) ([]*model.CategoryModel, int64, error) {
 
 	var (
-		list   []model.CategoryModel
-		total  int64
-		db     = c.db.WithContext(ctx).Model(&model.CategoryModel{})
-		listDO []do.CategoryDO
+		list  []*model.CategoryModel
+		total int64
+		db    = c.db.WithContext(ctx).Model(&model.CategoryModel{})
 	)
 
 	// 1. 拼接查询条件（动态SQL）
@@ -63,7 +61,7 @@ func (c *categoryMysqlRepo) ListCategoryByPage(ctx context.Context, query *do.Ca
 		return nil, 0, err
 	}
 	if total == 0 {
-		return listDO, 0, nil
+		return list, 0, nil
 	}
 
 	// 3. 分页查询
@@ -77,13 +75,11 @@ func (c *categoryMysqlRepo) ListCategoryByPage(ctx context.Context, query *do.Ca
 		logger.Error("ListCategoryByPage find failed", zap.Any("query", query), zap.Error(err))
 		return nil, 0, err
 	}
-
-	listDO = convert.CategoryModelListToDO(&list)
-	return listDO, total, nil
+	return list, total, nil
 }
 
 // --------------------- 3. 根据ID查询分类 ---------------------
-func (c *categoryMysqlRepo) GetCategoryById(ctx context.Context, id uint64) (*do.CategoryDO, error) {
+func (c *categoryMysqlRepo) GetCategoryById(ctx context.Context, id uint64) (*model.CategoryModel, error) {
 
 	var category model.CategoryModel
 	err := c.db.WithContext(ctx).First(&category, id).Error
@@ -97,8 +93,7 @@ func (c *categoryMysqlRepo) GetCategoryById(ctx context.Context, id uint64) (*do
 		return nil, err
 	}
 
-	categoryDO := convert.CategoryModelToDO(&category)
-	return categoryDO, nil
+	return &category, nil
 }
 
 // --------------------- 4. 删除分类（软删除） ---------------------

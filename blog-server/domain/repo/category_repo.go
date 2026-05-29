@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-18 17:18:51
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-20 19:11:43
+ * @LastEditTime: 2026-05-29 16:34:36
  * @FilePath: \yia-blog\blog-server\domain\repo\category_repo.go
  * @Description:
  *
@@ -21,9 +21,9 @@ type CategoryMysqlRepo interface {
 	// CreateCategory 创建分类
 	CreateCategory(ctx context.Context, category *model.CategoryModel) error
 	// ListCategoryByPage 分页查询分类
-	ListCategoryByPage(ctx context.Context, query *do.CategoryQuery) ([]do.CategoryDO, int64, error)
+	ListCategoryByPage(ctx context.Context, query *do.CategoryQuery) ([]*model.CategoryModel, int64, error)
 	// GetCategoryById 根据ID查询分类
-	GetCategoryById(ctx context.Context, id uint64) (*do.CategoryDO, error)
+	GetCategoryById(ctx context.Context, id uint64) (*model.CategoryModel, error)
 	// UpdateCategory 更新分类
 	UpdateCategory(ctx context.Context, category *model.CategoryModel) error
 	// DeleteCategory 软删除分类
