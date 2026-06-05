@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-16 09:13:28
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-29 16:00:41
+ * @LastEditTime: 2026-06-02 18:42:21
  * @FilePath: \yia-blog\blog-server\ioc\container.go
  * @Description:
  *
@@ -91,6 +91,10 @@ func NewContainer(
 
 	// ========== 初始化领域服务 ==========
 	c.CommentDomain = domainSrv.NewCommentDomainService(c.CommentRepo)
+	c.AdminDomain = domainSrv.NewAdminDomainService(c.AdminRepo)
+	c.UserDomain = domainSrv.NewUserDomainService(c.UserRepo)
+	c.CategoryDomain = domainSrv.NewCategoryDomainService(c.CategoryRepo)
+	c.ArticleDomain = domainSrv.NewArticleDomainService(c.ArticleRepo)
 
 	// ========== 初始化应用服务 ==========
 	c.UserApp = appSrv.NewUserAppService(c.UserDomain, c.UserRedis)

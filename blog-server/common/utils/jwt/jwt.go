@@ -2,11 +2,9 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-17 07:43:04
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-29 14:34:28
+ * @LastEditTime: 2026-06-03 15:35:45
  * @FilePath: \yia-blog\blog-server\common\utils\jwt\jwt.go
  * @Description: JWT 工具包（用户/管理员双体系、与DTO对齐、安全加固）
- *
- * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
  */
 package jwt
 
@@ -50,8 +48,8 @@ func Init(cfg *config.GlobalConfig) {
 }
 
 // --------------------------- 生成Token（用户/管理员） ---------------------------
-// GenerateUserToken 生成用户Token（传入dto.UserLoginDTO）
-func GenerateUserToken(user *dto.LoginUserDTO) (string, error) {
+// GenerateUserToken 生成用户Token（传入 dto.UserBaseDTO）
+func GenerateUserToken(user *dto.UserBaseDTO) (string, error) {
 	exp := time.Now().Add(tokenExpire * time.Hour)
 	claims := CustomClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -59,13 +57,13 @@ func GenerateUserToken(user *dto.LoginUserDTO) (string, error) {
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    issuer,
 		},
-		UserID: user.UserID, // 字段还是UserID，和dto.LoginUserDTO一致
+		UserID: user.ID,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(userSecret)
 }
 
-// GenerateAdminToken 生成管理员Token（传入dto.AdminLoginDTO）
+// GenerateAdminToken 生成管理员Token
 func GenerateAdminToken(admin *dto.AdminLoginDTO) (string, error) {
 	exp := time.Now().Add(tokenExpire * time.Hour)
 	claims := AdminClaims{
@@ -111,9 +109,13 @@ func ParseAdminToken(tokenStr string) (*AdminClaims, common.Errno) {
 	return claims, common.OK
 }
 
-// --------------------------- 中间件专用（直接返回 *dto + Errno） ---------------------------
-// ParseTokenToUserWithCtx 适配 auth.go：返回 *convert.User
-func ParseTokenToUserWithCtx(ctx context.Context, tokenStr string) (*dto.LoginUserDTO, common.Errno) {
+// --------------------------- 中间件专用 ---------------------------
+// 解析传入的 Token 字符串，并从中提取出用户的基本信息
+// ParseTokenToUserWithCtx 适配 auth.go
+func ParseTokenToUserWithCtx(ctx context.Context, tokenStr string) (*dto.UserBaseDTO, common.Errno) {
+	// 占位使用 ctx，避免未使用参数警告（支持未来链路追踪、上下文超时控制）
+	_ = ctx
+
 	if tokenStr == "" {
 		return nil, common.LoginNotLoginErr
 	}
@@ -121,13 +123,15 @@ func ParseTokenToUserWithCtx(ctx context.Context, tokenStr string) (*dto.LoginUs
 	if !errNo.IsOk() {
 		return nil, errNo
 	}
-	return &dto.LoginUserDTO{
-		UserID: claims.UserID,
+	return &dto.UserBaseDTO{
+		ID: claims.UserID,
 	}, common.OK
 }
 
-// ParseTokenToAdminWithCtx 适配 auth.go：返回 *convert.Admin
+// ParseTokenToAdminWithCtx 适配 auth.go
 func ParseTokenToAdminWithCtx(ctx context.Context, tokenStr string) (*dto.AdminLoginDTO, common.Errno) {
+	_ = ctx
+
 	if tokenStr == "" {
 		return nil, common.LoginNotLoginErr
 	}
@@ -141,7 +145,7 @@ func ParseTokenToAdminWithCtx(ctx context.Context, tokenStr string) (*dto.AdminL
 }
 
 // --------------------------- 工具函数 ---------------------------
-// ExtractToken 提取Bearer Token（兼容大小写、多空格）
+// ExtractToken 提取Bearer Token
 func ExtractToken(header string) string {
 	header = strings.TrimSpace(header)
 	if strings.HasPrefix(strings.ToLower(header), "bearer ") {
@@ -150,7 +154,7 @@ func ExtractToken(header string) string {
 	return strings.TrimSpace(header)
 }
 
-// MaskToken 脱敏Token（日志用）
+// MaskToken 脱敏Token
 func MaskToken(token string) string {
 	if len(token) <= 10 {
 		return "***"
@@ -158,9 +162,8 @@ func MaskToken(token string) string {
 	return token[:10] + "***"
 }
 
-// GetTokenRemainingTime 获取Token剩余有效期（用于登出黑名单）
+// GetTokenRemainingTime 获取Token剩余有效期
 func GetTokenRemainingTime(tokenStr string) (time.Duration, common.Errno) {
-	// 尝试用户Token
 	var c CustomClaims
 	if _, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &c); err == nil {
 		rem := time.Until(c.ExpiresAt.Time)
@@ -169,7 +172,7 @@ func GetTokenRemainingTime(tokenStr string) (time.Duration, common.Errno) {
 		}
 		return rem, common.OK
 	}
-	// 尝试管理员Token
+
 	var ac AdminClaims
 	if _, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &ac); err == nil {
 		rem := time.Until(ac.ExpiresAt.Time)
@@ -179,4 +182,28 @@ func GetTokenRemainingTime(tokenStr string) (time.Duration, common.Errno) {
 		return rem, common.OK
 	}
 	return 0, common.LoginTokenInvalidErr
+}
+
+// 获取 Token 过期时间（格式化字符串）
+// GetTokenExpireAt 直接返回过期时间字符串：2006-01-02 15:04:05
+func GetTokenExpireAt(tokenStr string) (string, common.Errno) {
+	// 先尝试解析用户 Token
+	var userClaims CustomClaims
+	if _, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &userClaims); err == nil {
+		if userClaims.ExpiresAt == nil {
+			return "", common.LoginTokenInvalidErr
+		}
+		return userClaims.ExpiresAt.Time.Format("2006-01-02 15:04:05"), common.OK
+	}
+
+	// 再尝试解析管理员 Token
+	var adminClaims AdminClaims
+	if _, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &adminClaims); err == nil {
+		if adminClaims.ExpiresAt == nil {
+			return "", common.LoginTokenInvalidErr
+		}
+		return adminClaims.ExpiresAt.Time.Format("2006-01-02 15:04:05"), common.OK
+	}
+
+	return "", common.LoginTokenInvalidErr
 }

@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-23 06:14:49
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-23 09:18:06
+ * @LastEditTime: 2026-06-05 16:23:54
  * @FilePath: \yia-blog\blog-server\common\errno.go
  * @Description:
  *
@@ -31,7 +31,7 @@ func (err Errno) Error() string {
 }
 
 func (err Errno) WithMsg(msg string) Errno {
-	err.Msg = err.Msg + "," + msg
+	err.ErrMsg = msg
 	return err
 }
 
@@ -65,20 +65,25 @@ var (
 	UserExistErr           = Errno{Code: 11002, Msg: "User Already Exist"}
 	UserNickNameTooLongErr = Errno{Code: 11011, Msg: "User nickname too long"}
 	UserStatusInvalidErr   = Errno{Code: 11012, Msg: "User status invalid"}
+	UserCreateErr          = Errno{Code: 11021, Msg: "Create user failed"}       // 创建用户失败
+	UserUpdateErr          = Errno{Code: 11022, Msg: "Update user info failed"}  // 更新用户信息失败
+	UserQueryErr           = Errno{Code: 11023, Msg: "Query user failed"}        // 用户查询失败
+	UserLoginInfoUpdateErr = Errno{Code: 11024, Msg: "Update login info failed"} // 更新登录信息失败
 
 	// 用户状态专属
 	UserAccountDisabledErr = Errno{Code: 11019, Msg: "Account disabled"}         // 账号已禁用
 	LoginInfoUpdateErr     = Errno{Code: 11020, Msg: "Update login info failed"} // 更新登录信息失败
 
 	// 登录专属标准化错误
-	LoginParamEmptyErr    = Errno{Code: 11003, Msg: "Login param empty"}  // 登录核心参数为空（用户名/密码）
-	LoginPasswordErr      = Errno{Code: 11004, Msg: "Password error"}     // 密码错误
-	LoginFreqLimitErr     = Errno{Code: 11005, Msg: "Login too frequent"} // 登录频率超限（防暴力破解）
-	LoginAccountLockedErr = Errno{Code: 11006, Msg: "Account locked"}     // 账号被锁定（密码多次错误）
-	LoginTokenExpiredErr  = Errno{Code: 11007, Msg: "Token expired"}      // 登录态token过期
-	LoginTokenInvalidErr  = Errno{Code: 11008, Msg: "Token invalid"}      // 登录态token无效（伪造/篡改）
-	LoginNotLoginErr      = Errno{Code: 11009, Msg: "Not login"}          // 未登录（需要登录才能操作）
-	LoginCaptchaErr       = Errno{Code: 11010, Msg: "Captcha error"}      // 验证码错误/过期（可选）
+	LoginParamEmptyErr    = Errno{Code: 11003, Msg: "Login param empty"}            // 登录核心参数为空（用户名/密码）
+	LoginPasswordErr      = Errno{Code: 11004, Msg: "Password error"}               // 密码错误
+	LoginFreqLimitErr     = Errno{Code: 11005, Msg: "Login too frequent"}           // 登录频率超限（防暴力破解）
+	LoginAccountLockedErr = Errno{Code: 11006, Msg: "Account locked"}               // 账号被锁定（密码多次错误）
+	LoginTokenExpiredErr  = Errno{Code: 11007, Msg: "Token expired"}                // 登录态token过期
+	LoginTokenInvalidErr  = Errno{Code: 11008, Msg: "Token invalid"}                // 登录态token无效（伪造/篡改）
+	LoginNotLoginErr      = Errno{Code: 11009, Msg: "Not login"}                    // 未登录（需要登录才能操作）
+	LoginCaptchaErr       = Errno{Code: 11010, Msg: "Captcha error"}                // 验证码错误/过期（可选）
+	LoginFailedErr        = Errno{Code: 11011, Msg: "Login Success but info empty"} // 用户登录成功但信息为空
 
 	// 修改密码专属错误
 	UserPwdParamEmptyErr      = Errno{Code: 11013, Msg: "Password param empty"}     // 修改密码参数为空
@@ -95,6 +100,7 @@ var (
 	TokenEmptyErr    = Errno{Code: 401, Msg: "Token empty"}        // Token为空
 	TokenInBlacklist = Errno{Code: 401, Msg: "Token in blacklist"} // Token在黑名单中
 	CacheNotExist    = Errno{Code: 401, Msg: "Cache not exist"}    // 缓存不存在
+	GetTokenTimeErr  = Errno{Code: 401, Msg: "Get token time err"} // 获取token过期时间失败
 
 	//Redis错误
 	RedisConnErr       = Errno{Code: 10001, Msg: "redis: connect failed"}     // 连接失败

@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-03-06 13:24:11
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-03-13 17:37:25
+ * @LastEditTime: 2026-06-05 15:41:50
  * @FilePath: \yia-blog\blog-server\common\gin\response\response.go
  * @Description:
  *
@@ -31,8 +31,8 @@ type Resp struct {
 func WriteResp(ctx *gin.Context, data any, errno common.Errno) {
 	ctx.JSON(http.StatusOK, Resp{
 		Code:   errno.Code,
-		Msg:    errno.Msg,
-		ErrMsg: errno.ErrMsg,
+		Msg:    errno.Msg,    // 对外提示
+		ErrMsg: errno.ErrMsg, // 内部错误
 		Data:   data,
 	})
 }

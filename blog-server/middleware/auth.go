@@ -15,7 +15,7 @@ import (
 )
 
 // TokenFun 用户Token解析函数签名
-type TokenFun func(ctx context.Context, token string) (*dto.LoginUserDTO, common.Errno)
+type TokenFun func(ctx context.Context, token string) (*dto.UserBaseDTO, common.Errno)
 
 // TokenAdminFun 管理员Token解析函数签名
 type TokenAdminFun func(ctx context.Context, token string) (*dto.AdminLoginDTO, common.Errno)
@@ -83,13 +83,13 @@ func AuthMiddleware(filter func(*gin.Context) bool, getTokenFun TokenFun) gin.Ha
 		}
 
 		ctx.Set(consts.CustomerUserKey, user)
-		ctx.Set(consts.UserIDKey, user.UserID)
+		ctx.Set(consts.UserIDKey, user.ID)
 
 		reqCtx := context.WithValue(ctx.Request.Context(), consts.CustomerUserKey, user)
 		ctx.Request = ctx.Request.WithContext(reqCtx)
 
 		logger.Info("用户认证成功",
-			zap.Uint64("user_id", user.UserID),
+			zap.Uint64("user_id", user.ID),
 			zap.String("path", path),
 		)
 
