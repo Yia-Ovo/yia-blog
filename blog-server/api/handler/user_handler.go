@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-02 03:11:10
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-29 21:07:55
+ * @LastEditTime: 2026-06-05 17:03:25
  * @FilePath: \yia-blog\blog-server\api\handler\user_handler.go
  * @Description:
  *
@@ -50,7 +50,13 @@ func (h *UserHandler) Register(c *gin.Context) {
 
 	err := h.userAppSrv.Register(ctx, &req)
 	if err != nil {
-		response.WriteResp(c, nil, err.(common.Errno))
+		// 如果是自定义错误类型
+		if e, ok := err.(common.Errno); ok {
+			response.WriteResp(c, nil, e)
+			return
+		}
+		// 数据库错误 / 未知错误
+		response.WriteResp(c, nil, common.ServerErr)
 		return
 	}
 
@@ -68,16 +74,15 @@ func (h *UserHandler) Login(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 	defer cancel()
 
-	user, token, err := h.userAppSrv.Login(ctx, &req)
+	loginResp, err := h.userAppSrv.Login(ctx, &req)
 	if err != nil {
+		// 错误断言
 		response.WriteResp(c, nil, err.(common.Errno))
 		return
 	}
 
-	response.WriteResp(c, gin.H{
-		"user":  user,
-		"token": token,
-	}, common.OK)
+	// 直接把 loginResp 整个丢给 data，LoginResp 内置Token+UserBaseDTO，json自动序列化
+	response.WriteResp(c, loginResp, common.OK)
 }
 
 // Logout 用户登出 POST /api/blog/v1/user/logout
@@ -96,7 +101,7 @@ func (h *UserHandler) Logout(c *gin.Context) {
 	}
 	userId, ok := userIdVal.(uint64)
 	if !ok {
-		logger.Error("Logout user_id类型转换失败",
+		logger.Error("[API] 登出用户ID类型转换失败",
 			zap.Any("user_id_value", userIdVal),
 			zap.String("actual_type", fmt.Sprintf("%T", userIdVal)),
 		)
@@ -127,7 +132,7 @@ func (h *UserHandler) GetInfo(c *gin.Context) {
 
 	userId, ok := userIdVal.(uint64)
 	if !ok {
-		logger.Error("GetInfo user_id类型转换失败",
+		logger.Error("[API] 获取用户信息ID类型转换失败",
 			zap.Any("user_id_value", userIdVal),
 			zap.String("actual_type", fmt.Sprintf("%T", userIdVal)),
 		)
@@ -140,7 +145,7 @@ func (h *UserHandler) GetInfo(c *gin.Context) {
 
 	userEntity, err := h.userAppSrv.GetUserInfo(ctx, userId)
 	if err != nil {
-		logger.Error("GetInfo 查询用户失败", zap.Uint64("user_id", userId), zap.Error(err))
+		logger.Error("[API] 查询用户信息失败", zap.Uint64("user_id", userId), zap.Error(err))
 		response.WriteResp(c, nil, err.(common.Errno))
 		return
 	}
@@ -164,7 +169,7 @@ func (h *UserHandler) UpdatePWD(c *gin.Context) {
 
 	userId, ok := userIdVal.(uint64)
 	if !ok {
-		logger.Error("UpdatePWD user_id类型转换失败",
+		logger.Error("[API] 修改密码用户ID类型转换失败",
 			zap.Any("user_id_value", userIdVal),
 			zap.String("actual_type", fmt.Sprintf("%T", userIdVal)),
 		)
@@ -177,7 +182,7 @@ func (h *UserHandler) UpdatePWD(c *gin.Context) {
 
 	err := h.userAppSrv.UpdatePWD(ctx, userId, &req)
 	if err != nil {
-		logger.Error("UpdatePWD 失败", zap.Uint64("user_id", userId), zap.Error(err))
+		logger.Error("[API] 修改密码失败", zap.Uint64("user_id", userId), zap.Error(err))
 		response.WriteResp(c, nil, err.(common.Errno))
 		return
 	}
@@ -199,7 +204,7 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 	}
 	userId, ok := userIdVal.(uint64)
 	if !ok {
-		logger.Error("UpdateUserInfo user_id类型转换失败",
+		logger.Error("[API] 更新用户信息ID类型转换失败",
 			zap.Any("user_id_value", userIdVal),
 			zap.String("actual_type", fmt.Sprintf("%T", userIdVal)),
 		)

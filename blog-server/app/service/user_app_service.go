@@ -15,6 +15,7 @@ import (
 	"blog-server/common/utils/jwt"
 	"blog-server/common/utils/logger"
 	"blog-server/common/utils/password"
+	"blog-server/common/utils/ptr"
 	"blog-server/domain/do"
 	"blog-server/domain/repo"
 	"blog-server/domain/service"
@@ -43,185 +44,232 @@ func NewUserAppService(
 
 // Register 用户注册：调用领域服务
 func (s *UserAppService) Register(ctx context.Context, req *dto.UserRegisterReq) error {
-	if req == nil || req.NickName == "" || req.Password == "" {
-		logger.Warn("用户注册参数为空")
-		return common.ParamErr
+	if req == nil {
+		logger.Warn("[APP] 用户注册参数为空")
+		return common.ParamErr.WithMsg("注册参数不能为空")
 	}
 
-	// 1. 检查昵称是否存在
+	// 密码格式校验
+	if msg := password.CheckPasswordFormat("", req.Password); msg != "" {
+		logger.Warn("[APP] 注册密码格式错误", zap.String("reason", msg))
+		return common.UserNewPasswordInvalidErr.WithMsg(msg)
+	}
+
+	// 检查昵称是否存在
 	_, err := s.userDomainService.FindUserByNickname(ctx, req.NickName)
 	if err == nil {
-		logger.Warn("用户昵称已存在", zap.String("nickname", req.NickName))
-		return common.UserExistErr
+		logger.Warn("[APP] 用户昵称已存在", zap.String("nickname", req.NickName))
+		return common.UserExistErr.WithMsg("该昵称已被占用")
 	}
 
-	// 2. 执行核心业务逻辑
+	// 执行注册
 	err = s.userDomainService.Register(ctx, req.NickName, req.Password)
 	if err != nil {
-		logger.Error("用户注册失败", zap.String("nickname", req.NickName), zap.Error(err))
-		return err
+		logger.Error("[APP] 用户注册失败", zap.String("nickname", req.NickName), zap.Error(err))
+		return err.(common.Errno).WithMsg("注册失败，请稍后重试")
 	}
 
-	logger.Info("用户注册成功", zap.String("nickname", req.NickName))
+	logger.Info("[APP] 用户注册成功", zap.String("nickname", req.NickName))
 	return nil
 }
 
 // Login 用户登录：应用层处理 JWT + 缓存
-func (s *UserAppService) Login(ctx context.Context, req *dto.UserLoginReq) (*dto.LoginUserDTO, string, error) {
-	if req == nil || req.NickName == "" || req.Password == "" {
-		logger.Warn("用户登录参数为空")
-		return nil, "", common.LoginParamEmptyErr
+func (s *UserAppService) Login(ctx context.Context, req *dto.UserLoginReq) (*dto.LoginResp, error) {
+	if req == nil {
+		logger.Warn("[APP] 用户登录参数为空")
+		return nil, common.LoginParamEmptyErr.WithMsg("请求参数不能为空")
 	}
 
-	// 1. 执行核心业务逻辑
+	if req.NickName == "" {
+		logger.Warn("[APP] 登录账号为空")
+		return nil, common.LoginParamEmptyErr.WithMsg("账号不能为空")
+	}
+	if req.Password == "" {
+		logger.Warn("[APP] 登录密码为空")
+		return nil, common.LoginParamEmptyErr.WithMsg("密码不能为空")
+	}
+
+	// 执行登录逻辑
 	userDO, err := s.userDomainService.Login(ctx, req.NickName, req.Password)
 	if err != nil {
-		logger.Error("用户登录验证失败", zap.String("nickname", req.NickName), zap.Error(err))
-		return nil, "", err
+		logger.Error("[APP] 用户登录验证失败", zap.String("nickname", req.NickName), zap.Error(err))
+		return nil, err.(common.Errno).WithMsg("登录失败，账号或密码不正确")
 	}
 
-	// 2. 应用层编排：清理旧缓存
+	if userDO == nil || userDO.ID == 0 {
+		logger.Error("[APP] 用户登录成功但信息为空", zap.String("nickname", req.NickName))
+		return nil, common.LoginFailedErr.WithMsg("用户数据异常，登录失败")
+	}
+
+	// 清理缓存
 	_ = s.userRedisRepo.DelUserFromRedis(ctx, userDO.ID)
 
-	// 3. 应用层编排：生成 Token
-	loginUser := convert.UserDOToLoginUserDTO(userDO)
-	token, err := jwt.GenerateUserToken(loginUser)
+	// 生成 Token
+	loginUserDTO := convert.UserDOToBaseDTO(userDO)
+	token, err := jwt.GenerateUserToken(&loginUserDTO)
 	if err != nil {
-		logger.Error("生成用户 Token 失败", zap.Uint64("user_id", userDO.ID), zap.Error(err))
-		return nil, "", common.ServerErr
+		logger.Error("[APP] 生成用户 Token 失败", zap.Uint64("user_id", userDO.ID), zap.Error(err))
+		return nil, common.ServerErr.WithMsg("服务异常，生成令牌失败").WithErr(err)
 	}
 
-	logger.Info("用户登录成功", zap.Uint64("user_id", userDO.ID), zap.String("nickname", req.NickName))
-	return loginUser, token, nil
+	expireDur, errNo := jwt.GetTokenRemainingTime(token)
+	if !errNo.IsOk() {
+		logger.Warn("[APP] 获取Token过期时间失败", zap.String("err", errNo.Error()))
+		// 异常时设为0，不写入在线缓存
+		expireDur = 0
+	}
+	// 写入在线token
+	_ = s.userRedisRepo.SetOnlineToken(ctx, userDO.ID, token, expireDur)
+
+	expireShow, showErr := jwt.GetTokenExpireAt(token)
+	if !showErr.IsOk() {
+		logger.Warn("[APP] 获取前端过期展示时间失败", zap.String("err", showErr.Error()))
+		expireShow = ""
+	}
+	logger.Info("[APP] 用户登录成功", zap.Uint64("user_id", userDO.ID), zap.String("nickname", req.NickName))
+	return &dto.LoginResp{
+		Token:  token,
+		Expire: expireShow,
+		Data:   loginUserDTO,
+	}, nil
 }
 
-// Logout 用户登出：应用层处理 Redis 黑名单
+// Logout 用户登出
 func (s *UserAppService) Logout(ctx context.Context, userID uint64, token string) error {
 	if token == "" {
-		logger.Warn("用户登出 Token 为空")
-		return common.TokenEmptyErr
+		logger.Warn("[APP] 用户登出 Token 为空")
+		return common.TokenEmptyErr.WithMsg("令牌不能为空")
 	}
 
-	// 1. 应用层编排：获取 Token 过期时间
+	// 获取token的剩余有效期时间
 	expire, _ := jwt.GetTokenRemainingTime(token)
-
-	// 2. 应用层编排：加入黑名单
+	// 将token加入黑名单，设置过期时间
 	_ = s.userRedisRepo.AddTokenToBlackList(ctx, token, expire)
+	// 清除用户的所有在线token
 	_ = s.userRedisRepo.ClearUserAllOnlineToken(ctx, userID)
 
-	logger.Info("用户登出成功", zap.Uint64("user_id", userID))
+	logger.Info("[APP] 用户登出成功", zap.Uint64("user_id", userID))
 	return nil
 }
 
 // GetUserInfo 获取用户信息：缓存优先
 func (s *UserAppService) GetUserInfo(ctx context.Context, id uint64) (*dto.UserInfoData, error) {
 	if id <= 0 {
-		logger.Warn("获取用户信息参数非法")
-		return nil, common.ParamErr
+		logger.Warn("[APP] 获取用户信息参数非法")
+		return nil, common.ParamErr.WithMsg("用户ID参数非法")
 	}
 
-	// 1. 优先读缓存
+	// 1. 查缓存
 	userModel, err := s.userRedisRepo.GetUserFromRedis(ctx, id)
-	if err == nil && userModel != nil {
+
+	if err == nil {
+		// 命中【空值缓存】→ 用户不存在
+		if userModel == nil {
+			logger.Warn("[APP] 缓存用户不存在", zap.Uint64("user_id", id))
+			return nil, common.UserNotFoundErr.WithMsg("用户不存在")
+		}
+
+		// 正常缓存
 		userDO := convert.UserModelToDO(userModel)
-		return convert.UserDOToUserInfoDTO(userDO), nil
+		return convert.UserDOToUserInfoData(userDO), nil
 	}
 
-	// 2. 缓存未命中，查询数据库
-	logger.Info("用户信息缓存未命中，查询数据库", zap.Uint64("user_id", id))
+	// 2. 缓存未命中/异常 → 查数据库
+	logger.Info("[APP] 用户信息缓存未命中，查询数据库", zap.Uint64("user_id", id))
 	userDO, err := s.userDomainService.FindUserByID(ctx, id)
 	if err != nil {
-		// 这里只判断通用错误，不碰 gorm
-		if err == common.UserNotFoundErr {
-			logger.Warn("用户不存在", zap.Uint64("user_id", id))
-			return nil, common.UserNotFoundErr
-		}
-		logger.Error("查询用户信息失败", zap.Uint64("user_id", id), zap.Error(err))
-		return nil, common.ServerErr
+		logger.Error("[APP] 查询用户信息失败", zap.Uint64("user_id", id), zap.Error(err))
+		return nil, err.(common.Errno).WithMsg("获取用户信息失败")
 	}
 
-	// 3. 回写缓存
+	// 3. 回写缓存（正常用户/空值都会写）
 	_ = s.userRedisRepo.SetUserToRedis(ctx, id, convert.UserDOToModel(userDO))
 
-	return convert.UserDOToUserInfoDTO(userDO), nil
+	return convert.UserDOToUserInfoData(userDO), nil
 }
 
-// UpdatePWD 修改密码：应用层编排 + 清理缓存
+// UpdatePWD 修改密码
 func (s *UserAppService) UpdatePWD(ctx context.Context, id uint64, req *dto.UserUpdatePWDReq) error {
-	if req.OldPassword == "" || req.NewPassword == "" {
-		logger.Warn("修改密码参数为空")
-		return common.UserPwdParamEmptyErr
-	}
-	if err := password.CheckPasswordFormat(req.NewPassword); err != nil {
-		return common.UserNewPasswordInvalidErr
+	if req == nil {
+		logger.Warn("[APP] 修改密码参数为空")
+		return common.UserPwdParamEmptyErr.WithMsg("修改密码参数不能为空")
 	}
 
-	// 1. 执行核心业务逻辑
+	// 密码格式校验
+	if msg := password.CheckPasswordFormat(req.OldPassword, req.NewPassword); msg != "" {
+		logger.Warn("[APP] 新密码格式错误", zap.String("reason", msg))
+		return common.UserNewPasswordInvalidErr.WithMsg(msg)
+	}
+
+	// 修改密码
 	err := s.userDomainService.UpdatePWD(ctx, id, req.NewPassword, req.OldPassword)
 	if err != nil {
-		logger.Error("修改密码失败", zap.Uint64("user_id", id), zap.Error(err))
-		return err
+		logger.Error("[APP] 修改密码失败", zap.Uint64("user_id", id), zap.Error(err))
+		return err.(common.Errno).WithMsg("修改密码失败，请检查原密码")
 	}
 
-	// 2. 应用层编排：清理缓存
+	// 清理缓存
 	_ = s.userRedisRepo.DelUserFromRedis(ctx, id)
-	logger.Info("用户密码修改成功，缓存已清理", zap.Uint64("user_id", id))
+
+	logger.Info("[APP] 用户密码修改成功", zap.Uint64("user_id", id))
 	return nil
 }
 
-// UpdateUserInfo 更新用户信息：应用层编排 + 清理缓存
+// UpdateUserInfo 更新用户信息
 func (s *UserAppService) UpdateUserInfo(ctx context.Context, userID uint64, req *dto.UserUpdateInfoReq) (*dto.UserInfoData, error) {
 	if userID <= 0 || req == nil {
-		logger.Warn("更新用户信息参数非法")
-		return nil, common.ParamErr
-	}
-	if req.Gender < 0 || req.Gender > 2 {
-		return nil, common.ParamErr.WithMsg("性别不合法")
+		logger.Warn("[APP] 更新用户信息参数非法")
+		return nil, common.ParamErr.WithMsg("请求参数非法")
 	}
 
+	// 性别校验
+	if req.Gender != nil && (*req.Gender < 0 || *req.Gender > 2) {
+		return nil, common.ParamErr.WithMsg("性别取值不合法，仅支持0/1/2")
+	}
+
+	// 邮箱校验
 	var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-	if req.Email != "" && !emailRegex.MatchString(req.Email) {
-		return nil, common.ParamErr.WithMsg("邮箱格式错误")
+	if req.Email != nil && *req.Email != "" && !emailRegex.MatchString(*req.Email) {
+		return nil, common.ParamErr.WithMsg("邮箱格式不正确")
 	}
 
-	// 1. 执行核心业务逻辑
 	updateData := &do.UserDO{
-		NickName:  req.NickName,
-		Avatar:    req.Avatar,
-		Gender:    req.Gender,
-		Signature: req.Signature,
-		Email:     req.Email,
+		NickName:  ptr.Val(req.NickName),
+		Avatar:    ptr.Val(req.Avatar),
+		Gender:    ptr.Val(req.Gender),
+		Signature: ptr.Val(req.Signature),
+		Email:     ptr.Val(req.Email),
 	}
+
 	err := s.userDomainService.UpdateUserInfo(ctx, userID, updateData)
 	if err != nil {
-		logger.Error("更新用户信息失败", zap.Uint64("user_id", userID), zap.Error(err))
-		return nil, common.ServerErr
+		logger.Error("[APP] 更新用户信息失败", zap.Uint64("user_id", userID), zap.Error(err))
+		return nil, err.(common.Errno).WithMsg("用户信息更新失败")
 	}
 
-	// 2. 应用层编排：清理缓存
 	_ = s.userRedisRepo.DelUserFromRedis(ctx, userID)
-	logger.Info("用户信息更新成功，缓存已清理", zap.Uint64("user_id", userID))
+	logger.Info("[APP] 用户信息更新成功，缓存已清理", zap.Uint64("user_id", userID))
 
-	// 3. 返回最新信息
 	return s.GetUserInfo(ctx, userID)
 }
 
 // FindUserByNickname 根据昵称查询用户
 func (s *UserAppService) FindUserByNickname(ctx context.Context, req *dto.UserFindInfoReq) (*dto.UserInfoData, error) {
+	if req == nil {
+		logger.Warn("[APP] 查询用户参数为空")
+		return nil, common.ParamErr.WithMsg("查询参数不能为空")
+	}
+
 	if req.NickName == "" {
-		logger.Warn("查询用户昵称为空")
-		return nil, common.ParamErr
+		logger.Warn("[APP] 查询用户昵称为空")
+		return nil, common.ParamErr.WithMsg("查询昵称不能为空")
 	}
 
 	userDO, err := s.userDomainService.FindUserByNickname(ctx, req.NickName)
 	if err != nil {
-		if err == common.UserNotFoundErr {
-			logger.Warn("用户不存在", zap.String("nickname", req.NickName))
-			return nil, common.UserNotFoundErr
-		}
-		logger.Error("查询用户失败", zap.String("nickname", req.NickName), zap.Error(err))
-		return nil, common.ServerErr
+		logger.Error("[APP] 查询用户失败", zap.String("nickname", req.NickName), zap.Error(err))
+		return nil, err.(common.Errno).WithMsg("用户信息查询异常")
 	}
 
-	return convert.UserDOToUserInfoDTO(userDO), nil
+	return convert.UserDOToUserInfoData(userDO), nil
 }

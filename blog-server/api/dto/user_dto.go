@@ -2,77 +2,70 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-26 07:44:28
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-29 13:47:12
+ * @LastEditTime: 2026-06-05 18:50:06
  * @FilePath: \yia-blog\blog-server\api\dto\user_dto.go
- * @Description:
- *
- * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
+ * @Description: 用户请求&出参DTO
  */
 package dto
 
 import "time"
 
-// ------------------------------ 请求 DTO（入参） ------------------------------
+// ================= 入参Req ===================
+// 注册
 type UserRegisterReq struct {
 	NickName string `json:"nick_name" binding:"required,min=1,max=16"`
 	Password string `json:"password" binding:"required,min=6,max=20"`
 }
 
+// 登录
 type UserLoginReq struct {
 	NickName string `json:"nick_name" binding:"required,min=1,max=16"`
 	Password string `json:"password" binding:"required,min=6,max=20"`
 }
 
+// 修改密码
 type UserUpdatePWDReq struct {
 	OldPassword string `json:"old_password" binding:"required,min=6,max=20"`
 	NewPassword string `json:"new_password" binding:"required,min=6,max=20"`
 }
 
+// 修改基础信息（字段非必填，omitempty配合前端不传不更新）
 type UserUpdateInfoReq struct {
+	NickName  *string `json:"nick_name,omitempty" binding:"omitempty,min=1,max=16"`
+	Avatar    *string `json:"avatar,omitempty"`
+	Gender    *int    `json:"gender,omitempty"`
+	Signature *string `json:"signature,omitempty"`
+	Email     *string `json:"email,omitempty"`
+}
+
+// 根据昵称查询用户
+type UserFindInfoReq struct {
+	NickName string `form:"nick_name" query:"nick_name" binding:"required,min=1,max=16"`
+}
+
+// ================= 出参 ===================
+// UserBaseDTO：基础用户字段【被详情、登录信息共用，核心去重】
+type UserBaseDTO struct {
+	ID        uint64 `json:"id"`
 	NickName  string `json:"nick_name"`
 	Avatar    string `json:"avatar"`
+	Status    int    `json:"status"`
 	Gender    int    `json:"gender"`
 	Signature string `json:"signature"`
 	Email     string `json:"email"`
 }
 
-type UserFindInfoReq struct {
-	NickName string `form:"nick_name" query:"nick_name" binding:"required,min=1,max=16"`
-}
-
-// ------------------------------ 响应 DTO（出参） ------------------------------
-
-// UserInfoData 标准用户详情（所有接口共用）
+// UserInfoData 用户完整详情（嵌入基础DTO，补充扩展字段，不用重复写字段）
 type UserInfoData struct {
-	ID          uint64     `json:"id"`
-	NickName    string     `json:"nick_name"`
-	Avatar      string     `json:"avatar"`
-	Status      int        `json:"status"`
-	Gender      int        `json:"gender"`
-	Signature   string     `json:"signature"`
-	Email       string     `json:"email"`
+	UserBaseDTO
+	LastLoginAt *time.Time `json:"last_login_at,omitempty"`
 	CreateAt    time.Time  `json:"create_at"`
 	UpdateAt    time.Time  `json:"update_at"`
-	LastLoginAt *time.Time `json:"last_login_at"`
 }
 
-// LoginUserDTO 专门给 JWT 生成 Token 使用
-type LoginUserDTO struct {
-	UserID      uint64     `json:"user_id"`
-	NickName    string     `json:"nick_name"`
-	Status      int        `json:"status"`
-	LastLoginAt *time.Time `json:"last_login_at,omitempty"`
-}
-
-// ------------------------------ 通用统一响应（全局复用，删除冗余结构体） ------------------------------
-type BaseResponse struct {
-	Code int    `json:"code"`
-	Msg  string `json:"msg"`
-}
-
-// DataResponse 带 data 的通用返回
-type DataResponse struct {
-	Code int    `json:"code"`
-	Msg  string `json:"msg"`
-	Data any    `json:"data,omitempty"`
+// LoginResp 登录返回结构体（token+用户基础信息，替代原LoginUserDTO）
+type LoginResp struct {
+	Token  string      `json:"token"`
+	Expire string      `json:"expire"`
+	Data   UserBaseDTO `json:"data"`
 }
