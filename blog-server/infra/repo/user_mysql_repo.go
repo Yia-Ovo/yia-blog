@@ -54,12 +54,12 @@ func (r *userMysqlRepo) FindUserByNickname(ctx context.Context, nickName string)
 	var userModel model.UserModel
 
 	err := r.userBaseQuery(ctx).
-		Where("nickname = ?", nickName).
+		Where("nick_name = ?", nickName).
 		First(&userModel).Error
 
 	if err != nil {
 		if err != gorm.ErrRecordNotFound {
-			logger.Error("[MYSQL] 根据昵称查询用户失败", zap.String("nickname", nickName), zap.Error(err))
+			logger.Error("[MYSQL] 根据昵称查询用户失败", zap.String("nick_name", nickName), zap.Error(err))
 		}
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (r *userMysqlRepo) UpdateUserInfo(ctx context.Context, userModel *model.Use
 
 	result := r.userBaseQuery(ctx).
 		Where("id = ?", userModel.ID).
-		Select("nickname", "avatar", "gender", "signature", "email", "status", "update_at").
+		Select("nick_name", "avatar", "gender", "signature", "email", "status", "update_at").
 		Updates(userModel)
 
 	if err := result.Error; err != nil {

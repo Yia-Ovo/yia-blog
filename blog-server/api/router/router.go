@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-29 14:58:01
+ * @LastEditTime: 2026-06-10 01:23:37
  * @FilePath: \yia-blog\blog-server\api\router\router.go
  * @Description:
  *
@@ -97,13 +97,27 @@ func (r *Router) adminRouter(v1 *gin.RouterGroup) {
 	g := v1.Group("/admin")
 	h := handler.NewAdminHandler(r.c.AdminApp)
 
+	// 1. 公开接口（无需登录）
 	g.POST("/login", h.Login)
-	g.Use(middleware.DefaultAdminAuth())
+
+	// 2. 登录接口（所有管理员可用）
+	adminAuth := g.Group("/")
+	adminAuth.Use(middleware.DefaultAdminAuth())
 	{
-		g.GET("/getInfo", h.GetInfo)
-		g.POST("/updatePWD", h.UpdatePWD)
-		g.POST("/logout", h.Logout)
-		g.POST("/updateAdminInfo", h.UpdateAdminInfo)
+		adminAuth.GET("/getInfo", h.GetInfo)
+		adminAuth.POST("/updatePWD", h.UpdatePWD)
+		adminAuth.POST("/logout", h.Logout)
+		adminAuth.POST("/updateAdminInfo", h.UpdateAdminInfo)
+	}
+
+	// 3. 超管专属接口（双中间件：登录 + 超管角色）
+	adminSuper := g.Group("/")
+	adminSuper.Use(middleware.DefaultAdminAuth(), middleware.AdminSuperAuth())
+	{
+		adminSuper.POST("/create", h.CreateAdmin)             // 创建管理员
+		adminSuper.GET("/list", h.ListAdmin)                  // 管理员列表
+		adminSuper.POST("/updateStatus", h.UpdateAdminStatus) // 修改状态
+		adminSuper.POST("/resetPWD", h.ResetAdminPWD)         // 重置密码
 	}
 }
 

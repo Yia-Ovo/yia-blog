@@ -2,24 +2,26 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-05-29 16:00:00
  * @LastEditors: Yia 1372594487@qq.com
+ * @LastEditTime: 2026-06-10 16:10:45
  * @FilePath: \yia-blog\blog-server\app\service\admin_app_service.go
  * @Description: 管理员应用服务 - 业务编排、缓存处理、流程调度
- * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
+ * Copyright (c) 2026 by Yia 2594487@qq.com, All Rights Reserved.
  */
 package service
 
 import (
 	"blog-server/api/dto"
 	"blog-server/common"
+	"blog-server/common/utils/convert"
 	"blog-server/common/utils/jwt"
 	"blog-server/common/utils/logger"
 	"blog-server/common/utils/password"
+	"blog-server/common/utils/ptr"
 	"blog-server/domain/do"
 	"blog-server/domain/repo"
 	"blog-server/domain/service"
 	"context"
 	"regexp"
-	"time"
 
 	"go.uber.org/zap"
 )
@@ -41,180 +43,265 @@ func NewAdminAppService(
 	}
 }
 
-// Login 管理员登录：应用层处理 JWT + 登录时间更新
-func (s *AdminAppService) Login(ctx context.Context, req *dto.AdminLoginReq) (*dto.AdminLoginDTO, string, error) {
-	if req == nil || req.AdminName == "" || req.Password == "" {
-		logger.Warn("管理员登录参数为空")
-		return nil, "", common.LoginParamEmptyErr
+// CreateAdmin 创建管理员
+func (s *AdminAppService) CreateAdmin(
+	ctx context.Context,
+	req *dto.AdminCreateReq,
+) (*dto.AdminInfoData, error) {
+	if req == nil {
+		logger.Warn("[APP] 创建管理员参数为空")
+		return nil, common.ParamErr.WithMsg("参数不能为空")
 	}
 
-	// 1. 执行核心业务逻辑
-	adminDO, err := s.adminDomainService.Login(ctx, req.AdminName, req.Password)
+	// 密码格式校验
+	if msg := password.CheckPasswordFormat("", req.Password); msg != "" {
+		logger.Warn("[APP] 密码格式错误", zap.String("reason", msg))
+		return nil, common.UserNewPasswordInvalidErr.WithMsg(msg)
+	}
+
+	// 检查是否已存在
+	_, err := s.adminDomainService.FindAdminByName(ctx, req.AdminName)
+	if err == nil {
+		logger.Warn("[APP] 管理员已存在", zap.String("admin_name", req.AdminName))
+		return nil, common.AdminAlreadyExistErr.WithMsg("该管理员已存在")
+	}
+
+	// 执行创建
+	adminDO, err := s.adminDomainService.CreateAdmin(ctx, req.AdminName, req.Password, req.Role)
 	if err != nil {
-		logger.Error("管理员登录验证失败", zap.Error(err))
-		return nil, "", err
+		logger.Error("[APP] 创建管理员失败", zap.Error(err))
+		return nil, err.(common.Errno).WithMsg("创建失败")
 	}
 
-	// 2. 应用层编排：更新登录时间
-	now := time.Now()
-	_ = s.adminDomainService.UpdateLastLoginInfo(ctx, adminDO.ID, &now)
-
-	// 3. 应用层编排：生成 JWT
-	loginDTO := &dto.AdminLoginDTO{
-		ID:          adminDO.ID,
-		AdminName:   adminDO.AdminName,
-		Role:        adminDO.Role,
-		Status:      adminDO.Status,
-		LastLoginAt: adminDO.LastLoginAt,
-	}
-	token, err := jwt.GenerateAdminToken(loginDTO)
-	if err != nil {
-		logger.Error("生成管理员 Token 失败", zap.Error(err))
-		return nil, "", common.ServerErr
-	}
-
-	logger.Info("管理员登录成功", zap.Uint64("admin_id", adminDO.ID))
-	return loginDTO, token, nil
+	logger.Info("[APP] 创建管理员成功", zap.String("name", req.AdminName))
+	return convert.AdminDOToAdminInfoData(adminDO), nil
 }
 
-// Logout 管理员登出：应用层处理 Redis 黑名单
+// Login 管理员登录
+func (s *AdminAppService) Login(ctx context.Context, req *dto.AdminLoginReq) (*dto.AdminLoginResp, error) {
+	if req == nil {
+		logger.Warn("[APP] 管理员登录参数为空")
+		return nil, common.LoginParamEmptyErr.WithMsg("请求参数不能为空")
+	}
+	if req.AdminName == "" {
+		logger.Warn("[APP] 登录账号为空")
+		return nil, common.LoginParamEmptyErr.WithMsg("账号不能为空")
+	}
+	if req.Password == "" {
+		logger.Warn("[APP] 登录密码为空")
+		return nil, common.LoginParamEmptyErr.WithMsg("密码不能为空")
+	}
+
+	// 执行登录
+	adminDO, err := s.adminDomainService.Login(ctx, req.AdminName, req.Password)
+	if err != nil {
+		logger.Error("[APP] 管理员登录验证失败", zap.Error(err))
+		return nil, err.(common.Errno).WithMsg("登录失败，账号或密码不正确")
+	}
+	if adminDO == nil || adminDO.ID == 0 {
+		logger.Error("[APP] 管理员登录成功但信息为空")
+		return nil, common.LoginFailedErr.WithMsg("用户数据异常")
+	}
+
+	// 清理缓存
+	_ = s.adminRedisRepo.DelAdminFromRedis(ctx, adminDO.ID)
+
+	// 生成 Token
+	loginDTO := convert.AdminDOToAdminBaseDTO(adminDO)
+	token, err := jwt.GenerateAdminToken(&loginDTO)
+	if err != nil {
+		logger.Error("[APP] 生成管理员 Token 失败", zap.Error(err))
+		return nil, common.ServerErr.WithMsg("生成令牌失败").WithErr(err)
+	}
+
+	// 写入在线缓存
+	expireDur, errNo := jwt.GetTokenRemainingTime(token)
+	if !errNo.IsOk() {
+		expireDur = 0
+	}
+	_ = s.adminRedisRepo.SetAdminOnlineToken(ctx, adminDO.ID, token, expireDur)
+
+	// 过期时间展示
+	expireShow, showErr := jwt.GetTokenExpireAt(token)
+	if !showErr.IsOk() {
+		expireShow = ""
+	}
+
+	logger.Info("[APP] 管理员登录成功", zap.Uint64("id", adminDO.ID))
+	return &dto.AdminLoginResp{
+		Token:  token,
+		Expire: expireShow,
+		Data:   loginDTO,
+	}, nil
+}
+
+// Logout 登出
 func (s *AdminAppService) Logout(ctx context.Context, adminID uint64, token string) error {
 	if token == "" {
-		logger.Warn("管理员登出 Token 为空")
-		return common.TokenEmptyErr
+		logger.Warn("[APP] 登出token为空")
+		return common.TokenEmptyErr.WithMsg("令牌不能为空")
 	}
 
-	// 1. 应用层编排：获取 Token 过期时间
-	expire, errNo := jwt.GetTokenRemainingTime(token)
-	if !errNo.IsOk() {
-		logger.Warn("获取 Token 过期时间失败", zap.Uint64("admin_id", adminID))
-		return errNo
-	}
-
-	// 2. 应用层编排：加入黑名单
+	expire, _ := jwt.GetTokenRemainingTime(token)
 	_ = s.adminRedisRepo.AddAdminTokenToBlackList(ctx, token, expire)
 	_ = s.adminRedisRepo.ClearAdminAllOnlineToken(ctx, adminID)
 
-	logger.Info("管理员登出成功", zap.Uint64("admin_id", adminID))
+	logger.Info("[APP] 管理员登出成功", zap.Uint64("id", adminID))
 	return nil
 }
 
-// GetAdminInfo 获取管理员信息
+// GetAdminInfo 获取信息（缓存优先）
 func (s *AdminAppService) GetAdminInfo(ctx context.Context, id uint64) (*dto.AdminInfoData, error) {
+	if id <= 0 {
+		logger.Warn("[APP] 管理员ID非法")
+		return nil, common.ParamErr.WithMsg("ID非法")
+	}
+
+	// 查缓存
+	model, err := s.adminRedisRepo.GetAdminFromRedis(ctx, id)
+	if err == nil {
+		if model == nil {
+			logger.Warn("[APP] 缓存管理员不存在")
+			return nil, common.AdminNotFoundErr.WithMsg("管理员不存在")
+		}
+		do := convert.AdminModelToDO(model)
+		return convert.AdminDOToAdminInfoData(do), nil
+	}
+
+	// 查库
+	logger.Info("[APP] 管理员缓存未命中，查询数据库")
 	adminDO, err := s.adminDomainService.FindAdminByID(ctx, id)
 	if err != nil {
-		if err == common.UserNotFoundErr {
-			logger.Warn("管理员不存在", zap.Uint64("admin_id", id))
-			return nil, common.UserNotFoundErr
-		}
-		logger.Error("查询管理员信息失败", zap.Uint64("admin_id", id), zap.Error(err))
-		return nil, common.ServerErr
+		logger.Error("[APP] 查询管理员失败", zap.Error(err))
+		return nil, err.(common.Errno).WithMsg("获取信息失败")
 	}
 
-	return &dto.AdminInfoData{
-		ID:          adminDO.ID,
-		AdminName:   adminDO.AdminName,
-		Avatar:      adminDO.Avatar,
-		Role:        adminDO.Role,
-		Status:      adminDO.Status,
-		Email:       adminDO.Email,
-		Remark:      adminDO.Remark,
-		LastLoginAt: adminDO.LastLoginAt,
-		CreateAt:    adminDO.CreateAt,
-	}, nil
+	// 回写缓存
+	_ = s.adminRedisRepo.SetAdminToRedis(ctx, id, convert.AdminDOToModel(adminDO))
+
+	return convert.AdminDOToAdminInfoData(adminDO), nil
 }
 
-// UpdatePWD 修改密码：应用层编排 + 清理缓存
+// UpdatePWD 修改密码
 func (s *AdminAppService) UpdatePWD(ctx context.Context, id uint64, req *dto.AdminUpdatePWDReq) error {
-	if req.OldPassword == "" {
-		logger.Warn("修改密码旧密码为空")
-		return common.UserPwdParamEmptyErr.WithMsg("旧密码为空")
-	}
-	if req.NewPassword == "" {
-		logger.Warn("修改密码新密码为空")
-		return common.UserPwdParamEmptyErr.WithMsg("新密码为空")
-	}
-	if err := password.CheckPasswordFormat(req.NewPassword); err != nil {
-		return common.UserNewPasswordInvalidErr.WithMsg(err.Error())
+	if req == nil {
+		logger.Warn("[APP] 修改密码参数为空")
+		return common.UserPwdParamEmptyErr.WithMsg("参数不能为空")
 	}
 
-	// 1. 执行核心业务逻辑
+	if msg := password.CheckPasswordFormat(req.OldPassword, req.NewPassword); msg != "" {
+		logger.Warn("[APP] 新密码格式错误", zap.String("reason", msg))
+		return common.UserNewPasswordInvalidErr.WithMsg(msg)
+	}
+
 	err := s.adminDomainService.UpdatePWD(ctx, id, req.NewPassword, req.OldPassword)
 	if err != nil {
-		logger.Error("修改密码失败", zap.Uint64("admin_id", id), zap.Error(err))
-		return err
+		logger.Error("[APP] 修改密码失败", zap.Error(err))
+		return err.(common.Errno).WithMsg("修改失败，请检查原密码")
 	}
 
-	// 2. 应用层编排：清理缓存
 	_ = s.adminRedisRepo.DelAdminFromRedis(ctx, id)
-	logger.Info("管理员密码修改成功，缓存已清理", zap.Uint64("admin_id", id))
+	logger.Info("[APP] 管理员密码修改成功", zap.Uint64("id", id))
 	return nil
 }
 
-// UpdateAdminInfo 更新管理员信息：应用层编排 + 清理缓存
+// UpdateAdminInfo 更新信息
 func (s *AdminAppService) UpdateAdminInfo(ctx context.Context, id uint64, req *dto.AdminUpdateInfoReq) (*dto.AdminInfoData, error) {
-	if req.AdminName == "" {
-		return nil, common.ParamErr.WithMsg("管理员名称不能为空")
-	}
-	if req.Role < 0 || req.Role > 1 {
-		return nil, common.ParamErr.WithMsg("角色只能是 0 或 1")
+	if id <= 0 || req == nil {
+		logger.Warn("[APP] 更新管理员参数非法")
+		return nil, common.ParamErr.WithMsg("请求参数非法")
 	}
 
-	var adminEmailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-	if req.Email != "" && !adminEmailRegex.MatchString(req.Email) {
-		return nil, common.ParamErr.WithMsg("邮箱格式错误")
+	// 邮箱校验
+	var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+	if req.Email != nil && *req.Email != "" && !emailRegex.MatchString(*req.Email) {
+		return nil, common.ParamErr.WithMsg("邮箱格式不正确")
 	}
 
 	updateData := &do.AdminDO{
-		AdminName: req.AdminName,
-		Avatar:    req.Avatar,
-		Role:      req.Role,
-		Email:     req.Email,
-		Remark:    req.Remark,
+		AdminName: ptr.Val(req.AdminName),
+		Avatar:    ptr.Val(req.Avatar),
+		Role:      ptr.Val(req.Role),
+		Email:     ptr.Val(req.Email),
+		Remark:    ptr.Val(req.Remark),
 	}
 
-	// 1. 执行核心业务逻辑
 	err := s.adminDomainService.UpdateAdminInfo(ctx, id, updateData)
 	if err != nil {
-		logger.Error("更新管理员信息失败", zap.Uint64("admin_id", id), zap.Error(err))
-		return nil, common.ServerErr
+		logger.Error("[APP] 更新管理员信息失败", zap.Error(err), zap.Uint64("id", id))
+		return nil, err.(common.Errno).WithMsg("更新失败")
 	}
 
-	// 2. 应用层编排：清理缓存
 	_ = s.adminRedisRepo.DelAdminFromRedis(ctx, id)
+	logger.Info("[APP] 管理员信息更新成功，缓存已清理", zap.Uint64("id", id))
 
-	newAdmin, _ := s.adminDomainService.FindAdminByID(ctx, id)
-	return &dto.AdminInfoData{
-		ID:          newAdmin.ID,
-		AdminName:   newAdmin.AdminName,
-		Avatar:      newAdmin.Avatar,
-		Role:        newAdmin.Role,
-		Status:      newAdmin.Status,
-		Email:       newAdmin.Email,
-		Remark:      newAdmin.Remark,
-		LastLoginAt: newAdmin.LastLoginAt,
-		CreateAt:    newAdmin.CreateAt,
+	return s.GetAdminInfo(ctx, id)
+}
+
+// FindAdminByName 按名称查询
+func (s *AdminAppService) FindAdminByName(ctx context.Context, req *dto.AdminFindInfoReq) (*dto.AdminInfoData, error) {
+	if req == nil || req.AdminName == "" {
+		logger.Warn("[APP] 查询管理员参数为空")
+		return nil, common.ParamErr.WithMsg("查询名称不能为空")
+	}
+
+	adminDO, err := s.adminDomainService.FindAdminByName(ctx, req.AdminName)
+	if err != nil {
+		logger.Error("[APP] 查询管理员失败", zap.Error(err))
+		return nil, err.(common.Errno).WithMsg("查询异常")
+	}
+
+	return convert.AdminDOToAdminInfoData(adminDO), nil
+}
+
+// ListAdmin 列表
+func (s *AdminAppService) ListAdmin(ctx context.Context, req *dto.AdminListReq) (*dto.AdminListResp, error) {
+	doList, total, err := s.adminDomainService.ListAdmin(ctx, req.Page, req.PageSize)
+	if err != nil {
+		logger.Error("[APP] 获取管理员列表失败", zap.Error(err))
+		return nil, err.(common.Errno).WithMsg("获取列表失败")
+	}
+
+	list := make([]dto.AdminInfoData, 0, len(doList))
+	for _, item := range doList {
+		list = append(list, *convert.AdminDOToAdminInfoData(item))
+	}
+
+	return &dto.AdminListResp{
+		List:     list,
+		Total:    total,
+		Page:     req.Page,
+		PageSize: req.PageSize,
 	}, nil
 }
 
-// FindAdminByName 根据用户名查询管理员
-func (s *AdminAppService) FindAdminByName(ctx context.Context, req *dto.AdminFindInfoReq) (*dto.AdminInfoData, error) {
-	adminDO, err := s.adminDomainService.FindAdminByName(ctx, req.AdminName)
+// UpdateAdminStatus 更新状态
+func (s *AdminAppService) UpdateAdminStatus(ctx context.Context, adminID uint64, status int) error {
+	err := s.adminDomainService.UpdateAdminStatus(ctx, adminID, status)
 	if err != nil {
-		if err == common.UserNotFoundErr {
-			logger.Warn("管理员不存在", zap.String("admin_name", req.AdminName))
-			return nil, common.UserNotFoundErr
-		}
-		logger.Error("查询管理员失败", zap.String("admin_name", req.AdminName), zap.Error(err))
-		return nil, common.ServerErr
+		logger.Error("[APP] 更新管理员状态失败", zap.Error(err))
+		return err.(common.Errno).WithMsg("状态更新失败")
 	}
 
-	return &dto.AdminInfoData{
-		ID:        adminDO.ID,
-		AdminName: adminDO.AdminName,
-		Avatar:    adminDO.Avatar,
-		Role:      adminDO.Role,
-		Status:    adminDO.Status,
-		CreateAt:  adminDO.CreateAt,
-	}, nil
+	_ = s.adminRedisRepo.DelAdminFromRedis(ctx, adminID)
+	logger.Info("[APP] 管理员状态更新成功", zap.Uint64("id", adminID))
+	return nil
+}
+
+// ResetAdminPWD 重置密码
+func (s *AdminAppService) ResetAdminPWD(ctx context.Context, adminID uint64, newPwd string) error {
+	if newPwd == "" {
+		return common.ParamErr.WithMsg("新密码不能为空")
+	}
+
+	err := s.adminDomainService.ResetAdminPWD(ctx, adminID, newPwd)
+	if err != nil {
+		logger.Error("[APP] 重置密码失败", zap.Error(err))
+		return err.(common.Errno).WithMsg("重置失败")
+	}
+
+	_ = s.adminRedisRepo.DelAdminFromRedis(ctx, adminID)
+	_ = s.adminRedisRepo.ClearAdminAllOnlineToken(ctx, adminID)
+	logger.Info("[APP] 管理员密码重置成功", zap.Uint64("id", adminID))
+	return nil
 }

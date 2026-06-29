@@ -18,9 +18,9 @@ const (
 	AdminTokenKey    = "Admin-Authorization" // 管理员Token请求头
 	CustomerUserKey  = "customer_user"       // Gin Context中存储用户信息的key
 	CustomerAdminKey = "customer_admin"      // Gin Context中存储管理员信息的key
-	AdminUserKey     = "admin_user"          // Gin Context中存储管理员信息的key
 	UserIDKey        = "user_id"             // Gin Context中存储用户ID的key
 	AdminIDKey       = "admin_id"            // Gin Context中存储管理员ID的key
+	AdminRoleKey     = "admin_role"          // Gin Context中存储管理员角色的key
 
 	IsEnable  = 1
 	IsDisable = -1
@@ -29,6 +29,10 @@ const (
 	UserStatusEnabled  = 1 // 正常启用
 	UserStatusDisabled = 2 // 禁用
 	UserStatusLocked   = 3 // 锁定
+
+	// 管理员角色定义
+	AdminRoleSuper = iota
+	AdminRoleNormal
 
 	// 评论状态
 	CommentStatusPending  = 0 // 待审核

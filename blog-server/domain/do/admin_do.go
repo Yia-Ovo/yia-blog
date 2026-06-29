@@ -17,3 +17,13 @@ type AdminDO struct {
 	Email       string     `json:"email"`         // 邮箱
 	Remark      string     `json:"remark"`        // 备注
 }
+
+// FormatCreateAt 业务方法：格式化创建时间为字符串（给前端展示用）
+func (a *AdminDO) FormatCreateAt() string {
+	return a.CreateAt.Format("2006-01-02 15:04:05")
+}
+
+// FormatUpdateAt 业务方法：格式化更新时间
+func (a *AdminDO) FormatUpdateAt() string {
+	return a.UpdateAt.Format("2006-01-02 15:04:05")
+}

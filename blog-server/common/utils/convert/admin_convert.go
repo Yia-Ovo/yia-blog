@@ -2,15 +2,15 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-15 18:39:09
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-14 10:47:03
+ * @LastEditTime: 2026-06-10 15:56:45
  * @FilePath: \yia-blog\blog-server\common\utils\convert\admin_convert.go
- * @Description:
- *
+ * @Description: 管理员实体类型转换工具
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
  */
 package convert
 
 import (
+	"blog-server/api/dto"
 	"blog-server/domain/do"
 	"blog-server/infra/model"
 )
@@ -44,6 +44,8 @@ func AdminModelToDO(model *model.AdminModel) *do.AdminDO {
 		Password:    model.Password,
 		Role:        model.Role,
 		Avatar:      model.Avatar,
+		Email:       model.Email,
+		Remark:      model.Remark,
 		Status:      model.Status,
 		LastLoginAt: model.LastLoginAt,
 		CreateAt:    model.CreateAt,
@@ -59,6 +61,8 @@ func AdminDOToModel(do *do.AdminDO) *model.AdminModel {
 		Password:    do.Password,
 		Role:        do.Role,
 		Avatar:      do.Avatar,
+		Email:       do.Email,
+		Remark:      do.Remark,
 		Status:      do.Status,
 		LastLoginAt: do.LastLoginAt,
 		CreateAt:    do.CreateAt,
@@ -66,11 +70,36 @@ func AdminDOToModel(do *do.AdminDO) *model.AdminModel {
 	}
 }
 
+// AdminDOToAdmin DO转认证结构体
 func AdminDOToAdmin(do *do.AdminDO) *Admin {
 	return &Admin{
 		ID:        do.ID,
 		AdminName: do.AdminName,
 		Role:      do.Role,
 		Avatar:    do.Avatar,
+	}
+}
+
+// AdminDOToAdminLoginDTO DO转登录返回DTO
+// AdminDOToAdminBaseDTO DO转基础DTO（登录用）
+func AdminDOToAdminBaseDTO(do *do.AdminDO) dto.AdminBaseDTO {
+	return dto.AdminBaseDTO{
+		ID:        do.ID,
+		AdminName: do.AdminName,
+		Avatar:    do.Avatar,
+		Role:      do.Role,
+		Status:    do.Status,
+		Email:     do.Email,
+		Remark:    do.Remark,
+	}
+}
+
+// AdminDOToAdminInfoData DO转详情DTO
+func AdminDOToAdminInfoData(do *do.AdminDO) *dto.AdminInfoData {
+	return &dto.AdminInfoData{
+		AdminBaseDTO: AdminDOToAdminBaseDTO(do),
+		LastLoginAt:  do.LastLoginAt,
+		CreateAt:     do.CreateAt,
+		UpdateAt:     do.UpdateAt,
 	}
 }

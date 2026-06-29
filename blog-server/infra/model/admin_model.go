@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-30 01:25:35
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-04-30 01:26:48
+ * @LastEditTime: 2026-06-10 15:27:16
  * @FilePath: \yia-blog\blog-server\infra\model\admin_model.go
  * @Description:
  *

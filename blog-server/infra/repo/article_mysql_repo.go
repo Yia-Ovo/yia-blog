@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-05-07 02:04:38
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-29 16:52:21
+ * @LastEditTime: 2026-06-08 14:00:29
  * @FilePath: \yia-blog\blog-server\infra\repo\article_mysql_repo.go
  * @Description: 文章 MySQL 仓储层
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
@@ -31,7 +31,7 @@ func NewArticleMysqlRepo(db *gorm.DB) *articleMysqlRepo {
 // --------------------- 1. 创建文章 ---------------------
 func (a *articleMysqlRepo) CreateArticle(ctx context.Context, article *model.ArticleModel) error {
 	if err := a.db.WithContext(ctx).Create(article).Error; err != nil {
-		logger.Error("CreateArticle failed", zap.String("title", article.Title), zap.Error(err))
+		logger.Error("[MYSQL] 创建文章失败", zap.String("title", article.Title), zap.Error(err))
 		return err
 	}
 	return nil
@@ -61,7 +61,7 @@ func (a *articleMysqlRepo) ListArticleByPage(ctx context.Context, query *do.Arti
 
 	// 2. 查询总条数
 	if err := db.Count(&total).Error; err != nil {
-		logger.Error("ListArticleByPage count failed", zap.Any("query", query), zap.Error(err))
+		logger.Error("[MYSQL] 文章分页查询统计失败", zap.Any("query", query), zap.Error(err))
 		return nil, 0, err
 	}
 	if total == 0 {
@@ -77,7 +77,7 @@ func (a *articleMysqlRepo) ListArticleByPage(ctx context.Context, query *do.Arti
 		Find(&list).Error
 
 	if err != nil {
-		logger.Error("ListArticleByPage find failed", zap.Any("query", query), zap.Error(err))
+		logger.Error("[MYSQL] 文章分页查询失败", zap.Any("query", query), zap.Error(err))
 		return nil, 0, err
 	}
 
@@ -91,9 +91,9 @@ func (a *articleMysqlRepo) GetArticleById(ctx context.Context, id uint64) (*mode
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			logger.Warn("GetArticleById: article not found", zap.Uint64("article_id", id))
+			logger.Warn("[MYSQL] 文章不存在", zap.Uint64("article_id", id))
 		} else {
-			logger.Error("GetArticleById failed", zap.Uint64("article_id", id), zap.Error(err))
+			logger.Error("[MYSQL] 查询文章失败", zap.Uint64("article_id", id), zap.Error(err))
 		}
 		return nil, err
 	}
@@ -106,11 +106,11 @@ func (a *articleMysqlRepo) DeleteArticle(ctx context.Context, id uint64) error {
 	err := a.db.WithContext(ctx).Delete(&model.ArticleModel{}, id).Error
 
 	if err != nil {
-		logger.Error("DeleteArticle failed", zap.Uint64("article_id", id), zap.Error(err))
+		logger.Error("[MYSQL] 删除文章失败", zap.Uint64("article_id", id), zap.Error(err))
 		return err
 	}
 	if a.db.RowsAffected == 0 {
-		logger.Warn("DeleteArticle no rows affected", zap.Uint64("article_id", id))
+		logger.Warn("[MYSQL] 删除文章无数据影响", zap.Uint64("article_id", id))
 	}
 	return nil
 }
@@ -120,11 +120,11 @@ func (a *articleMysqlRepo) UpdateArticle(ctx context.Context, article *model.Art
 	err := a.db.WithContext(ctx).Save(article).Error
 
 	if err != nil {
-		logger.Error("UpdateArticle failed", zap.Uint64("article_id", article.ID), zap.String("title", article.Title), zap.Error(err))
+		logger.Error("[MYSQL] 更新文章失败", zap.Uint64("article_id", article.ID), zap.String("title", article.Title), zap.Error(err))
 		return err
 	}
 	if a.db.RowsAffected == 0 {
-		logger.Warn("UpdateArticle no rows affected", zap.Uint64("article_id", article.ID))
+		logger.Warn("[MYSQL] 更新文章无数据影响", zap.Uint64("article_id", article.ID))
 	}
 	return nil
 }

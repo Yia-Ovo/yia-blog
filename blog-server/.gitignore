@@ -19,3 +19,5 @@
 # Logs
 logs/
 *.log
+
+api.json

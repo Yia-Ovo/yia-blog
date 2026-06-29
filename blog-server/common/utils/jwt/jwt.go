@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-17 07:43:04
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-06-03 15:35:45
+ * @LastEditTime: 2026-06-10 16:10:08
  * @FilePath: \yia-blog\blog-server\common\utils\jwt\jwt.go
  * @Description: JWT 工具包（用户/管理员双体系、与DTO对齐、安全加固）
  */
@@ -63,8 +63,8 @@ func GenerateUserToken(user *dto.UserBaseDTO) (string, error) {
 	return token.SignedString(userSecret)
 }
 
-// GenerateAdminToken 生成管理员Token
-func GenerateAdminToken(admin *dto.AdminLoginDTO) (string, error) {
+// GenerateAdminToken 生成管理员Token 传入 AdminBaseDTO
+func GenerateAdminToken(admin *dto.AdminBaseDTO) (string, error) {
 	exp := time.Now().Add(tokenExpire * time.Hour)
 	claims := AdminClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -110,10 +110,8 @@ func ParseAdminToken(tokenStr string) (*AdminClaims, common.Errno) {
 }
 
 // --------------------------- 中间件专用 ---------------------------
-// 解析传入的 Token 字符串，并从中提取出用户的基本信息
 // ParseTokenToUserWithCtx 适配 auth.go
 func ParseTokenToUserWithCtx(ctx context.Context, tokenStr string) (*dto.UserBaseDTO, common.Errno) {
-	// 占位使用 ctx，避免未使用参数警告（支持未来链路追踪、上下文超时控制）
 	_ = ctx
 
 	if tokenStr == "" {
@@ -129,7 +127,7 @@ func ParseTokenToUserWithCtx(ctx context.Context, tokenStr string) (*dto.UserBas
 }
 
 // ParseTokenToAdminWithCtx 适配 auth.go
-func ParseTokenToAdminWithCtx(ctx context.Context, tokenStr string) (*dto.AdminLoginDTO, common.Errno) {
+func ParseTokenToAdminWithCtx(ctx context.Context, tokenStr string) (*dto.AdminBaseDTO, common.Errno) {
 	_ = ctx
 
 	if tokenStr == "" {
@@ -139,7 +137,7 @@ func ParseTokenToAdminWithCtx(ctx context.Context, tokenStr string) (*dto.AdminL
 	if !errNo.IsOk() {
 		return nil, errNo
 	}
-	return &dto.AdminLoginDTO{
+	return &dto.AdminBaseDTO{
 		ID: claims.AdminID,
 	}, common.OK
 }
@@ -184,10 +182,8 @@ func GetTokenRemainingTime(tokenStr string) (time.Duration, common.Errno) {
 	return 0, common.LoginTokenInvalidErr
 }
 
-// 获取 Token 过期时间（格式化字符串）
-// GetTokenExpireAt 直接返回过期时间字符串：2006-01-02 15:04:05
+// GetTokenExpireAt 直接返回过期时间字符串
 func GetTokenExpireAt(tokenStr string) (string, common.Errno) {
-	// 先尝试解析用户 Token
 	var userClaims CustomClaims
 	if _, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &userClaims); err == nil {
 		if userClaims.ExpiresAt == nil {
@@ -196,7 +192,6 @@ func GetTokenExpireAt(tokenStr string) (string, common.Errno) {
 		return userClaims.ExpiresAt.Time.Format("2006-01-02 15:04:05"), common.OK
 	}
 
-	// 再尝试解析管理员 Token
 	var adminClaims AdminClaims
 	if _, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &adminClaims); err == nil {
 		if adminClaims.ExpiresAt == nil {
