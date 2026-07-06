@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-16 08:26:43
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-06-08 13:57:59
+ * @LastEditTime: 2026-07-01 10:19:11
  * @FilePath: \yia-blog\blog-server\infra\repo\admin_redis_repo.go
  * @Description: 管理员 Redis 仓储实现
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
@@ -177,6 +177,16 @@ func (r *adminRedisRepo) ClearAdminAllOnlineToken(ctx context.Context, adminID u
 
 	logger.Info("[REDIS] 清理管理员在线令牌完成", zap.Uint64("admin_id", adminID), zap.Int("count", len(keys)))
 	return nil
+}
+
+func (r *adminRedisRepo) IsAdminOnlineToken(ctx context.Context, adminID uint64, token string) (bool, error) {
+	key := buildAdminOnlineTokenKey(adminID, token)
+	count, err := r.rdb.Exists(ctx, key).Result()
+	if err != nil {
+		logger.Warn("[REDIS] 校验在线令牌异常", zap.Uint64("admin_id", adminID), zap.String("token_mask", maskToken(token)), zap.Error(err))
+		return false, err
+	}
+	return count > 0, nil
 }
 
 // ====================== 黑名单令牌管理 ======================

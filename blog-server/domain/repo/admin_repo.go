@@ -25,8 +25,8 @@ type AdminMysqlRepo interface {
 	FindAdminByName(ctx context.Context, adminName string) (*model.AdminModel, error)
 	// FindAdminByID 根据ID查询管理员
 	FindAdminByID(ctx context.Context, adminID uint64) (*model.AdminModel, error)
-	// UpdateAdminInfo 更新管理员信息
-	UpdateAdminInfo(ctx context.Context, adminModel *model.AdminModel) error
+	// UpdateAdminInfo 更新管理员信息，角色变更时递增令牌版本
+	UpdateAdminInfo(ctx context.Context, adminModel *model.AdminModel, bumpTokenVersion bool) error
 	// UpdateLastLoginInfo 更新最后登录时间
 	UpdateLastLoginInfo(ctx context.Context, adminID uint64, loginAt *time.Time) error
 
@@ -57,4 +57,6 @@ type AdminRedisRepo interface {
 	AddAdminTokenToBlackList(ctx context.Context, token string, exp time.Duration) error
 	// IsAdminTokenBlacklisted 检查令牌是否在黑名单
 	IsAdminTokenBlacklisted(ctx context.Context, token string) (bool, error)
+	// IsAdminOnlineToken 检查管理员在线token是否存在
+	IsAdminOnlineToken(ctx context.Context, adminID uint64, token string) (bool, error)
 }

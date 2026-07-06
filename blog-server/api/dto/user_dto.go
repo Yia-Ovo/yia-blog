@@ -46,13 +46,14 @@ type UserFindInfoReq struct {
 // ================= 出参 ===================
 // UserBaseDTO：基础用户字段【被详情、登录信息共用，核心去重】
 type UserBaseDTO struct {
-	ID        uint64 `json:"id"`
-	NickName  string `json:"nick_name"`
-	Avatar    string `json:"avatar"`
-	Status    int    `json:"status"`
-	Gender    int    `json:"gender"`
-	Signature string `json:"signature"`
-	Email     string `json:"email"`
+	ID           uint64 `json:"id"`
+	NickName     string `json:"nick_name"`
+	Avatar       string `json:"avatar"`
+	Status       int    `json:"status"`
+	TokenVersion uint64 `json:"-"`
+	Gender       int    `json:"gender"`
+	Signature    string `json:"signature"`
+	Email        string `json:"email"`
 }
 
 // UserInfoData 用户完整详情（嵌入基础DTO，补充扩展字段，不用重复写字段）

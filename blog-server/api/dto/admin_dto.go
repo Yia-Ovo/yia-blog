@@ -63,13 +63,14 @@ type AdminResetPWDReq struct {
 // ================= 出参 ===================
 // AdminBaseDTO：基础管理员字段【被详情、登录信息共用】
 type AdminBaseDTO struct {
-	ID        uint64 `json:"id"`
-	AdminName string `json:"admin_name"`
-	Avatar    string `json:"avatar"`
-	Role      int    `json:"role"`
-	Status    int    `json:"status"`
-	Email     string `json:"email"`
-	Remark    string `json:"remark"`
+	ID           uint64 `json:"id"`
+	AdminName    string `json:"admin_name"`
+	Avatar       string `json:"avatar"`
+	Role         int    `json:"role"`
+	Status       int    `json:"status"`
+	TokenVersion uint64 `json:"-"`
+	Email        string `json:"email"`
+	Remark       string `json:"remark"`
 }
 
 // AdminInfoData 管理员完整详情

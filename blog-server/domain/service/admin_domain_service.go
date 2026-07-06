@@ -2,6 +2,7 @@ package service
 
 import (
 	"blog-server/common"
+	"blog-server/common/consts"
 	"blog-server/common/utils/convert"
 	"blog-server/common/utils/logger"
 	"blog-server/domain/do"
@@ -86,11 +87,12 @@ func (a *AdminDomainService) UpdatePWD(ctx context.Context, adminId uint64, newP
 	return nil
 }
 
-// UpdateAdminInfo 更新信息
-func (a *AdminDomainService) UpdateAdminInfo(ctx context.Context, adminId uint64, data *do.AdminDO) error {
+// UpdateAdminInfo 更新信息，roleProvided 表示请求体是否显式传了 role 字段。
+// 这里不能只用 data.Role != 0 判断，因为 0 本身就是超管角色。
+func (a *AdminDomainService) UpdateAdminInfo(ctx context.Context, adminId uint64, data *do.AdminDO, roleProvided bool) (bool, error) {
 	adminDO, err := a.FindAdminByID(ctx, adminId)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if data.AdminName != "" {
@@ -99,7 +101,13 @@ func (a *AdminDomainService) UpdateAdminInfo(ctx context.Context, adminId uint64
 	if data.Avatar != "" {
 		adminDO.Avatar = data.Avatar
 	}
-	if data.Role != 0 {
+	// 只有“请求传了 role”且“新旧角色不同”才算真正修改角色。
+	// 这样普通资料更新误带相同 role 不会被当成越权，也不会无意义踢登录态。
+	roleChanged := roleProvided && data.Role != adminDO.Role
+	if roleChanged {
+		if adminDO.Role != consts.AdminRoleSuper {
+			return false, common.PermissionDeniedErr.WithMsg("无权修改管理员角色")
+		}
 		adminDO.Role = data.Role
 	}
 	if data.Email != "" {
@@ -112,11 +120,11 @@ func (a *AdminDomainService) UpdateAdminInfo(ctx context.Context, adminId uint64
 	adminDO.UpdateAt = time.Now()
 	model := convert.AdminDOToModel(adminDO)
 
-	if err := a.adminMysqlRepo.UpdateAdminInfo(ctx, model); err != nil {
+	if err := a.adminMysqlRepo.UpdateAdminInfo(ctx, model, roleChanged); err != nil {
 		logger.Warn("[DOMAIN] 管理员信息更新失败", zap.Error(err), zap.Uint64("admin_id", adminId))
-		return common.AdminUpdateErr
+		return false, common.AdminUpdateErr
 	}
-	return nil
+	return roleChanged, nil
 }
 
 // CreateAdmin 创建管理员

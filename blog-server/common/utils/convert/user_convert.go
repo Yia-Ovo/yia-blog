@@ -20,17 +20,18 @@ func UserModelToDO(m *model.UserModel) *do.UserDO {
 		return nil
 	}
 	return &do.UserDO{
-		ID:          m.ID,
-		NickName:    m.NickName,
-		Password:    m.Password,
-		Status:      m.Status,
-		LastLoginAt: m.LastLoginAt,
-		Avatar:      m.Avatar,
-		Gender:      m.Gender,
-		Signature:   m.Signature,
-		Email:       m.Email,
-		CreateAt:    m.CreateAt,
-		UpdateAt:    m.UpdateAt,
+		ID:           m.ID,
+		NickName:     m.NickName,
+		Password:     m.Password,
+		Status:       m.Status,
+		TokenVersion: m.TokenVersion,
+		LastLoginAt:  m.LastLoginAt,
+		Avatar:       m.Avatar,
+		Gender:       m.Gender,
+		Signature:    m.Signature,
+		Email:        m.Email,
+		CreateAt:     m.CreateAt,
+		UpdateAt:     m.UpdateAt,
 	}
 }
 
@@ -39,17 +40,18 @@ func UserDOToModel(d *do.UserDO) *model.UserModel {
 		return &model.UserModel{}
 	}
 	return &model.UserModel{
-		ID:          d.ID,
-		NickName:    d.NickName,
-		Password:    d.Password,
-		Status:      d.Status,
-		LastLoginAt: d.LastLoginAt,
-		Avatar:      d.Avatar,
-		Gender:      d.Gender,
-		Signature:   d.Signature,
-		Email:       d.Email,
-		CreateAt:    d.CreateAt,
-		UpdateAt:    d.UpdateAt,
+		ID:           d.ID,
+		NickName:     d.NickName,
+		Password:     d.Password,
+		Status:       d.Status,
+		TokenVersion: d.TokenVersion,
+		LastLoginAt:  d.LastLoginAt,
+		Avatar:       d.Avatar,
+		Gender:       d.Gender,
+		Signature:    d.Signature,
+		Email:        d.Email,
+		CreateAt:     d.CreateAt,
+		UpdateAt:     d.UpdateAt,
 	}
 }
 
@@ -59,13 +61,14 @@ func UserDOToBaseDTO(do *do.UserDO) dto.UserBaseDTO {
 		return dto.UserBaseDTO{}
 	}
 	return dto.UserBaseDTO{
-		ID:        do.ID,
-		NickName:  do.NickName,
-		Avatar:    do.Avatar,
-		Status:    do.Status,
-		Gender:    do.Gender,
-		Signature: do.Signature,
-		Email:     do.Email,
+		ID:           do.ID,
+		NickName:     do.NickName,
+		Avatar:       do.Avatar,
+		Status:       do.Status,
+		TokenVersion: do.TokenVersion,
+		Gender:       do.Gender,
+		Signature:    do.Signature,
+		Email:        do.Email,
 	}
 }
 

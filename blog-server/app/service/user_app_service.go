@@ -115,11 +115,14 @@ func (s *UserAppService) Login(ctx context.Context, req *dto.UserLoginReq) (*dto
 	expireDur, errNo := jwt.GetTokenRemainingTime(token)
 	if !errNo.IsOk() {
 		logger.Warn("[APP] 获取Token过期时间失败", zap.String("err", errNo.Error()))
-		// 异常时设为0，不写入在线缓存
-		expireDur = 0
+		return nil, common.ServerErr.WithMsg("服务异常，登录失败")
 	}
-	// 写入在线token
-	_ = s.userRedisRepo.SetOnlineToken(ctx, userDO.ID, token, expireDur)
+
+	err = s.userRedisRepo.SetOnlineToken(ctx, userDO.ID, token, expireDur)
+	if err != nil {
+		logger.Warn("[APP] 写入在线Token失败", zap.Uint64("user_id", userDO.ID), zap.Error(err))
+		return nil, common.ServerErr.WithMsg("服务异常，登录失败").WithErr(err)
+	}
 
 	expireShow, showErr := jwt.GetTokenExpireAt(token)
 	if !showErr.IsOk() {
@@ -142,11 +145,20 @@ func (s *UserAppService) Logout(ctx context.Context, userID uint64, token string
 	}
 
 	// 获取token的剩余有效期时间
-	expire, _ := jwt.GetTokenRemainingTime(token)
-	// 将token加入黑名单，设置过期时间
-	_ = s.userRedisRepo.AddTokenToBlackList(ctx, token, expire)
-	// 清除用户的所有在线token
-	_ = s.userRedisRepo.ClearUserAllOnlineToken(ctx, userID)
+	expire, errNo := jwt.GetTokenRemainingTime(token)
+	if errNo.IsOk() {
+		if err := s.userRedisRepo.AddTokenToBlackList(ctx, token, expire); err != nil {
+			logger.Warn("[APP] 写入黑名单失败", zap.Uint64("user_id", userID), zap.Error(err))
+			return common.ServerErr.WithMsg("登出失败").WithErr(err)
+		}
+	} else {
+		logger.Warn("[APP] 获取Token剩余时间失败，跳过黑名单写入", zap.String("err", errNo.Error()))
+	}
+
+	if err := s.userRedisRepo.ClearUserAllOnlineToken(ctx, userID); err != nil {
+		logger.Warn("[APP] 清除用户在线Token失败", zap.Uint64("user_id", userID), zap.Error(err))
+		return common.ServerErr.WithMsg("登出失败").WithErr(err)
+	}
 
 	logger.Info("[APP] 用户登出成功", zap.Uint64("user_id", userID))
 	return nil
@@ -210,6 +222,11 @@ func (s *UserAppService) UpdatePWD(ctx context.Context, id uint64, req *dto.User
 
 	// 清理缓存
 	_ = s.userRedisRepo.DelUserFromRedis(ctx, id)
+
+	// 清理在线Token
+	if err := s.userRedisRepo.ClearUserAllOnlineToken(ctx, id); err != nil {
+		logger.Warn("[APP] 清除用户在线Token失败", zap.Uint64("user_id", id), zap.Error(err))
+	}
 
 	logger.Info("[APP] 用户密码修改成功", zap.Uint64("user_id", id))
 	return nil

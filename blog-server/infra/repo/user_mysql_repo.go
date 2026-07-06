@@ -142,8 +142,9 @@ func (r *userMysqlRepo) UpdatePWD(ctx context.Context, userID uint64, password s
 	result := r.userBaseQuery(ctx).
 		Where("id = ?", userID).
 		Updates(map[string]interface{}{
-			"password":  password,
-			"update_at": time.Now(),
+			"password":      password,
+			"token_version": gorm.Expr("token_version + ?", 1),
+			"update_at":     time.Now(),
 		})
 
 	if err := result.Error; err != nil {

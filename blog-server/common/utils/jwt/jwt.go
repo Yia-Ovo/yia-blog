@@ -21,12 +21,14 @@ import (
 
 // --------------------------- 声明结构（最小化，只存ID） ---------------------------
 type CustomClaims struct {
-	UserID uint64 `json:"user_id"`
+	UserID       uint64  `json:"user_id"`
+	TokenVersion *uint64 `json:"token_version"`
 	jwt.RegisteredClaims
 }
 
 type AdminClaims struct {
-	AdminID uint64 `json:"admin_id"`
+	AdminID      uint64  `json:"admin_id"`
+	TokenVersion *uint64 `json:"token_version"`
 	jwt.RegisteredClaims
 }
 
@@ -51,13 +53,15 @@ func Init(cfg *config.GlobalConfig) {
 // GenerateUserToken 生成用户Token（传入 dto.UserBaseDTO）
 func GenerateUserToken(user *dto.UserBaseDTO) (string, error) {
 	exp := time.Now().Add(tokenExpire * time.Hour)
+	tokenVersion := user.TokenVersion
 	claims := CustomClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(exp),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    issuer,
 		},
-		UserID: user.ID,
+		UserID:       user.ID,
+		TokenVersion: &tokenVersion,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(userSecret)
@@ -66,13 +70,15 @@ func GenerateUserToken(user *dto.UserBaseDTO) (string, error) {
 // GenerateAdminToken 生成管理员Token 传入 AdminBaseDTO
 func GenerateAdminToken(admin *dto.AdminBaseDTO) (string, error) {
 	exp := time.Now().Add(tokenExpire * time.Hour)
+	tokenVersion := admin.TokenVersion
 	claims := AdminClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(exp),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    issuer,
 		},
-		AdminID: admin.ID,
+		AdminID:      admin.ID,
+		TokenVersion: &tokenVersion,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(adminSecret)
@@ -121,8 +127,12 @@ func ParseTokenToUserWithCtx(ctx context.Context, tokenStr string) (*dto.UserBas
 	if !errNo.IsOk() {
 		return nil, errNo
 	}
+	if claims.TokenVersion == nil {
+		return nil, common.LoginNotLoginErr.WithMsg("登录已失效，请重新登录")
+	}
 	return &dto.UserBaseDTO{
-		ID: claims.UserID,
+		ID:           claims.UserID,
+		TokenVersion: *claims.TokenVersion,
 	}, common.OK
 }
 
@@ -137,8 +147,12 @@ func ParseTokenToAdminWithCtx(ctx context.Context, tokenStr string) (*dto.AdminB
 	if !errNo.IsOk() {
 		return nil, errNo
 	}
+	if claims.TokenVersion == nil {
+		return nil, common.LoginNotLoginErr.WithMsg("登录已失效，请重新登录")
+	}
 	return &dto.AdminBaseDTO{
-		ID: claims.AdminID,
+		ID:           claims.AdminID,
+		TokenVersion: *claims.TokenVersion,
 	}, common.OK
 }
 

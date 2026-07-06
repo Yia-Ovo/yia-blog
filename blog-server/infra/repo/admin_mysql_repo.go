@@ -112,18 +112,29 @@ func (r *adminMysqlRepo) ListAdmin(ctx context.Context, page, pageSize int) ([]*
 }
 
 // --------------------- 5. 更新管理员信息 ---------------------
-func (r *adminMysqlRepo) UpdateAdminInfo(ctx context.Context, adminModel *model.AdminModel) error {
+func (r *adminMysqlRepo) UpdateAdminInfo(ctx context.Context, adminModel *model.AdminModel, bumpTokenVersion bool) error {
 	if adminModel == nil || adminModel.ID == 0 {
 		logger.Error("[MYSQL] 更新管理员信息失败，管理员模型非法")
 		return gorm.ErrInvalidData
 	}
 
 	adminModel.UpdateAt = time.Now()
+	updateData := map[string]interface{}{
+		"admin_name": adminModel.AdminName,
+		"avatar":     adminModel.Avatar,
+		"role":       adminModel.Role,
+		"email":      adminModel.Email,
+		"status":     adminModel.Status,
+		"remark":     adminModel.Remark,
+		"update_at":  adminModel.UpdateAt,
+	}
+	if bumpTokenVersion {
+		updateData["token_version"] = gorm.Expr("token_version + ?", 1)
+	}
 
 	result := r.adminBaseQuery(ctx).
 		Where("id = ?", adminModel.ID).
-		Select("admin_name", "avatar", "role", "email", "status", "remark", "update_at").
-		Updates(adminModel)
+		Updates(updateData)
 
 	if err := result.Error; err != nil {
 		logger.Error("[MYSQL] 更新管理员信息失败", zap.Uint64("admin_id", adminModel.ID), zap.Error(err))
@@ -140,8 +151,9 @@ func (r *adminMysqlRepo) UpdateAdminInfo(ctx context.Context, adminModel *model.
 // --------------------- 6. 更新管理员状态 ---------------------
 func (r *adminMysqlRepo) UpdateAdminStatus(ctx context.Context, adminID uint64, status int) error {
 	updateData := map[string]interface{}{
-		"status":    status,
-		"update_at": time.Now(),
+		"status":        status,
+		"token_version": gorm.Expr("token_version + ?", 1),
+		"update_at":     time.Now(),
 	}
 
 	result := r.adminBaseQuery(ctx).
@@ -165,8 +177,9 @@ func (r *adminMysqlRepo) UpdatePWD(ctx context.Context, adminID uint64, password
 	result := r.adminBaseQuery(ctx).
 		Where("id = ?", adminID).
 		Updates(map[string]interface{}{
-			"password":  password,
-			"update_at": time.Now(),
+			"password":      password,
+			"token_version": gorm.Expr("token_version + ?", 1),
+			"update_at":     time.Now(),
 		})
 
 	if err := result.Error; err != nil {

@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-05-29 16:00:00
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-06-10 16:10:45
+ * @LastEditTime: 2026-07-07 00:01:04
  * @FilePath: \yia-blog\blog-server\app\service\admin_app_service.go
  * @Description: 管理员应用服务 - 业务编排、缓存处理、流程调度
  * Copyright (c) 2026 by Yia 2594487@qq.com, All Rights Reserved.
@@ -117,10 +117,15 @@ func (s *AdminAppService) Login(ctx context.Context, req *dto.AdminLoginReq) (*d
 	// 写入在线缓存
 	expireDur, errNo := jwt.GetTokenRemainingTime(token)
 	if !errNo.IsOk() {
-		expireDur = 0
+		logger.Warn("[APP] 获取管理员Token过期时间失败", zap.String("err", errNo.Error()))
+		return nil, common.ServerErr.WithMsg("服务异常，登录失败")
 	}
-	_ = s.adminRedisRepo.SetAdminOnlineToken(ctx, adminDO.ID, token, expireDur)
 
+	err = s.adminRedisRepo.SetAdminOnlineToken(ctx, adminDO.ID, token, expireDur)
+	if err != nil {
+		logger.Warn("[APP] 写入管理员在线Token失败", zap.Uint64("admin_id", adminDO.ID), zap.Error(err))
+		return nil, common.ServerErr.WithMsg("服务异常，登录失败").WithErr(err)
+	}
 	// 过期时间展示
 	expireShow, showErr := jwt.GetTokenExpireAt(token)
 	if !showErr.IsOk() {
@@ -142,9 +147,20 @@ func (s *AdminAppService) Logout(ctx context.Context, adminID uint64, token stri
 		return common.TokenEmptyErr.WithMsg("令牌不能为空")
 	}
 
-	expire, _ := jwt.GetTokenRemainingTime(token)
-	_ = s.adminRedisRepo.AddAdminTokenToBlackList(ctx, token, expire)
-	_ = s.adminRedisRepo.ClearAdminAllOnlineToken(ctx, adminID)
+	expire, errNo := jwt.GetTokenRemainingTime(token)
+	if errNo.IsOk() {
+		if err := s.adminRedisRepo.AddAdminTokenToBlackList(ctx, token, expire); err != nil {
+			logger.Warn("[APP] 写入黑名单失败", zap.Uint64("admin_id", adminID), zap.Error(err))
+			return common.ServerErr.WithMsg("登出失败").WithErr(err)
+		}
+	} else {
+		logger.Warn("[APP] 获取Token剩余时间失败，跳过黑名单写入", zap.String("err", errNo.Error()))
+	}
+
+	if err := s.adminRedisRepo.ClearAdminAllOnlineToken(ctx, adminID); err != nil {
+		logger.Warn("[APP] 清除管理员在线Token失败", zap.Uint64("admin_id", adminID), zap.Error(err))
+		return common.ServerErr.WithMsg("登出失败").WithErr(err)
+	}
 
 	logger.Info("[APP] 管理员登出成功", zap.Uint64("id", adminID))
 	return nil
@@ -201,6 +217,12 @@ func (s *AdminAppService) UpdatePWD(ctx context.Context, id uint64, req *dto.Adm
 	}
 
 	_ = s.adminRedisRepo.DelAdminFromRedis(ctx, id)
+
+	// 清除在线Token
+	if err := s.adminRedisRepo.ClearAdminAllOnlineToken(ctx, id); err != nil {
+		logger.Warn("[APP] 清除管理员在线Token失败", zap.Uint64("admin_id", id), zap.Error(err))
+	}
+
 	logger.Info("[APP] 管理员密码修改成功", zap.Uint64("id", id))
 	return nil
 }
@@ -226,14 +248,26 @@ func (s *AdminAppService) UpdateAdminInfo(ctx context.Context, id uint64, req *d
 		Remark:    ptr.Val(req.Remark),
 	}
 
-	err := s.adminDomainService.UpdateAdminInfo(ctx, id, updateData)
+	roleChanged, err := s.adminDomainService.UpdateAdminInfo(ctx, id, updateData, req.Role != nil)
 	if err != nil {
 		logger.Error("[APP] 更新管理员信息失败", zap.Error(err), zap.Uint64("id", id))
 		return nil, err.(common.Errno).WithMsg("更新失败")
 	}
 
 	_ = s.adminRedisRepo.DelAdminFromRedis(ctx, id)
-	logger.Info("[APP] 管理员信息更新成功，缓存已清理", zap.Uint64("id", id))
+	if roleChanged {
+		onlineTokenCleared := true
+		if err := s.adminRedisRepo.ClearAdminAllOnlineToken(ctx, id); err != nil {
+			onlineTokenCleared = false
+			logger.Warn("[APP] 清除管理员在线Token失败", zap.Uint64("admin_id", id), zap.Error(err))
+		}
+		logger.Info("[APP] 管理员角色更新成功，缓存已清理",
+			zap.Uint64("id", id),
+			zap.Bool("online_token_cleared", onlineTokenCleared),
+		)
+	} else {
+		logger.Info("[APP] 管理员信息更新成功，缓存已清理", zap.Uint64("id", id))
+	}
 
 	return s.GetAdminInfo(ctx, id)
 }
@@ -284,6 +318,9 @@ func (s *AdminAppService) UpdateAdminStatus(ctx context.Context, adminID uint64,
 	}
 
 	_ = s.adminRedisRepo.DelAdminFromRedis(ctx, adminID)
+	if err := s.adminRedisRepo.ClearAdminAllOnlineToken(ctx, adminID); err != nil {
+		logger.Warn("[APP] 清除管理员在线Token失败", zap.Uint64("admin_id", adminID), zap.Error(err))
+	}
 	logger.Info("[APP] 管理员状态更新成功", zap.Uint64("id", adminID))
 	return nil
 }
@@ -301,7 +338,9 @@ func (s *AdminAppService) ResetAdminPWD(ctx context.Context, adminID uint64, new
 	}
 
 	_ = s.adminRedisRepo.DelAdminFromRedis(ctx, adminID)
-	_ = s.adminRedisRepo.ClearAdminAllOnlineToken(ctx, adminID)
+	if err := s.adminRedisRepo.ClearAdminAllOnlineToken(ctx, adminID); err != nil {
+		logger.Warn("[APP] 清除管理员在线Token失败", zap.Uint64("admin_id", adminID), zap.Error(err))
+	}
 	logger.Info("[APP] 管理员密码重置成功", zap.Uint64("id", adminID))
 	return nil
 }

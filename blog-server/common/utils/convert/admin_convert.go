@@ -39,34 +39,36 @@ func AdminModelToDO(model *model.AdminModel) *do.AdminDO {
 		return nil
 	}
 	return &do.AdminDO{
-		ID:          model.ID,
-		AdminName:   model.AdminName,
-		Password:    model.Password,
-		Role:        model.Role,
-		Avatar:      model.Avatar,
-		Email:       model.Email,
-		Remark:      model.Remark,
-		Status:      model.Status,
-		LastLoginAt: model.LastLoginAt,
-		CreateAt:    model.CreateAt,
-		UpdateAt:    model.UpdateAt,
+		ID:           model.ID,
+		AdminName:    model.AdminName,
+		Password:     model.Password,
+		Role:         model.Role,
+		Avatar:       model.Avatar,
+		Email:        model.Email,
+		Remark:       model.Remark,
+		Status:       model.Status,
+		TokenVersion: model.TokenVersion,
+		LastLoginAt:  model.LastLoginAt,
+		CreateAt:     model.CreateAt,
+		UpdateAt:     model.UpdateAt,
 	}
 }
 
 // AdminDOToModel DO转Model
 func AdminDOToModel(do *do.AdminDO) *model.AdminModel {
 	return &model.AdminModel{
-		ID:          do.ID,
-		AdminName:   do.AdminName,
-		Password:    do.Password,
-		Role:        do.Role,
-		Avatar:      do.Avatar,
-		Email:       do.Email,
-		Remark:      do.Remark,
-		Status:      do.Status,
-		LastLoginAt: do.LastLoginAt,
-		CreateAt:    do.CreateAt,
-		UpdateAt:    do.UpdateAt,
+		ID:           do.ID,
+		AdminName:    do.AdminName,
+		Password:     do.Password,
+		Role:         do.Role,
+		Avatar:       do.Avatar,
+		Email:        do.Email,
+		Remark:       do.Remark,
+		Status:       do.Status,
+		TokenVersion: do.TokenVersion,
+		LastLoginAt:  do.LastLoginAt,
+		CreateAt:     do.CreateAt,
+		UpdateAt:     do.UpdateAt,
 	}
 }
 
@@ -84,13 +86,14 @@ func AdminDOToAdmin(do *do.AdminDO) *Admin {
 // AdminDOToAdminBaseDTO DO转基础DTO（登录用）
 func AdminDOToAdminBaseDTO(do *do.AdminDO) dto.AdminBaseDTO {
 	return dto.AdminBaseDTO{
-		ID:        do.ID,
-		AdminName: do.AdminName,
-		Avatar:    do.Avatar,
-		Role:      do.Role,
-		Status:    do.Status,
-		Email:     do.Email,
-		Remark:    do.Remark,
+		ID:           do.ID,
+		AdminName:    do.AdminName,
+		Avatar:       do.Avatar,
+		Role:         do.Role,
+		Status:       do.Status,
+		TokenVersion: do.TokenVersion,
+		Email:        do.Email,
+		Remark:       do.Remark,
 	}
 }
 
