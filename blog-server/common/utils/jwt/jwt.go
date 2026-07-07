@@ -52,7 +52,7 @@ func Init(cfg *config.GlobalConfig) {
 // --------------------------- 生成Token（用户/管理员） ---------------------------
 // GenerateUserToken 生成用户Token（传入 dto.UserBaseDTO）
 func GenerateUserToken(user *dto.UserBaseDTO) (string, error) {
-	exp := time.Now().Add(tokenExpire * time.Hour)
+	exp := time.Now().Add(tokenExpire)
 	tokenVersion := user.TokenVersion
 	claims := CustomClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -69,7 +69,7 @@ func GenerateUserToken(user *dto.UserBaseDTO) (string, error) {
 
 // GenerateAdminToken 生成管理员Token 传入 AdminBaseDTO
 func GenerateAdminToken(admin *dto.AdminBaseDTO) (string, error) {
-	exp := time.Now().Add(tokenExpire * time.Hour)
+	exp := time.Now().Add(tokenExpire)
 	tokenVersion := admin.TokenVersion
 	claims := AdminClaims{
 		RegisteredClaims: jwt.RegisteredClaims{

@@ -54,7 +54,7 @@ var (
 type JWTConfig struct {
 	CustomSecret string        `yaml:"custom_secret"` // 自定义密钥（从配置文件读取）
 	AdminSecret  string        `yaml:"admin_secret"`  // 管理员密钥（从配置文件读取）
-	ExpireHour   time.Duration `yaml:"expire_hour"`   // Token 过期小时数（可配置）
+	ExpireHour   time.Duration `yaml:"expire_hour"`   // Token 过期时长（如 2h、30m）
 	Issuer       string        `yaml:"issuer"`        // 签发者
 }
 
