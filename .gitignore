@@ -1,0 +1,9 @@
+# Local configuration and secrets
+blog-server/config/config.*.yaml
+!blog-server/config/config.example.yaml
+blog-server/.env
+.env
+
+# Runtime outputs
+logs/
+blog-server/logs/
