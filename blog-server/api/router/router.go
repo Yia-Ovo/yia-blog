@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-06-10 01:23:37
+ * @LastEditTime: 2026-07-09 07:58:57
  * @FilePath: \yia-blog\blog-server\api\router\router.go
  * @Description:
  *
@@ -128,7 +128,7 @@ func (r *Router) categoryRouter(v1 *gin.RouterGroup) {
 	g.GET("/listCategory", h.ListCategory)
 	g.GET("/getCategoryById", h.GetCategoryById)
 
-	g.Use(middleware.DefaultUserAuth())
+	g.Use(middleware.DefaultAdminAuth(), middleware.AdminSuperAuth())
 	{
 		g.POST("/createCategory", h.CreateCategory)
 		g.POST("/updateCategory", h.UpdateCategory)
@@ -140,14 +140,26 @@ func (r *Router) articleRouter(v1 *gin.RouterGroup) {
 	g := v1.Group("/article")
 	h := handler.NewArticleHandler(r.c.ArticleApp)
 
+	// 公开接口（无需登录）
 	g.GET("/listArticle", h.ListArticle)
 	g.GET("/getArticleById", h.GetArticleById)
 
-	g.Use(middleware.DefaultUserAuth())
+	// 普通用户：管理自己的文章（用户 token，仅本人）
+	userGroup := g.Group("/")
+	userGroup.Use(middleware.DefaultUserAuth())
 	{
-		g.POST("/createArticle", h.CreateArticle)
-		g.POST("/updateArticle", h.UpdateArticle)
-		g.POST("/deleteArticle", h.DeleteArticle)
+		userGroup.POST("/createArticle", h.CreateArticle)
+		userGroup.POST("/updateArticle", h.UpdateArticle)
+		userGroup.POST("/deleteArticle", h.DeleteArticle)
+	}
+
+	// 管理员：管理全部文章（管理员 token，不限作者）
+	adminGroup := g.Group("/")
+	adminGroup.Use(middleware.DefaultAdminAuth())
+	{
+		adminGroup.POST("/adminCreateArticle", h.AdminCreateArticle)
+		adminGroup.POST("/adminUpdateArticle", h.AdminUpdateArticle)
+		adminGroup.POST("/adminDeleteArticle", h.AdminDeleteArticle)
 	}
 }
 

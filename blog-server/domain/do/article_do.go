@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-05-07 03:12:33
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-07 03:13:42
+ * @LastEditTime: 2026-07-09 08:12:12
  * @FilePath: \yia-blog\blog-server\domain\do\article_do.go
  * @Description:
  *
@@ -25,6 +25,7 @@ import "time"
 // ArticleDO 文章领域对象
 type ArticleDO struct {
 	ID            uint64
+	UserID        uint64
 	AdminID       uint64
 	Title         string
 	Cover         string

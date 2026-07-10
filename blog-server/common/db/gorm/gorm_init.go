@@ -1,3 +1,13 @@
+/*
+ * @Author: Yia 1372594487@qq.com
+ * @Date: 2026-02-02 07:04:03
+ * @LastEditors: Yia 1372594487@qq.com
+ * @LastEditTime: 2026-07-09 07:52:05
+ * @FilePath: \yia-blog\blog-server\common\db\gorm\gorm_init.go
+ * @Description:
+ *
+ * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
+ */
 package gorm
 
 import (
@@ -27,8 +37,12 @@ func (a *zapWriterAdapter) Printf(format string, args ...interface{}) {
 func InitGorm(conf *config.GlobalConfig) *gorm.DB {
 	// 配置MySQL连接信息
 	dsn := conf.Mysql.GetDsn()
-	fmt.Printf("=== gorm init ===\n")
-	fmt.Printf("dsn: %s\n", dsn)
+	logger.Info("=== gorm init ===\n",
+		zap.String("mysql_host", conf.Mysql.Host),
+		zap.Int("mysql_port", conf.Mysql.Port),
+		zap.String("mysql_database", conf.Mysql.Database),
+		zap.String("mysql_user", conf.Mysql.User),
+	)
 
 	// 创建GORM日志适配器
 	gormLogger := gormlogger.New(

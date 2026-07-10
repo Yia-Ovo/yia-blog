@@ -100,7 +100,7 @@ func NewContainer(
 	c.UserApp = appSrv.NewUserAppService(c.UserDomain, c.UserRedis)
 	c.AdminApp = appSrv.NewAdminAppService(c.AdminDomain, c.AdminRedis)
 	c.CategoryApp = appSrv.NewCategoryAppService(c.CategoryDomain, c.CategoryRedis)
-	c.ArticleApp = appSrv.NewArticleAppService(c.ArticleDomain, c.ArticleRedis)
+	c.ArticleApp = appSrv.NewArticleAppService(c.ArticleDomain, c.ArticleRedis, c.UserDomain, c.AdminDomain)
 	c.CommentApp = appSrv.NewCommentAppService(c.CommentDomain, c.CommentRedis)
 
 	return c

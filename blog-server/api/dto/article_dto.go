@@ -24,7 +24,6 @@ import "time"
 
 // CreateArticleReq 创建文章请求
 type CreateArticleReq struct {
-	AdminID       uint64     `json:"admin_id"`
 	Title         string     `json:"title"`
 	Cover         string     `json:"cover"`
 	Summary       string     `json:"summary"`
@@ -62,4 +61,12 @@ type ArticlePageQuery struct {
 	CategoryID *uint64 `json:"category_id"`
 	Status     *int    `json:"status"`
 	IsTop      *int    `json:"is_top"`
+}
+
+// AuthorInfo 文章作者信息（读取时按 user_id/admin_id 实时关联填充，作者不存在时为 null）
+type AuthorInfo struct {
+	Type      string `json:"type"`      // 作者类型：user-普通用户，admin-管理员
+	Name      string `json:"name"`      // 作者名（用户昵称 / 管理员名）
+	Avatar    string `json:"avatar"`    // 头像URL
+	Signature string `json:"signature"` // 简介/签名（用户签名 / 管理员备注）
 }

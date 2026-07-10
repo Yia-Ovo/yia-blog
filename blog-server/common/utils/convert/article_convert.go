@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-05-07 03:11:41
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-07 05:22:12
+ * @LastEditTime: 2026-07-09 08:17:52
  * @FilePath: \yia-blog\blog-server\common\utils\convert\article_convert.go
  * @Description:
  *
@@ -23,6 +23,7 @@ func ArticleModelToDO(m *model.ArticleModel) *do.ArticleDO {
 	}
 	return &do.ArticleDO{
 		ID:            m.ID,
+		UserID:        m.UserID,
 		AdminID:       m.AdminID,
 		Title:         m.Title,
 		Cover:         m.Cover,
@@ -50,6 +51,7 @@ func ArticleDOToModel(d *do.ArticleDO) *model.ArticleModel {
 	}
 	return &model.ArticleModel{
 		ID:            d.ID,
+		UserID:        d.UserID,
 		AdminID:       d.AdminID,
 		Title:         d.Title,
 		Cover:         d.Cover,

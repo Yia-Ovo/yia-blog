@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-05-14 01:40:00
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-29 20:58:59
+ * @LastEditTime: 2026-07-09 08:34:49
  * @FilePath: \yia-blog\blog-server\api\handler\article_handler.go
  * @Description: 文章接口处理函数：只处理HTTP相关逻辑
  * Copyright (c) 2026-2026 by Yia 1372594487@qq.com, All Rights Reserved.
@@ -14,6 +14,7 @@ import (
 	"blog-server/api/dto"
 	"blog-server/app/service"
 	"blog-server/common"
+	"blog-server/common/consts"
 	"blog-server/common/gin/response"
 	"context"
 	"strconv"
@@ -36,6 +37,19 @@ func NewArticleHandler(articleAppSrv *service.ArticleAppService) *ArticleHandler
 
 // CreateArticle 创建文章 POST /api/blog/v1/article/createArticle
 func (h *ArticleHandler) CreateArticle(c *gin.Context) {
+	// 取用户ID
+	userIDVal, exists := c.Get(consts.UserIDKey)
+	if !exists {
+		response.WriteResp(c, nil, common.LoginNotLoginErr.WithMsg("请先登录"))
+		return
+	}
+
+	userID, ok := userIDVal.(uint64)
+	if !ok || userID == 0 {
+		response.WriteResp(c, nil, common.AuthErr.WithMsg("用户身份异常"))
+		return
+	}
+
 	var req dto.CreateArticleReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
@@ -45,7 +59,7 @@ func (h *ArticleHandler) CreateArticle(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 	defer cancel()
 
-	err := h.articleAppSrv.CreateArticle(ctx, &req)
+	err := h.articleAppSrv.CreateArticle(ctx, userID, &req)
 	if err != nil {
 		response.WriteResp(c, nil, err.(common.Errno))
 		return
@@ -95,8 +109,20 @@ func (h *ArticleHandler) GetArticleById(c *gin.Context) {
 	response.WriteResp(c, data, common.OK)
 }
 
-// UpdateArticle 更新文章 POST /api/blog/v1/article/updateArticle
+// UpdateArticle 更新文章（普通用户，仅本人） POST /api/blog/v1/article/updateArticle
 func (h *ArticleHandler) UpdateArticle(c *gin.Context) {
+	// 取用户ID
+	userIDVal, exists := c.Get(consts.UserIDKey)
+	if !exists {
+		response.WriteResp(c, nil, common.LoginNotLoginErr.WithMsg("请先登录"))
+		return
+	}
+	userID, ok := userIDVal.(uint64)
+	if !ok || userID == 0 {
+		response.WriteResp(c, nil, common.AuthErr.WithMsg("用户身份异常"))
+		return
+	}
+
 	var req dto.UpdateArticleReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
@@ -106,7 +132,7 @@ func (h *ArticleHandler) UpdateArticle(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 	defer cancel()
 
-	err := h.articleAppSrv.UpdateArticle(ctx, &req)
+	err := h.articleAppSrv.UpdateArticle(ctx, userID, &req)
 	if err != nil {
 		response.WriteResp(c, nil, err.(common.Errno))
 		return
@@ -115,8 +141,20 @@ func (h *ArticleHandler) UpdateArticle(c *gin.Context) {
 	response.WriteResp(c, nil, common.OK)
 }
 
-// DeleteArticle 删除文章 POST /api/blog/v1/article/deleteArticle
+// DeleteArticle 删除文章（普通用户，仅本人） POST /api/blog/v1/article/deleteArticle
 func (h *ArticleHandler) DeleteArticle(c *gin.Context) {
+	// 取用户ID
+	userIDVal, exists := c.Get(consts.UserIDKey)
+	if !exists {
+		response.WriteResp(c, nil, common.LoginNotLoginErr.WithMsg("请先登录"))
+		return
+	}
+	userID, ok := userIDVal.(uint64)
+	if !ok || userID == 0 {
+		response.WriteResp(c, nil, common.AuthErr.WithMsg("用户身份异常"))
+		return
+	}
+
 	type Req struct {
 		ID uint64 `json:"id" binding:"required"`
 	}
@@ -129,7 +167,106 @@ func (h *ArticleHandler) DeleteArticle(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 	defer cancel()
 
-	err := h.articleAppSrv.DeleteArticle(ctx, req.ID)
+	err := h.articleAppSrv.DeleteArticle(ctx, userID, req.ID)
+	if err != nil {
+		response.WriteResp(c, nil, err.(common.Errno))
+		return
+	}
+
+	response.WriteResp(c, nil, common.OK)
+}
+
+// AdminCreateArticle 创建文章（管理员） POST /api/blog/v1/article/adminCreateArticle
+func (h *ArticleHandler) AdminCreateArticle(c *gin.Context) {
+	// 取管理员ID
+	adminIDVal, exists := c.Get(consts.AdminIDKey)
+	if !exists {
+		response.WriteResp(c, nil, common.LoginNotLoginErr.WithMsg("管理员请先登录"))
+		return
+	}
+	adminID, ok := adminIDVal.(uint64)
+	if !ok || adminID == 0 {
+		response.WriteResp(c, nil, common.AuthErr.WithMsg("管理员身份异常"))
+		return
+	}
+
+	var req dto.CreateArticleReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	defer cancel()
+
+	err := h.articleAppSrv.AdminCreateArticle(ctx, adminID, &req)
+	if err != nil {
+		response.WriteResp(c, nil, err.(common.Errno))
+		return
+	}
+
+	response.WriteResp(c, nil, common.OK)
+}
+
+// AdminUpdateArticle 更新文章（管理员，任意文章） POST /api/blog/v1/article/adminUpdateArticle
+func (h *ArticleHandler) AdminUpdateArticle(c *gin.Context) {
+	// 取管理员ID
+	adminIDVal, exists := c.Get(consts.AdminIDKey)
+	if !exists {
+		response.WriteResp(c, nil, common.LoginNotLoginErr.WithMsg("管理员请先登录"))
+		return
+	}
+	adminID, ok := adminIDVal.(uint64)
+	if !ok || adminID == 0 {
+		response.WriteResp(c, nil, common.AuthErr.WithMsg("管理员身份异常"))
+		return
+	}
+
+	var req dto.UpdateArticleReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	defer cancel()
+
+	err := h.articleAppSrv.AdminUpdateArticle(ctx, adminID, &req)
+	if err != nil {
+		response.WriteResp(c, nil, err.(common.Errno))
+		return
+	}
+
+	response.WriteResp(c, nil, common.OK)
+}
+
+// AdminDeleteArticle 删除文章（管理员，任意文章） POST /api/blog/v1/article/adminDeleteArticle
+func (h *ArticleHandler) AdminDeleteArticle(c *gin.Context) {
+	// 取管理员ID
+	adminIDVal, exists := c.Get(consts.AdminIDKey)
+	if !exists {
+		response.WriteResp(c, nil, common.LoginNotLoginErr.WithMsg("管理员请先登录"))
+		return
+	}
+	adminID, ok := adminIDVal.(uint64)
+	if !ok || adminID == 0 {
+		response.WriteResp(c, nil, common.AuthErr.WithMsg("管理员身份异常"))
+		return
+	}
+
+	type Req struct {
+		ID uint64 `json:"id" binding:"required"`
+	}
+	var req Req
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.WriteResp(c, nil, common.ParamErr.WithMsg("文章ID不能为空"))
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	defer cancel()
+
+	err := h.articleAppSrv.AdminDeleteArticle(ctx, adminID, req.ID)
 	if err != nil {
 		response.WriteResp(c, nil, err.(common.Errno))
 		return

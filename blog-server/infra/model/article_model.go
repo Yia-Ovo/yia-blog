@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-05-06 11:01:05
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-06 11:01:53
+ * @LastEditTime: 2026-07-09 08:08:24
  * @FilePath: \yia-blog\blog-server\infra\model\article_model.go
  * @Description:
  *
@@ -18,7 +18,8 @@ import (
 )
 
 type ArticleModel struct {
-	ID             uint64         `gorm:"primaryKey;autoIncrement;comment:主键ID"`                   // 手动主键
+	ID             uint64         `gorm:"primaryKey;autoIncrement;comment:主键ID"` // 手动主键
+	UserID         uint64         `gorm:"not null;default:0;index:idx_user_id;comment:作者用户ID"`
 	AdminID        uint64         `gorm:"not null;index:idx_admin_id;comment:作者ID(关联admin表主键)"`    // 文章作者（关联管理员表）
 	Title          string         `gorm:"type:varchar(128);not null;index:idx_title;comment:文章标题"` // 文章标题
 	Cover          string         `gorm:"type:varchar(255);default:null;comment:文章封面URL"`          // 文章封面图片
