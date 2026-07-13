@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-05-29 16:00:00
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-07-07 00:01:04
+ * @LastEditTime: 2026-07-13 15:24:17
  * @FilePath: \yia-blog\blog-server\app\service\admin_app_service.go
  * @Description: 管理员应用服务 - 业务编排、缓存处理、流程调度
  * Copyright (c) 2026 by Yia 2594487@qq.com, All Rights Reserved.
@@ -67,7 +67,7 @@ func (s *AdminAppService) CreateAdmin(
 	}
 
 	// 执行创建
-	adminDO, err := s.adminDomainService.CreateAdmin(ctx, req.AdminName, req.Password, req.Role)
+	adminDO, err := s.adminDomainService.CreateAdmin(ctx, req.AdminName, req.Password, ptr.Val(req.Role))
 	if err != nil {
 		logger.Error("[APP] 创建管理员失败", zap.Error(err))
 		return nil, err.(common.Errno).WithMsg("创建失败")

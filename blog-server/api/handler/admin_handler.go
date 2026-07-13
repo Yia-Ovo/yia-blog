@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-06-06 11:30:00
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-06-12 15:41:37
+ * @LastEditTime: 2026-07-13 13:13:18
  * @FilePath: \yia-blog\blog-server\api\handler\admin_handler.go
  * @Description: 管理员 API 控制器层
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
@@ -16,7 +16,6 @@ import (
 	"blog-server/common/gin/response"
 	"blog-server/common/utils/logger"
 	"context"
-	"strconv"
 	"strings"
 	"time"
 
@@ -225,13 +224,6 @@ func (h *AdminHandler) ListAdmin(c *gin.Context) {
 
 // UpdateAdminStatus 修改账号状态 PATCH /api/blog/v1/admin/status/:id
 func (h *AdminHandler) UpdateAdminStatus(c *gin.Context) {
-	adminID, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil || adminID <= 0 {
-		logger.Warn("[HANDLER] 管理员ID参数非法")
-		response.WriteResp(c, nil, common.ParamErr.WithMsg("管理员ID不合法"))
-		return
-	}
-
 	var req dto.AdminStatusReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		logger.Warn("[HANDLER] 状态参数绑定失败", zap.Error(err))
@@ -242,7 +234,7 @@ func (h *AdminHandler) UpdateAdminStatus(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 	defer cancel()
 
-	err = h.adminAppSrv.UpdateAdminStatus(ctx, adminID, req.Status)
+	err := h.adminAppSrv.UpdateAdminStatus(ctx, req.ID, *req.Status)
 	if err != nil {
 		response.WriteResp(c, nil, err.(common.Errno))
 		return
@@ -252,13 +244,6 @@ func (h *AdminHandler) UpdateAdminStatus(c *gin.Context) {
 
 // ResetAdminPWD 重置管理员密码 POST /api/blog/v1/admin/resetPWD/:id
 func (h *AdminHandler) ResetAdminPWD(c *gin.Context) {
-	adminID, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil || adminID <= 0 {
-		logger.Warn("[HANDLER] 管理员ID参数非法")
-		response.WriteResp(c, nil, common.ParamErr.WithMsg("管理员ID不合法"))
-		return
-	}
-
 	var req dto.AdminResetPWDReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		logger.Warn("[HANDLER] 重置密码参数绑定失败", zap.Error(err))
@@ -269,7 +254,7 @@ func (h *AdminHandler) ResetAdminPWD(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 	defer cancel()
 
-	err = h.adminAppSrv.ResetAdminPWD(ctx, adminID, req.NewPassword)
+	err := h.adminAppSrv.ResetAdminPWD(ctx, req.ID, req.NewPassword)
 	if err != nil {
 		response.WriteResp(c, nil, err.(common.Errno))
 		return
