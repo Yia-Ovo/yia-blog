@@ -194,35 +194,47 @@ func (a *AdminDomainService) ListAdmin(ctx context.Context, page, size int) ([]*
 }
 
 // UpdateAdminStatus 更新状态
-func (a *AdminDomainService) UpdateAdminStatus(ctx context.Context, id uint64, status int) error {
-	_, err := a.FindAdminByID(ctx, id)
-	if err != nil {
+func (a *AdminDomainService) UpdateAdminStatus(ctx context.Context, operatorId uint64, adminID uint64, status int) error {
+	if err := a.ensureCanManageAdmin(ctx, operatorId, adminID); err != nil {
 		return err
 	}
 
-	if err := a.adminMysqlRepo.UpdateAdminStatus(ctx, id, status); err != nil {
-		logger.Warn("[DOMAIN] 管理员状态更新失败", zap.Error(err), zap.Uint64("admin_id", id))
+	if err := a.adminMysqlRepo.UpdateAdminStatus(ctx, adminID, status); err != nil {
+		logger.Warn("[DOMAIN] 管理员状态更新失败", zap.Error(err), zap.Uint64("admin_id", adminID))
 		return common.AdminUpdateErr
 	}
 	return nil
 }
 
 // ResetAdminPWD 重置密码
-func (a *AdminDomainService) ResetAdminPWD(ctx context.Context, id uint64, newPwd string) error {
-	_, err := a.FindAdminByID(ctx, id)
-	if err != nil {
+func (a *AdminDomainService) ResetAdminPWD(ctx context.Context, operatorID uint64, adminID uint64, newPwd string) error {
+	if err := a.ensureCanManageAdmin(ctx, operatorID, adminID); err != nil {
 		return err
 	}
-
 	hashPwd, err := bcrypt.GenerateFromPassword([]byte(newPwd), bcrypt.DefaultCost)
 	if err != nil {
 		logger.Warn("[DOMAIN] 密码加密失败", zap.Error(err))
 		return common.PasswordEncryptError
 	}
 
-	if err := a.adminMysqlRepo.UpdatePWD(ctx, id, string(hashPwd)); err != nil {
-		logger.Warn("[DOMAIN] 重置密码失败", zap.Error(err), zap.Uint64("admin_id", id))
+	if err := a.adminMysqlRepo.UpdatePWD(ctx, adminID, string(hashPwd)); err != nil {
+		logger.Warn("[DOMAIN] 重置密码失败", zap.Error(err), zap.Uint64("admin_id", adminID))
 		return common.UpdatePasswordError
+	}
+	return nil
+}
+
+// 工具函数
+func (s *AdminDomainService) ensureCanManageAdmin(ctx context.Context, operatorID, targetID uint64) error {
+	if operatorID == targetID {
+		return common.PermissionDeniedErr.WithMsg("不能对自己执行该操作")
+	}
+	target, err := s.FindAdminByID(ctx, targetID)
+	if err != nil {
+		return err.(common.Errno).WithMsg("目标管理员不存在")
+	}
+	if target.Role == consts.AdminRoleSuper {
+		return common.PermissionDeniedErr.WithMsg("不能操作其他超级管理员")
 	}
 	return nil
 }

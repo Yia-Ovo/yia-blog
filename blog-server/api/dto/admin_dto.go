@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-26 07:44:28
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-07-13 13:31:18
+ * @LastEditTime: 2026-07-16 10:33:25
  * @FilePath: \yia-blog\blog-server\api\dto\admin_dto.go
  * @Description: 管理员请求&出参DTO
  */
@@ -15,7 +15,7 @@ import "time"
 type AdminCreateReq struct {
 	AdminName string `json:"admin_name" binding:"required,min=1,max=16"`
 	Password  string `json:"password" binding:"required,min=6,max=20"`
-	Role      *int   `json:"role" binding:"required,oneof=0 1"`
+	Role      *int   `json:"role" binding:"required,oneof=0 1"` // *int：required 只判 nil，传 0 也能过
 }
 
 // 管理员登录

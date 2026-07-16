@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-06-06 11:30:00
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-07-13 13:13:18
+ * @LastEditTime: 2026-07-16 11:49:17
  * @FilePath: \yia-blog\blog-server\api\handler\admin_handler.go
  * @Description: 管理员 API 控制器层
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
@@ -13,7 +13,9 @@ import (
 	"blog-server/api/dto"
 	"blog-server/app/service"
 	"blog-server/common"
+	"blog-server/common/consts"
 	"blog-server/common/gin/response"
+	"blog-server/common/utils/jwt"
 	"blog-server/common/utils/logger"
 	"context"
 	"strings"
@@ -77,7 +79,7 @@ func (h *AdminHandler) Login(c *gin.Context) {
 
 // GetInfo 获取管理员信息 GET /api/blog/v1/admin/getInfo
 func (h *AdminHandler) GetInfo(c *gin.Context) {
-	adminIdVal, exists := c.Get("admin_id")
+	adminIdVal, exists := c.Get(consts.AdminIDKey)
 	if !exists {
 		logger.Warn("[HANDLER] 未获取到登录管理员ID")
 		response.WriteResp(c, nil, common.LoginNotLoginErr.WithMsg("请先登录管理员账号"))
@@ -110,7 +112,7 @@ func (h *AdminHandler) UpdatePWD(c *gin.Context) {
 		return
 	}
 
-	adminIdVal, exists := c.Get("admin_id")
+	adminIdVal, exists := c.Get(consts.AdminIDKey)
 	if !exists {
 		logger.Warn("[HANDLER] 修改密码未获取到登录管理员ID")
 		response.WriteResp(c, nil, common.LoginNotLoginErr.WithMsg("登录状态已失效，请重新登录"))
@@ -143,7 +145,7 @@ func (h *AdminHandler) UpdateAdminInfo(c *gin.Context) {
 		return
 	}
 
-	adminIdVal, exists := c.Get("admin_id")
+	adminIdVal, exists := c.Get(consts.AdminIDKey)
 	if !exists {
 		logger.Warn("[HANDLER] 更新信息未获取到登录管理员ID")
 		response.WriteResp(c, nil, common.LoginNotLoginErr.WithMsg("请先完成管理员登录"))
@@ -170,7 +172,7 @@ func (h *AdminHandler) UpdateAdminInfo(c *gin.Context) {
 
 // Logout 管理员登出 POST /api/blog/v1/admin/logout
 func (h *AdminHandler) Logout(c *gin.Context) {
-	token := c.GetHeader("Authorization")
+	token := jwt.ExtractToken(c.GetHeader(consts.AdminTokenKey))
 	token = strings.TrimPrefix(token, "Bearer ")
 	if token == "" {
 		logger.Warn("[HANDLER] 管理员登出token为空")
@@ -178,7 +180,7 @@ func (h *AdminHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	adminIdVal, exists := c.Get("admin_id")
+	adminIdVal, exists := c.Get(consts.AdminIDKey)
 	if !exists {
 		logger.Warn("[HANDLER] 登出未获取到登录管理员ID")
 		response.WriteResp(c, nil, common.LoginNotLoginErr.WithMsg("当前未处于登录状态"))
@@ -231,10 +233,17 @@ func (h *AdminHandler) UpdateAdminStatus(c *gin.Context) {
 		return
 	}
 
+	operatorIdVal, exists := c.Get(consts.AdminIDKey)
+	operatorID, ok := operatorIdVal.(uint64)
+	if !exists || !ok || operatorID == 0 {
+		response.WriteResp(c, nil, common.LoginNotLoginErr.WithMsg("请先完成管理员登录"))
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 	defer cancel()
 
-	err := h.adminAppSrv.UpdateAdminStatus(ctx, req.ID, *req.Status)
+	err := h.adminAppSrv.UpdateAdminStatus(ctx, operatorID, req.ID, *req.Status)
 	if err != nil {
 		response.WriteResp(c, nil, err.(common.Errno))
 		return
@@ -251,10 +260,17 @@ func (h *AdminHandler) ResetAdminPWD(c *gin.Context) {
 		return
 	}
 
+	operatorIdVal, exists := c.Get(consts.AdminIDKey)
+	operatorID, ok := operatorIdVal.(uint64)
+	if !exists || !ok || operatorID == 0 {
+		response.WriteResp(c, nil, common.LoginNotLoginErr.WithMsg("请先完成管理员登录"))
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 	defer cancel()
 
-	err := h.adminAppSrv.ResetAdminPWD(ctx, req.ID, req.NewPassword)
+	err := h.adminAppSrv.ResetAdminPWD(ctx, operatorID, req.ID, req.NewPassword)
 	if err != nil {
 		response.WriteResp(c, nil, err.(common.Errno))
 		return

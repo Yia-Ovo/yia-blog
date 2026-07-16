@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-05-29 16:00:00
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-07-13 15:24:17
+ * @LastEditTime: 2026-07-16 11:54:38
  * @FilePath: \yia-blog\blog-server\app\service\admin_app_service.go
  * @Description: 管理员应用服务 - 业务编排、缓存处理、流程调度
  * Copyright (c) 2026 by Yia 2594487@qq.com, All Rights Reserved.
@@ -310,8 +310,8 @@ func (s *AdminAppService) ListAdmin(ctx context.Context, req *dto.AdminListReq) 
 }
 
 // UpdateAdminStatus 更新状态
-func (s *AdminAppService) UpdateAdminStatus(ctx context.Context, adminID uint64, status int) error {
-	err := s.adminDomainService.UpdateAdminStatus(ctx, adminID, status)
+func (s *AdminAppService) UpdateAdminStatus(ctx context.Context, operatorId uint64, adminID uint64, status int) error {
+	err := s.adminDomainService.UpdateAdminStatus(ctx, operatorId, adminID, status)
 	if err != nil {
 		logger.Error("[APP] 更新管理员状态失败", zap.Error(err))
 		return err.(common.Errno).WithMsg("状态更新失败")
@@ -326,12 +326,11 @@ func (s *AdminAppService) UpdateAdminStatus(ctx context.Context, adminID uint64,
 }
 
 // ResetAdminPWD 重置密码
-func (s *AdminAppService) ResetAdminPWD(ctx context.Context, adminID uint64, newPwd string) error {
+func (s *AdminAppService) ResetAdminPWD(ctx context.Context, operatorID uint64, adminID uint64, newPwd string) error {
 	if newPwd == "" {
 		return common.ParamErr.WithMsg("新密码不能为空")
 	}
-
-	err := s.adminDomainService.ResetAdminPWD(ctx, adminID, newPwd)
+	err := s.adminDomainService.ResetAdminPWD(ctx, operatorID, adminID, newPwd)
 	if err != nil {
 		logger.Error("[APP] 重置密码失败", zap.Error(err))
 		return err.(common.Errno).WithMsg("重置失败")
@@ -344,3 +343,5 @@ func (s *AdminAppService) ResetAdminPWD(ctx context.Context, adminID uint64, new
 	logger.Info("[APP] 管理员密码重置成功", zap.Uint64("id", adminID))
 	return nil
 }
+
+// 工具函数
