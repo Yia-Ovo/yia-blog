@@ -1,3 +1,13 @@
+/*
+ * @Author: Yia 1372594487@qq.com
+ * @Date: 2026-05-22 00:11:08
+ * @LastEditors: Yia 1372594487@qq.com
+ * @LastEditTime: 2026-07-16 20:30:16
+ * @FilePath: \yia-blog\blog-server\domain\repo\comment_repo.go
+ * @Description: 评论仓储接口
+ *
+ * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
+ */
 package repo
 
 import (
@@ -11,10 +21,10 @@ type CommentMysqlRepo interface {
 	CreateComment(ctx context.Context, commentModel *model.CommentModel) error
 	// ListCommentByPage 分页查询评论列表 + 返回总数
 	ListCommentByPage(ctx context.Context, query *do.CommentQuery) (list []*model.CommentModel, total int64, err error)
-	// UpdateComment 更新评论
-	UpdateComment(ctx context.Context, commentModel *model.CommentModel) error
-	// DeleteComment 删除评论(软删除)
-	DeleteComment(ctx context.Context, commentID uint64) error
+	// UpdateCommentByUser 按评论ID和用户ID更新评论正文与审核状态
+	UpdateCommentByUser(ctx context.Context, commentID uint64, userID uint64, content string, status int) (int64, error)
+	// DeleteCommentByUser 按评论ID和用户ID软删除评论
+	DeleteCommentByUser(ctx context.Context, commentID uint64, userID uint64) (int64, error)
 	// LikeComment 评论点赞(数据库+1)
 	LikeComment(ctx context.Context, commentID uint64) error
 	// DisLikeComment 评论取消点赞(数据库-1)

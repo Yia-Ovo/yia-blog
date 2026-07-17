@@ -15,6 +15,7 @@ import (
 	"blog-server/domain/do"
 	"blog-server/infra/model"
 	"context"
+	"errors"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -89,12 +90,12 @@ func (a *articleMysqlRepo) GetArticleById(ctx context.Context, id uint64) (*mode
 	var article model.ArticleModel
 	err := a.db.WithContext(ctx).First(&article, id).Error
 
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		logger.Warn("[MYSQL] 文章不存在", zap.Uint64("article_id", id))
+		return nil, nil
+	}
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			logger.Warn("[MYSQL] 文章不存在", zap.Uint64("article_id", id))
-		} else {
-			logger.Error("[MYSQL] 查询文章失败", zap.Uint64("article_id", id), zap.Error(err))
-		}
+		logger.Error("[MYSQL] 查询文章失败", zap.Uint64("article_id", id), zap.Error(err))
 		return nil, err
 	}
 

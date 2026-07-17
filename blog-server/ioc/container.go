@@ -90,7 +90,7 @@ func NewContainer(
 	c.CommentRedis = infraRepo.NewCommentRedisRepo(rdb, conf)
 
 	// ========== 初始化领域服务 ==========
-	c.CommentDomain = domainSrv.NewCommentDomainService(c.CommentRepo)
+	c.CommentDomain = domainSrv.NewCommentDomainService(c.CommentRepo, c.ArticleRepo)
 	c.AdminDomain = domainSrv.NewAdminDomainService(c.AdminRepo)
 	c.UserDomain = domainSrv.NewUserDomainService(c.UserRepo)
 	c.CategoryDomain = domainSrv.NewCategoryDomainService(c.CategoryRepo)

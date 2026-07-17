@@ -9,6 +9,7 @@ import (
 func CommentDOToModel(do *do.CommentDO) *model.CommentModel {
 	return &model.CommentModel{
 		ID:        do.ID,
+		UserID:    do.UserID,
 		ArticleID: do.ArticleID,
 		ParentID:  do.ParentID,
 		AdminID:   do.AdminID,
@@ -30,6 +31,7 @@ func CommentDOToModel(do *do.CommentDO) *model.CommentModel {
 func CommentModelToDO(model *model.CommentModel) *do.CommentDO {
 	return &do.CommentDO{
 		ID:        model.ID,
+		UserID:    model.UserID,
 		ArticleID: model.ArticleID,
 		ParentID:  model.ParentID,
 		AdminID:   model.AdminID,

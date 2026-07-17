@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-05-25 14:32:37
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-26 00:25:09
+ * @LastEditTime: 2026-07-16 19:38:37
  * @FilePath: \yia-blog\blog-server\app\service\comment_app_service.go
  * @Description: 评论应用服务 - 业务编排、缓存处理、流程调度
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
@@ -20,6 +20,35 @@ import (
 
 	"go.uber.org/zap"
 )
+
+// CommentCreateCommand 发布评论用例的应用层输入。
+// HTTP DTO 和 Gin Context 由 Handler 转换为该命令，AppService 不依赖 API 层类型。
+type CommentCreateCommand struct {
+	UserID    uint64 // 评论作者的登录用户ID，来自鉴权 Context
+	ArticleID uint64 // 评论所属文章ID
+	ParentID  uint64 // 0 表示顶级评论，非 0 表示回复对应评论
+	Nickname  string // 作者昵称快照，来自登录用户资料
+	Email     string // 作者邮箱快照，来自登录用户资料
+	Avatar    string // 作者头像快照，来自登录用户资料
+	Content   string // 评论正文
+	IP        string // 客户端IP，由服务端从 HTTP 请求提取
+	UserAgent string // 客户端 User-Agent，由服务端从 HTTP 请求提取
+}
+
+// CommentListQuery 评论分页查询用例的应用层输入。
+// Handler 把 HTTP 查询 DTO 转换为该命令，AppService 不依赖 api/dto。
+type CommentListQuery struct {
+	ArticleID uint64  // 大于 0 时按所属文章筛选
+	ParentID  *uint64 // nil 不筛选；指向 0 查顶级，指向 N 查某父评论的回复
+	Status    *int    // nil 不筛选；0 待审核 / 1 已通过 / 2 已拒绝
+	AdminID   uint64  // 大于 0 时按管理员作者筛选
+	Nickname  string  // 昵称模糊搜索
+	Content   string  // 内容模糊搜索
+	Page      int     // 页码，默认 1
+	Size      int     // 每页数量，默认 10
+	OrderBy   string  // 排序字段，由 Repo 白名单校验
+	OrderDir  string  // 排序方向 asc/desc
+}
 
 // CommentAppService 应用服务：仅做流程编排 + 缓存处理
 type CommentAppService struct {
@@ -39,27 +68,58 @@ func NewCommentAppService(
 }
 
 // CreateComment 发布评论：调用领域服务 + 清理缓存
-func (c *CommentAppService) CreateComment(ctx context.Context, commentDO *do.CommentDO) error {
-	if commentDO == nil {
-		logger.Warn("发布评论参数为空")
+func (c *CommentAppService) CreateComment(ctx context.Context, command *CommentCreateCommand) error {
+	if command == nil {
+		logger.Warn("[APP] 发布评论参数为空")
 		return common.ParamErr
 	}
-	// 1. 执行核心业务逻辑
-	err := c.commentDomainService.CreateComment(ctx, commentDO)
-	if err != nil {
+	if command.UserID == 0 {
+		logger.Warn("[APP] 发布评论未获取到登录用户")
+		return common.LoginNotLoginErr
+	}
+
+	commentDO := &do.CommentDO{
+		UserID:    command.UserID,
+		ArticleID: command.ArticleID,
+		ParentID:  command.ParentID,
+		Nickname:  command.Nickname,
+		Email:     command.Email,
+		Avatar:    command.Avatar,
+		Content:   command.Content,
+		IP:        command.IP,
+		UserAgent: command.UserAgent,
+	}
+
+	if err := c.commentDomainService.CreateComment(ctx, commentDO); err != nil {
 		return err
 	}
-	// 2. 应用层编排：清理缓存（保证数据一致性）
-	_ = c.commentRedisRepo.DelArticleCommentCache(ctx, commentDO.ArticleID)
-	logger.Info("创建评论，缓存已清理", zap.Uint64("article_id", commentDO.ArticleID))
+
+	_ = c.commentRedisRepo.DelArticleCommentCache(ctx, command.ArticleID)
+
+	logger.Info("[APP] 创建评论，缓存已清理",
+		zap.Uint64("user_id", command.UserID),
+		zap.Uint64("article_id", command.ArticleID),
+	)
 	return nil
 }
 
-// ListCommentByPage 分页查询评论
-func (c *CommentAppService) ListCommentByPage(ctx context.Context, query *do.CommentQuery) ([]do.CommentDO, int64, error) {
-	if query == nil {
+// ListCommentByPage 分页查询评论：把应用层查询命令转换为领域查询条件后调用领域服务
+func (c *CommentAppService) ListCommentByPage(ctx context.Context, q *CommentListQuery) ([]do.CommentDO, int64, error) {
+	if q == nil {
 		logger.Warn("评论分页查询参数为空")
 		return nil, 0, common.ParamErr
+	}
+	query := &do.CommentQuery{
+		ArticleID: q.ArticleID,
+		ParentID:  q.ParentID,
+		Status:    q.Status,
+		AdminID:   q.AdminID,
+		Nickname:  q.Nickname,
+		Content:   q.Content,
+		Page:      q.Page,
+		Size:      q.Size,
+		OrderBy:   q.OrderBy,
+		OrderDir:  q.OrderDir,
 	}
 	return c.commentDomainService.ListCommentByPage(ctx, query)
 }
@@ -70,37 +130,46 @@ func (c *CommentAppService) GetCommentByID(ctx context.Context, commentID uint64
 }
 
 // UpdateComment 编辑评论：调用领域服务 + 清理缓存
-func (c *CommentAppService) UpdateComment(ctx context.Context, commentDO *do.CommentDO) error {
-	if commentDO == nil {
-		logger.Warn("编辑评论参数为空")
-		return common.ParamErr
-	}
-	// 1. 执行核心业务逻辑
-	err := c.commentDomainService.UpdateComment(ctx, commentDO)
+func (c *CommentAppService) UpdateComment(ctx context.Context, operatorID uint64, commentID uint64, content string) error {
+	articleID, err := c.commentDomainService.UpdateComment(
+		ctx,
+		operatorID,
+		commentID,
+		content,
+	)
 	if err != nil {
 		return err
 	}
-	// 2. 应用层编排：清理缓存
-	_ = c.commentRedisRepo.DelArticleCommentCache(ctx, commentDO.ArticleID)
-	logger.Info("更新评论，缓存已清理", zap.Uint64("article_id", commentDO.ArticleID))
+
+	_ = c.commentRedisRepo.DelArticleCommentCache(ctx, articleID)
+
+	logger.Info("[APP] 更新评论，缓存已清理",
+		zap.Uint64("article_id", articleID),
+		zap.Uint64("comment_id", commentID),
+	)
 	return nil
 }
 
 // DeleteComment 删除评论：调用领域服务 + 清理缓存
-func (c *CommentAppService) DeleteComment(ctx context.Context, commentID uint64) error {
-	// 1. 先查询评论（获取文章ID）
-	comment, err := c.commentDomainService.GetCommentByID(ctx, commentID)
+func (c *CommentAppService) DeleteComment(
+	ctx context.Context,
+	operatorID uint64,
+	commentID uint64,
+) error {
+	articleID, err := c.commentDomainService.DeleteComment(
+		ctx,
+		operatorID,
+		commentID,
+	)
 	if err != nil {
 		return err
 	}
-	// 2. 执行核心业务逻辑
-	err = c.commentDomainService.DeleteComment(ctx, commentID)
-	if err != nil {
-		return err
-	}
-	// 3. 应用层编排：清理缓存
-	_ = c.commentRedisRepo.DelArticleCommentCache(ctx, comment.ArticleID)
-	logger.Info("删除评论，缓存已清理", zap.Uint64("article_id", comment.ArticleID))
+
+	_ = c.commentRedisRepo.DelArticleCommentCache(ctx, articleID)
+	logger.Info("[APP] 删除评论，缓存已清理",
+		zap.Uint64("article_id", articleID),
+		zap.Uint64("comment_id", commentID),
+	)
 	return nil
 }
 

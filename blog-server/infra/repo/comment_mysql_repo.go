@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-05-06 11:40:00
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-22 00:52:14
+ * @LastEditTime: 2026-07-16 19:20:58
  * @FilePath: \yia-blog\blog-server\infra\repo\comment_mysql_repo.go
  * @Description: 评论 MySQL 仓储实现
  */
@@ -12,10 +12,19 @@ import (
 	"blog-server/domain/do"
 	"blog-server/infra/model"
 	"context"
+	"errors"
+	"time"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+// commentOrderColumns 评论列表允许的排序字段白名单，防止非法列名导致 SQL 报错或列名泄露
+var commentOrderColumns = map[string]struct{}{
+	"create_at": {},
+	"likes":     {},
+	"id":        {},
+}
 
 // commentMysqlRepo CommentMysqlRepo 接口实现
 type commentMysqlRepo struct {
@@ -38,6 +47,9 @@ func (r *commentMysqlRepo) CreateComment(ctx context.Context, commentModel *mode
 func (r *commentMysqlRepo) GetCommentByID(ctx context.Context, commentID uint64) (*model.CommentModel, error) {
 	var comment model.CommentModel
 	err := r.db.WithContext(ctx).First(&comment, commentID).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -53,13 +65,13 @@ func (r *commentMysqlRepo) ListCommentByPage(ctx context.Context, query *do.Comm
 	if query.ArticleID > 0 {
 		tx = tx.Where("article_id = ?", query.ArticleID)
 	}
-	// 父评论ID
-	if query.ParentID >= 0 {
-		tx = tx.Where("parent_id = ?", query.ParentID)
+	// 父评论ID：nil 表示不筛选；指向 0 查顶级，指向 N 查某父评论的回复
+	if query.ParentID != nil {
+		tx = tx.Where("parent_id = ?", *query.ParentID)
 	}
-	// 评论状态
-	if query.Status != 0 {
-		tx = tx.Where("status = ?", query.Status)
+	// 评论状态：nil 表示不筛选；可显式筛选待审核(0)/已通过(1)/已拒绝(2)
+	if query.Status != nil {
+		tx = tx.Where("status = ?", *query.Status)
 	}
 	// 管理员ID
 	if query.AdminID > 0 {
@@ -83,15 +95,14 @@ func (r *commentMysqlRepo) ListCommentByPage(ctx context.Context, query *do.Comm
 	}
 
 	// 3. 排序（默认按创建时间倒序）
-	if query.OrderBy == "" {
-		query.OrderBy = "create_at"
-	}
-	if query.OrderDir == "" {
-		query.OrderDir = "desc"
+	// 排序字段白名单校验：非白名单字段一律回退默认列，避免 SQL 报错或列名泄露
+	orderBy := query.OrderBy
+	if _, ok := commentOrderColumns[orderBy]; !ok {
+		orderBy = "create_at"
 	}
 	tx = tx.Order(clause.OrderByColumn{
-		Column: clause.Column{Name: query.OrderBy},
-		Desc:   query.OrderDir == "desc",
+		Column: clause.Column{Name: orderBy},
+		Desc:   query.OrderDir != "asc", // 仅 asc 升序，其余（含空）一律降序
 	})
 
 	// 4. 分页（默认值处理）
@@ -108,18 +119,36 @@ func (r *commentMysqlRepo) ListCommentByPage(ctx context.Context, query *do.Comm
 	return list, total, err
 }
 
-// UpdateComment 更新评论
-func (r *commentMysqlRepo) UpdateComment(ctx context.Context, commentModel *model.CommentModel) error {
-	return r.db.WithContext(ctx).
-		Model(commentModel).
-		// 忽略不可更新字段
-		Omit("id", "create_at", "deleted_at").
-		Updates(commentModel).Error
+// UpdateCommentByUser 按归属关系更新评论正文和审核状态
+func (r *commentMysqlRepo) UpdateCommentByUser(
+	ctx context.Context,
+	commentID uint64,
+	userID uint64,
+	content string,
+	status int,
+) (int64, error) {
+	result := r.db.WithContext(ctx).
+		Model(&model.CommentModel{}).
+		Where("id = ? AND user_id = ?", commentID, userID).
+		Updates(map[string]interface{}{
+			"content":   content,
+			"status":    status,
+			"update_at": time.Now(),
+		})
+
+	return result.RowsAffected, result.Error
 }
 
-// DeleteComment 软删除评论
-func (r *commentMysqlRepo) DeleteComment(ctx context.Context, commentID uint64) error {
-	return r.db.WithContext(ctx).Delete(&model.CommentModel{}, commentID).Error
+// DeleteCommentByUser 按归属关系软删除评论
+func (r *commentMysqlRepo) DeleteCommentByUser(
+	ctx context.Context,
+	commentID uint64,
+	userID uint64,
+) (int64, error) {
+	result := r.db.WithContext(ctx).
+		Where("id = ? AND user_id = ?", commentID, userID).
+		Delete(&model.CommentModel{})
+	return result.RowsAffected, result.Error
 }
 
 // LikeComment 评论点赞（原子操作，并发安全）
