@@ -2,7 +2,9 @@ package repo
 
 import (
 	"blog-server/config"
+	"blog-server/domain/repo"
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -120,8 +122,11 @@ func (r *commentRedisRepo) SetArticleCommentCount(ctx context.Context, articleID
 func (r *commentRedisRepo) GetArticleCommentCount(ctx context.Context, articleID uint64) (int, error) {
 	key := fmt.Sprintf(keyArticleCommentCount, articleID)
 	val, err := r.rdb.Get(ctx, key).Result()
-	if err == redis.Nil {
-		return 0, nil
+
+	// 未命中翻译成领域哨兵 repo.ErrCacheMiss，不把 go-redis 的 redis.Nil 泄漏到 App 层；
+	// App 用 errors.Is(err, repo.ErrCacheMiss) 区分未命中与真实故障，两者都回源查库。
+	if errors.Is(err, redis.Nil) {
+		return 0, repo.ErrCacheMiss
 	}
 	if err != nil {
 		return 0, err

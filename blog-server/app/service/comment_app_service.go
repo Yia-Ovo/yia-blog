@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-05-25 14:32:37
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-07-16 19:38:37
+ * @LastEditTime: 2026-07-22 16:12:29
  * @FilePath: \yia-blog\blog-server\app\service\comment_app_service.go
  * @Description: 评论应用服务 - 业务编排、缓存处理、流程调度
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
@@ -17,6 +17,7 @@ import (
 	"blog-server/domain/repo"
 	"blog-server/domain/service"
 	"context"
+	"errors"
 
 	"go.uber.org/zap"
 )
@@ -240,13 +241,18 @@ func (c *CommentAppService) GetArticleCommentCount(ctx context.Context, articleI
 		return 0, common.ParamErr
 	}
 
-	// 1. 优先读缓存
+	// 优先读缓存
 	count, err := c.commentRedisRepo.GetArticleCommentCount(ctx, articleID)
 	if err == nil {
 		return count, nil
 	}
+	if !errors.Is(err, repo.ErrCacheMiss) {
+		// 真实 Redis 故障：降级查库保可用，但记 Warn（评论数为非关键读）
+		logger.Warn("读取文章评论数缓存失败，降级查库",
+			zap.Uint64("article_id", articleID), zap.Error(err))
+	}
 
-	// 2. 缓存未命中，查询数据库
+	// 未命中 或 故障降级 → 统一回源查库 + 回写缓存 ...
 	logger.Info("文章评论数缓存未命中，查询数据库", zap.Uint64("article_id", articleID))
 	query := &do.CommentQuery{ArticleID: articleID, Page: 1, Size: 1}
 	_, total, err := c.commentDomainService.ListCommentByPage(ctx, query)
@@ -255,7 +261,7 @@ func (c *CommentAppService) GetArticleCommentCount(ctx context.Context, articleI
 		return 0, err
 	}
 
-	// 3. 回写缓存
+	// 回写缓存
 	_ = c.commentRedisRepo.SetArticleCommentCount(ctx, articleID, int(total))
 	return int(total), nil
 }
