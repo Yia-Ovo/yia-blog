@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-18 17:49:49
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-06 11:53:28
+ * @LastEditTime: 2026-07-27 01:20:00
  * @FilePath: \yia-blog\blog-server\common\utils\convert\category_convert.go
  * @Description:
  *
@@ -16,6 +16,8 @@ import (
 	"blog-server/domain/do"
 	"blog-server/infra/model"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // -------------- DTO → 领域查询对象 转换函数 --------------
@@ -40,7 +42,7 @@ func CategoryModelToDO(m *model.CategoryModel) *do.CategoryDO {
 		Status:    m.Status,
 		CreateAt:  m.CreateAt,
 		UpdateAt:  m.UpdateAt,
-		IsDeleted: !m.DeletedAt.IsZero(),
+		IsDeleted: m.DeletedAt.Valid,
 	}
 }
 
@@ -50,9 +52,12 @@ func CategoryDOToModel(d *do.CategoryDO) *model.CategoryModel {
 		return &model.CategoryModel{} // 空对象，缓存空值用
 	}
 
-	var deletedAt time.Time
+	var deletedAt gorm.DeletedAt
 	if d.IsDeleted {
-		deletedAt = time.Now()
+		deletedAt = gorm.DeletedAt{
+			Time:  time.Now(),
+			Valid: true,
+		}
 	}
 	return &model.CategoryModel{
 		ID:        d.ID,
@@ -79,7 +84,7 @@ func CategoryModelListToDO(list *[]model.CategoryModel) []do.CategoryDO {
 			Status:    m.Status,
 			CreateAt:  m.CreateAt,
 			UpdateAt:  m.UpdateAt,
-			IsDeleted: !m.DeletedAt.IsZero(),
+			IsDeleted: m.DeletedAt.Valid,
 		})
 	}
 	return listDO
