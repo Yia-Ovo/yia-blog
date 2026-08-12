@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-04-17 15:34:17
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-05-29 16:33:52
+ * @LastEditTime: 2026-07-29 00:18:17
  * @FilePath: \yia-blog\blog-server\infra\repo\category_mysql_repo.go
  * @Description:
  *
@@ -85,11 +85,13 @@ func (c *categoryMysqlRepo) GetCategoryById(ctx context.Context, id uint64) (*mo
 	err := c.db.WithContext(ctx).First(&category, id).Error
 
 	if err != nil {
+		// 记录不存在不是故障：返回 (nil, nil) 由 Domain 翻译成 CategoryNotFoundErr，
+		// 避免 gorm.ErrRecordNotFound 渗入领域层，也避免「不存在」被误报成 DatabaseErr。
 		if err == gorm.ErrRecordNotFound {
 			logger.Warn("GetCategoryById: category not found", zap.Uint64("category_id", id))
-		} else {
-			logger.Error("GetCategoryById failed", zap.Uint64("category_id", id), zap.Error(err))
+			return nil, nil
 		}
+		logger.Error("GetCategoryById failed", zap.Uint64("category_id", id), zap.Error(err))
 		return nil, err
 	}
 
@@ -99,13 +101,13 @@ func (c *categoryMysqlRepo) GetCategoryById(ctx context.Context, id uint64) (*mo
 // --------------------- 4. 删除分类（软删除） ---------------------
 func (c *categoryMysqlRepo) DeleteCategory(ctx context.Context, id uint64) error {
 
-	err := c.db.WithContext(ctx).Delete(&model.CategoryModel{}, id).Error
-
-	if err != nil {
-		logger.Error("DeleteCategory failed", zap.Uint64("category_id", id), zap.Error(err))
-		return err
+	result := c.db.WithContext(ctx).Delete(&model.CategoryModel{}, id)
+	if result.Error != nil {
+		logger.Error("DeleteCategory failed", zap.Uint64("category_id", id), zap.Error(result.Error))
+		return result.Error
 	}
-	if c.db.RowsAffected == 0 {
+	if result.RowsAffected == 0 {
+		// 存在性由 Domain 先行校验；此处为 0 说明校验后被并发删除，只记日志不报错。
 		logger.Warn("DeleteCategory no rows affected", zap.Uint64("category_id", id))
 	}
 	return nil
@@ -113,14 +115,21 @@ func (c *categoryMysqlRepo) DeleteCategory(ctx context.Context, id uint64) error
 
 // --------------------- 5. 更新分类 ---------------------
 func (c *categoryMysqlRepo) UpdateCategory(ctx context.Context, category *model.CategoryModel) error {
-
-	err := c.db.WithContext(ctx).Save(category).Error
-
-	if err != nil {
-		logger.Error("UpdateCategory failed", zap.Uint64("category_id", category.ID), zap.String("name", category.Name), zap.Error(err))
-		return err
+	result := c.db.WithContext(ctx).
+		Model(&model.CategoryModel{}).
+		Where("id = ?", category.ID). // 显式 WHERE，不依赖「Model 非零字段转条件」的隐式规则
+		Updates(map[string]interface{}{ // 用 map：status=0 等零值也会更新
+			"name":   category.Name,
+			"sort":   category.Sort,
+			"status": category.Status,
+		}) // create_at/deleted_at 不在白名单，保持原值
+	if result.Error != nil {
+		logger.Error("UpdateCategory failed", zap.Uint64("category_id", category.ID), zap.Error(result.Error))
+		return result.Error
 	}
-	if c.db.RowsAffected == 0 {
+	// 存在性由 Domain 先行校验；这里为 0 说明校验后被并发软删除，或本次值与原值完全相同。
+	// MySQL 不区分这两种情况，故只记日志不报错。
+	if result.RowsAffected == 0 { // 取本次 result，不再读 c.db
 		logger.Warn("UpdateCategory no rows affected", zap.Uint64("category_id", category.ID))
 	}
 	return nil

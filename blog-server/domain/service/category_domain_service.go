@@ -94,6 +94,7 @@ func (c *CategoryDomainService) GetCategoryById(ctx context.Context, id uint64) 
 	}
 
 	if model == nil {
+		// Repo 约定：查不到返回 (nil, nil)，与 DB 故障（err != nil）区分开
 		logger.Warn("分类不存在", zap.Uint64("id", id))
 		return nil, common.CategoryNotFoundErr
 	}
@@ -113,6 +114,12 @@ func (c *CategoryDomainService) UpdateCategory(ctx context.Context, categoryDO *
 	if categoryDO.Name == "" {
 		logger.Warn("更新分类失败：名称不能为空", zap.Uint64("id", categoryDO.ID))
 		return common.ParamErr
+	}
+
+	// 更新前确认分类存在：MySQL 下 RowsAffected==0 无法区分「记录不存在」与「值未变化」，
+	// 故存在性在领域层显式校验，Repo 的 RowsAffected 只作并发删除的兜底日志。
+	if _, err := c.GetCategoryById(ctx, categoryDO.ID); err != nil {
+		return err
 	}
 
 	// DO转Model
@@ -135,6 +142,11 @@ func (c *CategoryDomainService) DeleteCategory(ctx context.Context, id uint64) e
 	if id <= 0 {
 		logger.Warn("删除分类失败：ID非法", zap.Uint64("id", id))
 		return common.ParamErr
+	}
+
+	// 删除前确认分类存在，避免删除不存在的分类仍返回成功（同 UpdateCategory）
+	if _, err := c.GetCategoryById(ctx, id); err != nil {
+		return err
 	}
 
 	// 删除数据库数据（软删除）
