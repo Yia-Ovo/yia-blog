@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-02-01 03:41:21
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-06-10 15:24:16
+ * @LastEditTime: 2026-07-29 04:24:49
  * @FilePath: \yia-blog\blog-server\infra\model\user_model.go
  * @Description: 用户表的 GORM 持久化模型
  *
@@ -18,9 +18,9 @@ import (
 
 // UserModel 用户表模型，不内嵌 gorm.Model，以匹配现有表的 create_at/update_at 字段。
 type UserModel struct {
-	ID           uint64         `gorm:"primaryKey;autoIncrement;comment:主键ID"`                                                     // 数据库自增主键
-	NickName     string         `gorm:"type:varchar(64);not null;uniqueIndex:idx_nick_name;comment:用户登录昵称"`                        // 登录和展示使用的唯一昵称
-	Password     string         `gorm:"type:varchar(255);not null;comment:bcrypt密码哈希"`                                             // 只保存密码哈希，不应返回客户端或写入普通信息缓存
+	ID           uint64         `gorm:"primaryKey;autoIncrement;comment:主键ID"`                              // 数据库自增主键
+	NickName     string         `gorm:"type:varchar(64);not null;uniqueIndex:idx_nick_name;comment:用户登录昵称"` // 登录和展示使用的唯一昵称
+	Password     string         `gorm:"type:varchar(255);not null;comment:bcrypt密码哈希" json:"-"`
 	Avatar       string         `gorm:"type:varchar(255);default:null;comment:用户头像地址"`                                             // 可为空的头像 URL
 	Gender       int            `gorm:"type:tinyint(1);not null;default:0;comment:性别(0未知,1男,2女)"`                                  // 性别枚举值
 	Status       int            `gorm:"type:tinyint(1);not null;default:1;comment:账号状态(1启用,2禁用,3锁定)"`                              // 以 common/consts 中的用户状态常量为准
