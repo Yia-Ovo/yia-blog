@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-26 07:44:28
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-07-16 10:33:25
+ * @LastEditTime: 2026-08-11 11:06:19
  * @FilePath: \yia-blog\blog-server\api\dto\admin_dto.go
  * @Description: 管理员请求&出参DTO
  */
@@ -34,9 +34,17 @@ type AdminUpdatePWDReq struct {
 type AdminUpdateInfoReq struct {
 	AdminName *string `json:"admin_name,omitempty" binding:"omitempty,min=1,max=16"`
 	Avatar    *string `json:"avatar,omitempty"`
-	Role      *int    `json:"role,omitempty" binding:"omitempty,oneof=0 1"`
 	Email     *string `json:"email,omitempty"`
 	Remark    *string `json:"remark,omitempty"`
+}
+
+// AdminUpdateRoleReq 变更管理员角色请求。
+// ID 是被操作对象，操作者从鉴权态取、不接受客户端提交。
+// Role 用 *int：required 只判 nil，这样 role=0（超管）也能正常提交。
+// 状态变更请走 /updateStatus，本接口只改角色。
+type AdminUpdateRoleReq struct {
+	ID   uint64 `json:"id" binding:"required"`
+	Role *int   `json:"role" binding:"required,oneof=0 1"`
 }
 
 // 根据名称查询

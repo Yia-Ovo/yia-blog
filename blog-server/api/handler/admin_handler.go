@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-06-06 11:30:00
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-07-16 11:49:17
+ * @LastEditTime: 2026-08-12 10:28:08
  * @FilePath: \yia-blog\blog-server\api\handler\admin_handler.go
  * @Description: 管理员 API 控制器层
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
@@ -129,6 +129,40 @@ func (h *AdminHandler) UpdatePWD(c *gin.Context) {
 	defer cancel()
 
 	err := h.adminAppSrv.UpdatePWD(ctx, adminId, &req)
+	if err != nil {
+		response.WriteResp(c, nil, err.(common.Errno))
+		return
+	}
+	response.WriteResp(c, nil, common.OK)
+}
+
+// UpdateAdminRole 变更管理员角色 POST /api/blog/v1/admin/updateAdminRole（超管专属）
+// 请求体的 id 是被操作对象；操作者 id 从鉴权态取，不接受客户端提交。
+func (h *AdminHandler) UpdateAdminRole(c *gin.Context) {
+	var req dto.AdminUpdateRoleReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("[HANDLER] 更新管理员角色参数绑定失败", zap.Error(err))
+		response.WriteResp(c, nil, common.ParamErr.WithMsg("请求参数错误，请核对后提交"))
+		return
+	}
+
+	operatorIdVal, exists := c.Get(consts.AdminIDKey)
+	if !exists {
+		logger.Warn("[HANDLER] 更新角色未获取到登录管理员ID")
+		response.WriteResp(c, nil, common.LoginNotLoginErr.WithMsg("请先完成管理员登录"))
+		return
+	}
+	operatorID, ok := operatorIdVal.(uint64)
+	if !ok {
+		logger.Error("[HANDLER] 管理员ID类型转换失败")
+		response.WriteResp(c, nil, common.ServerErr.WithMsg("管理员ID类型错误"))
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	defer cancel()
+
+	err := h.adminAppSrv.UpdateAdminRole(ctx, operatorID, &req)
 	if err != nil {
 		response.WriteResp(c, nil, err.(common.Errno))
 		return

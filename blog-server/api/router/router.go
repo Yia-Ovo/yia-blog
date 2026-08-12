@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-01-21 11:32:32
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-07-09 07:58:57
+ * @LastEditTime: 2026-08-12 10:13:19
  * @FilePath: \yia-blog\blog-server\api\router\router.go
  * @Description:
  *
@@ -114,10 +114,11 @@ func (r *Router) adminRouter(v1 *gin.RouterGroup) {
 	adminSuper := g.Group("/")
 	adminSuper.Use(middleware.DefaultAdminAuth(), middleware.AdminSuperAuth())
 	{
-		adminSuper.POST("/create", h.CreateAdmin)             // 创建管理员
-		adminSuper.GET("/list", h.ListAdmin)                  // 管理员列表
-		adminSuper.POST("/updateStatus", h.UpdateAdminStatus) // 修改状态
-		adminSuper.POST("/resetPWD", h.ResetAdminPWD)         // 重置密码
+		adminSuper.POST("/create", h.CreateAdmin)                 // 创建管理员
+		adminSuper.GET("/list", h.ListAdmin)                      // 管理员列表
+		adminSuper.POST("/updateStatus", h.UpdateAdminStatus)     // 修改状态
+		adminSuper.POST("/resetPWD", h.ResetAdminPWD)             // 重置密码
+		adminSuper.POST("/updateAdminRole", h.UpdateAdminRole)    // 变更角色（可造超管，权限最高）
 	}
 }
 

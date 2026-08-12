@@ -2,13 +2,14 @@
  * @Author: Yia 1372594487@gmail.com
  * @Date: 2026-04-30 01:46:01
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-06-10 01:12:41
+ * @LastEditTime: 2026-08-12 12:43:17
  * @FilePath: \yia-blog\blog-server\infra\repo\admin_mysql_repo.go
  * @Description: 管理员 MySQL 仓储实现
  */
 package repo
 
 import (
+	"blog-server/common/consts"
 	"blog-server/common/utils/logger"
 	"blog-server/domain/repo"
 	"blog-server/infra/model"
@@ -112,7 +113,12 @@ func (r *adminMysqlRepo) ListAdmin(ctx context.Context, page, pageSize int) ([]*
 }
 
 // --------------------- 5. 更新管理员信息 ---------------------
-func (r *adminMysqlRepo) UpdateAdminInfo(ctx context.Context, adminModel *model.AdminModel, bumpTokenVersion bool) error {
+// UpdateAdminInfo 更新管理员个人资料。更新列收敛为本用例真正拥有的四个字段 + update_at：
+// role 由 ChangeAdminRole 维护、status 由 UpdateAdminStatus 维护，都不从这里写入——
+// Domain 侧是「读全量 DO → 改若干字段 → 整体写回」，一旦把这两列放进 map，
+// 读取那一刻的旧值就会覆盖掉期间刚生效的降级或禁用（Lost Update）。
+// 同理不递增 token_version：改昵称头像不该踢掉自己的登录态。
+func (r *adminMysqlRepo) UpdateAdminInfo(ctx context.Context, adminModel *model.AdminModel) error {
 	if adminModel == nil || adminModel.ID == 0 {
 		logger.Error("[MYSQL] 更新管理员信息失败，管理员模型非法")
 		return gorm.ErrInvalidData
@@ -122,14 +128,9 @@ func (r *adminMysqlRepo) UpdateAdminInfo(ctx context.Context, adminModel *model.
 	updateData := map[string]interface{}{
 		"admin_name": adminModel.AdminName,
 		"avatar":     adminModel.Avatar,
-		"role":       adminModel.Role,
 		"email":      adminModel.Email,
-		"status":     adminModel.Status,
 		"remark":     adminModel.Remark,
 		"update_at":  adminModel.UpdateAt,
-	}
-	if bumpTokenVersion {
-		updateData["token_version"] = gorm.Expr("token_version + ?", 1)
 	}
 
 	result := r.adminBaseQuery(ctx).
@@ -141,6 +142,8 @@ func (r *adminMysqlRepo) UpdateAdminInfo(ctx context.Context, adminModel *model.
 		return err
 	}
 
+	// 这里不返回 ErrNoRowsAffected：本方法无角色等业务条件，0 行只说明提交内容与库中一致，
+	// 属正常情况，不是并发冲突。
 	if result.RowsAffected == 0 {
 		logger.Warn("[MYSQL] 更新管理员信息无数据变更", zap.Uint64("admin_id", adminModel.ID))
 	}
@@ -148,16 +151,41 @@ func (r *adminMysqlRepo) UpdateAdminInfo(ctx context.Context, adminModel *model.
 	return nil
 }
 
+// ChangeAdminRole 变更管理员角色，并递增 token_version 使被改动者的旧 token 立即失效
+// （降级后旧 token 不能继续带着超管权限）。
+// 不接收操作者 id：操作者身份是领域规则，由 AdminDomainService.ensureCanManageAdmin 校验。
+// 待补：与 UpdateAdminStatus 一致的 AND role = ? 并发兜底，以及 RowsAffected == 0 的哨兵返回。
+func (r *adminMysqlRepo) ChangeAdminRole(ctx context.Context, targetID uint64, role int) error {
+	updateData := map[string]interface{}{
+		"role":          role,
+		"token_version": gorm.Expr("token_version + ?", 1),
+		"update_at":     time.Now(),
+	}
+	result := r.adminBaseQuery(ctx).
+		Where("id = ?", targetID).
+		Updates(updateData)
+
+	if err := result.Error; err != nil {
+		logger.Error("[MYSQL] 更新管理员信息失败", zap.Uint64("admin_id", targetID), zap.Error(err))
+		return err
+	}
+	return nil
+}
+
 // --------------------- 6. 更新管理员状态 ---------------------
+// UpdateAdminStatus 启用/禁用管理员。WHERE 固定叠加 role = AdminRoleNormal，
+// 与 Domain 的 ensureCanManageAdmin 形成双保险：校验通过后目标若被并发提升为超管，
+// 这里影响 0 行并返回 repo.ErrNoRowsAffected，避免静默"假成功"。
+// 更新列含每次必变的 token_version / update_at，因此 0 行只可能是 WHERE 未匹配。
 func (r *adminMysqlRepo) UpdateAdminStatus(ctx context.Context, adminID uint64, status int) error {
 	updateData := map[string]interface{}{
 		"status":        status,
-		"token_version": gorm.Expr("token_version + ?", 1),
+		"token_version": gorm.Expr("token_version + ?", 1), // 禁用后旧 token 立即失效
 		"update_at":     time.Now(),
 	}
 
 	result := r.adminBaseQuery(ctx).
-		Where("id = ?", adminID).
+		Where("id = ? AND role = ?", adminID, consts.AdminRoleNormal).
 		Updates(updateData)
 
 	if err := result.Error; err != nil {
@@ -165,14 +193,19 @@ func (r *adminMysqlRepo) UpdateAdminStatus(ctx context.Context, adminID uint64, 
 		return err
 	}
 
+	// 条件未命中：目标不存在、已软删除，或已不是普通管理员
 	if result.RowsAffected == 0 {
-		logger.Warn("[MYSQL] 更新管理员状态无数据变更", zap.Uint64("admin_id", adminID))
+		logger.Warn("[MYSQL] 更新管理员状态未命中目标", zap.Uint64("admin_id", adminID))
+		return repo.ErrNoRowsAffected
 	}
 
 	return nil
 }
 
 // --------------------- 7. 更新管理员密码 ---------------------
+// UpdatePWD 管理员修改自己的密码。故意不加 role 条件——超管改自己密码同样要走这里，
+// 加上 role = AdminRoleNormal 会把超管误伤成"改不了自己的密码"。
+// 超管重置他人密码请走 ResetAdminPWDByID（带角色兜底）。
 func (r *adminMysqlRepo) UpdatePWD(ctx context.Context, adminID uint64, password string) error {
 	result := r.adminBaseQuery(ctx).
 		Where("id = ?", adminID).
@@ -191,6 +224,31 @@ func (r *adminMysqlRepo) UpdatePWD(ctx context.Context, adminID uint64, password
 		logger.Warn("[MYSQL] 更新管理员密码无数据变更", zap.Uint64("admin_id", adminID))
 	}
 
+	return nil
+}
+
+// --------------------- 7.1 重置管理员密码（仅普通管理员） ---------------------
+// ResetAdminPWDByID 供超管重置他人密码。WHERE 固定叠加 role = AdminRoleNormal，
+// 与 Domain 的 ensureCanManageAdmin 形成双保险：校验通过后目标若被并发提升为超管，
+// 这里影响 0 行并返回 repo.ErrNoRowsAffected，不会静默"假成功"。
+// 管理员改自己密码走 UpdatePWD（不带 role 条件，否则超管无法改自己的密码）。
+func (r *adminMysqlRepo) ResetAdminPWDByID(ctx context.Context, adminID uint64, password string) error {
+	result := r.adminBaseQuery(ctx).
+		Where("id = ? AND role = ?", adminID, consts.AdminRoleNormal).
+		Updates(map[string]interface{}{
+			"password":      password,
+			"token_version": gorm.Expr("token_version + ?", 1),
+			"update_at":     time.Now(),
+		})
+	if err := result.Error; err != nil {
+		logger.Error("[MYSQL] 重置管理员密码失败", zap.Uint64("admin_id", adminID), zap.Error(err))
+		return err
+	}
+	// 条件未命中：目标不存在、已软删除，或已不是普通管理员
+	if result.RowsAffected == 0 {
+		logger.Warn("[MYSQL] 重置管理员密码未命中目标", zap.Uint64("admin_id", adminID))
+		return repo.ErrNoRowsAffected
+	}
 	return nil
 }
 

@@ -2,7 +2,7 @@
  * @Author: Yia 1372594487@qq.com
  * @Date: 2026-05-29 16:00:00
  * @LastEditors: Yia 1372594487@qq.com
- * @LastEditTime: 2026-07-16 11:54:38
+ * @LastEditTime: 2026-08-12 10:28:50
  * @FilePath: \yia-blog\blog-server\app\service\admin_app_service.go
  * @Description: 管理员应用服务 - 业务编排、缓存处理、流程调度
  * Copyright (c) 2026 by Yia 2594487@qq.com, All Rights Reserved.
@@ -227,6 +227,36 @@ func (s *AdminAppService) UpdatePWD(ctx context.Context, id uint64, req *dto.Adm
 	return nil
 }
 
+// UpdateAdminRole 变更管理员角色。
+// operatorID 来自鉴权态（操作者），req.ID 是被操作对象——两个 id 不能混用。
+// 权限规则全部在 Domain 校验，这里只做编排：调用领域服务 + 清理目标的缓存与在线令牌。
+func (s *AdminAppService) UpdateAdminRole(ctx context.Context, operatorID uint64, req *dto.AdminUpdateRoleReq) error {
+	if req == nil {
+		logger.Warn("[APP] 修改管理员角色参数为空")
+		return common.ParamErr.WithMsg("参数不能为空")
+	}
+	// 不能用 ptr.Val 兜底：nil 会被压成 0，而 0 正是超管角色，等于把"没传"变成"提升为超管"
+	if req.Role == nil {
+		logger.Warn("[APP] 修改管理员角色未指定角色值")
+		return common.ParamErr.WithMsg("角色不能为空")
+	}
+
+	err := s.adminDomainService.UpdateAdminRole(ctx, operatorID, req.ID, *req.Role)
+	if err != nil {
+		logger.Error("[APP] 修改管理员角色失败", zap.Error(err))
+		return err.(common.Errno).WithMsg("修改失败")
+	}
+
+	// 角色已变，清目标的信息缓存与在线令牌：Repo 侧已递增 token_version 使旧 token 失效，
+	// 这里再清缓存，避免 GetAdminInfo 在 TTL 内继续返回旧 role。
+	_ = s.adminRedisRepo.DelAdminFromRedis(ctx, req.ID)
+	if err := s.adminRedisRepo.ClearAdminAllOnlineToken(ctx, req.ID); err != nil {
+		logger.Warn("[APP] 清除管理员在线Token失败", zap.Uint64("admin_id", req.ID), zap.Error(err))
+	}
+	logger.Info("[APP] 管理员角色更新成功", zap.Uint64("operator_id", operatorID), zap.Uint64("admin_id", req.ID))
+	return nil
+}
+
 // UpdateAdminInfo 更新信息
 func (s *AdminAppService) UpdateAdminInfo(ctx context.Context, id uint64, req *dto.AdminUpdateInfoReq) (*dto.AdminInfoData, error) {
 	if id <= 0 || req == nil {
@@ -243,32 +273,19 @@ func (s *AdminAppService) UpdateAdminInfo(ctx context.Context, id uint64, req *d
 	updateData := &do.AdminDO{
 		AdminName: ptr.Val(req.AdminName),
 		Avatar:    ptr.Val(req.Avatar),
-		Role:      ptr.Val(req.Role),
 		Email:     ptr.Val(req.Email),
 		Remark:    ptr.Val(req.Remark),
 	}
 
-	roleChanged, err := s.adminDomainService.UpdateAdminInfo(ctx, id, updateData, req.Role != nil)
+	err := s.adminDomainService.UpdateAdminInfo(ctx, id, updateData)
 	if err != nil {
 		logger.Error("[APP] 更新管理员信息失败", zap.Error(err), zap.Uint64("id", id))
 		return nil, err.(common.Errno).WithMsg("更新失败")
-	}
-
-	_ = s.adminRedisRepo.DelAdminFromRedis(ctx, id)
-	if roleChanged {
-		onlineTokenCleared := true
-		if err := s.adminRedisRepo.ClearAdminAllOnlineToken(ctx, id); err != nil {
-			onlineTokenCleared = false
-			logger.Warn("[APP] 清除管理员在线Token失败", zap.Uint64("admin_id", id), zap.Error(err))
-		}
-		logger.Info("[APP] 管理员角色更新成功，缓存已清理",
-			zap.Uint64("id", id),
-			zap.Bool("online_token_cleared", onlineTokenCleared),
-		)
 	} else {
+		_ = s.adminRedisRepo.DelAdminFromRedis(ctx, id)
 		logger.Info("[APP] 管理员信息更新成功，缓存已清理", zap.Uint64("id", id))
-	}
 
+	}
 	return s.GetAdminInfo(ctx, id)
 }
 
