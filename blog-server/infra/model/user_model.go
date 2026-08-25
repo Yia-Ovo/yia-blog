@@ -20,7 +20,7 @@ import (
 type UserModel struct {
 	ID           uint64         `gorm:"primaryKey;autoIncrement;comment:主键ID"`                              // 数据库自增主键
 	NickName     string         `gorm:"type:varchar(64);not null;uniqueIndex:idx_nick_name;comment:用户登录昵称"` // 登录和展示使用的唯一昵称
-	Password     string         `gorm:"type:varchar(255);not null;comment:bcrypt密码哈希" json:"-"`
+	Password     string         `gorm:"type:varchar(255);not null;comment:bcrypt密码哈希" json:"-"` // 只保存 bcrypt 哈希；json:"-" 确保不写入 info 缓存、不返回客户端
 	Avatar       string         `gorm:"type:varchar(255);default:null;comment:用户头像地址"`                                             // 可为空的头像 URL
 	Gender       int            `gorm:"type:tinyint(1);not null;default:0;comment:性别(0未知,1男,2女)"`                                  // 性别枚举值
 	Status       int            `gorm:"type:tinyint(1);not null;default:1;comment:账号状态(1启用,2禁用,3锁定)"`                              // 以 common/consts 中的用户状态常量为准

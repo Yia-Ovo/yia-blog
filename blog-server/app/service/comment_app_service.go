@@ -11,7 +11,9 @@
 package service
 
 import (
+	"blog-server/api/dto"
 	"blog-server/common"
+	"blog-server/common/utils/convert"
 	"blog-server/common/utils/logger"
 	"blog-server/domain/do"
 	"blog-server/domain/repo"
@@ -38,6 +40,8 @@ type CommentCreateCommand struct {
 
 // CommentListQuery 评论分页查询用例的应用层输入。
 // Handler 把 HTTP 查询 DTO 转换为该命令，AppService 不依赖 api/dto。
+// Status / AdminID 只供管理端用例使用；公开入口不填这两个字段，
+// 且即使填了也会被 DomainService 的公开查询覆盖。
 type CommentListQuery struct {
 	ArticleID uint64  // 大于 0 时按所属文章筛选
 	ParentID  *uint64 // nil 不筛选；指向 0 查顶级，指向 N 查某父评论的回复
@@ -105,6 +109,7 @@ func (c *CommentAppService) CreateComment(ctx context.Context, command *CommentC
 }
 
 // ListCommentByPage 分页查询评论：把应用层查询命令转换为领域查询条件后调用领域服务
+// 该用例不限制审核状态，保留给管理端审核列表使用；公开入口请走 ListPublicComments。
 func (c *CommentAppService) ListCommentByPage(ctx context.Context, q *CommentListQuery) ([]do.CommentDO, int64, error) {
 	if q == nil {
 		logger.Warn("评论分页查询参数为空")
@@ -126,8 +131,46 @@ func (c *CommentAppService) ListCommentByPage(ctx context.Context, q *CommentLis
 }
 
 // GetCommentByID 根据ID获取评论详情
+// 该用例不做可见性判断，保留给管理端使用；公开入口请走 GetPublicComment。
 func (c *CommentAppService) GetCommentByID(ctx context.Context, commentID uint64) (*do.CommentDO, error) {
 	return c.commentDomainService.GetCommentByID(ctx, commentID)
+}
+
+// ListPublicComments 公开评论分页查询用例：可见范围由领域强制为"仅已通过"，
+// 结果在本层转换为 CommentVO，把邮箱、IP、User-Agent、审核状态挡在响应之外。
+func (c *CommentAppService) ListPublicComments(ctx context.Context, q *CommentListQuery) ([]dto.CommentVO, int64, error) {
+	if q == nil {
+		logger.Warn("[APP] 公开评论分页查询参数为空")
+		return nil, 0, common.ParamErr
+	}
+
+	// 不传递 Status / AdminID：可见范围由领域决定，访客不参与筛选
+	query := &do.CommentQuery{
+		ArticleID: q.ArticleID,
+		ParentID:  q.ParentID,
+		Nickname:  q.Nickname,
+		Content:   q.Content,
+		Page:      q.Page,
+		Size:      q.Size,
+		OrderBy:   q.OrderBy,
+		OrderDir:  q.OrderDir,
+	}
+
+	list, total, err := c.commentDomainService.ListPublicComments(ctx, query)
+	if err != nil {
+		return nil, 0, err
+	}
+	return convert.CommentDOListToVOList(list), total, nil
+}
+
+// GetPublicComment 公开评论详情用例：未通过审核的评论由领域按"不存在"处理，
+// 通过审核的评论在本层转换为脱敏后的 CommentVO。
+func (c *CommentAppService) GetPublicComment(ctx context.Context, commentID uint64) (*dto.CommentVO, error) {
+	comment, err := c.commentDomainService.GetPublicComment(ctx, commentID)
+	if err != nil {
+		return nil, err
+	}
+	return convert.CommentDOToVO(comment), nil
 }
 
 // UpdateComment 编辑评论：调用领域服务 + 清理缓存
@@ -254,8 +297,9 @@ func (c *CommentAppService) GetArticleCommentCount(ctx context.Context, articleI
 
 	// 未命中 或 故障降级 → 统一回源查库 + 回写缓存 ...
 	logger.Info("文章评论数缓存未命中，查询数据库", zap.Uint64("article_id", articleID))
+	// 该接口是公开入口，计数口径必须与公开列表一致：只统计审核通过的评论
 	query := &do.CommentQuery{ArticleID: articleID, Page: 1, Size: 1}
-	_, total, err := c.commentDomainService.ListCommentByPage(ctx, query)
+	_, total, err := c.commentDomainService.ListPublicComments(ctx, query)
 	if err != nil {
 		logger.Error("查询文章评论总数失败", zap.Uint64("article_id", articleID), zap.Error(err))
 		return 0, err

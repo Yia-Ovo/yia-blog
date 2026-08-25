@@ -31,6 +31,19 @@ type fakeCommentMysqlRepo struct {
 	deleteUserID uint64
 	deleteRows   int64
 	deleteErr    error
+
+	// listQuery 记录最终下发到 Repo 的查询条件，用于断言领域层是否钉死了可见范围
+	listQuery *do.CommentQuery
+	listResult []*model.CommentModel
+	listTotal  int64
+}
+
+func (f *fakeCommentMysqlRepo) ListCommentByPage(
+	_ context.Context,
+	query *do.CommentQuery,
+) ([]*model.CommentModel, int64, error) {
+	f.listQuery = query
+	return f.listResult, f.listTotal, nil
 }
 
 func (f *fakeCommentMysqlRepo) CreateComment(_ context.Context, comment *model.CommentModel) error {
@@ -288,5 +301,73 @@ func commentModelToDOForTest(comment *model.CommentModel) *do.CommentDO {
 		UserAgent: comment.UserAgent,
 		Status:    comment.Status,
 		Likes:     comment.Likes,
+	}
+}
+
+// TestListPublicCommentsForcesPassedStatus 公开列表的可见范围必须由领域钉死：
+// 访客显式传待审核/已拒绝状态时，下发到 Repo 的条件仍应是"仅已通过"。
+func TestListPublicCommentsForcesPassedStatus(t *testing.T) {
+	for _, clientStatus := range []int{
+		consts.CommentStatusPending,
+		consts.CommentStatusRejected,
+	} {
+		commentRepo := &fakeCommentMysqlRepo{}
+		srv := NewCommentDomainService(commentRepo, &fakeCommentArticleRepo{})
+
+		status := clientStatus
+		_, _, err := srv.ListPublicComments(context.Background(), &do.CommentQuery{
+			ArticleID:   1,
+			Status:      &status,
+			WithDeleted: true,
+		})
+		if err != nil {
+			t.Fatalf("公开列表查询失败: %v", err)
+		}
+
+		if commentRepo.listQuery == nil {
+			t.Fatal("期望调用 Repo 列表查询")
+		}
+		if commentRepo.listQuery.Status == nil || *commentRepo.listQuery.Status != consts.CommentStatusPassed {
+			t.Fatalf("客户端状态未被覆盖: got=%v want=%d", commentRepo.listQuery.Status, consts.CommentStatusPassed)
+		}
+		if commentRepo.listQuery.WithDeleted {
+			t.Fatal("公开列表不应查询已删除评论")
+		}
+	}
+}
+
+// TestGetPublicCommentHidesUnapprovedComment 未通过审核的评论对公开入口不可见，
+// 且按"不存在"返回，避免通过错误码差异探测评论是否存在。
+func TestGetPublicCommentHidesUnapprovedComment(t *testing.T) {
+	for _, status := range []int{
+		consts.CommentStatusPending,
+		consts.CommentStatusRejected,
+	} {
+		commentRepo := &fakeCommentMysqlRepo{
+			comment: &model.CommentModel{ID: 5, ArticleID: 1, Status: status},
+		}
+		srv := NewCommentDomainService(commentRepo, &fakeCommentArticleRepo{})
+
+		got, err := srv.GetPublicComment(context.Background(), 5)
+		if got != nil {
+			t.Fatalf("状态 %d 的评论不应对访客可见", status)
+		}
+		assertErrCode(t, err, common.CommentNotFoundErr)
+	}
+}
+
+// TestGetPublicCommentReturnsPassedComment 审核通过的评论正常返回。
+func TestGetPublicCommentReturnsPassedComment(t *testing.T) {
+	commentRepo := &fakeCommentMysqlRepo{
+		comment: &model.CommentModel{ID: 5, ArticleID: 1, Status: consts.CommentStatusPassed},
+	}
+	srv := NewCommentDomainService(commentRepo, &fakeCommentArticleRepo{})
+
+	got, err := srv.GetPublicComment(context.Background(), 5)
+	if err != nil {
+		t.Fatalf("已通过审核的评论应可读: %v", err)
+	}
+	if got == nil || got.ID != 5 {
+		t.Fatalf("返回评论不正确: %+v", got)
 	}
 }

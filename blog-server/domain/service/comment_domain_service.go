@@ -116,6 +116,8 @@ func (c *CommentDomainService) CreateComment(ctx context.Context, commentDO *do.
 }
 
 // ListCommentByPage 评论分页查询：仅参数校验 + 数据库查询
+// 该方法信任调用方传入的 Status 等筛选条件，只允许管理端用例使用；
+// 公开入口必须走 ListPublicComments，由领域强制可见范围。
 func (c *CommentDomainService) ListCommentByPage(ctx context.Context, query *do.CommentQuery) ([]do.CommentDO, int64, error) {
 	// 分页参数合法性校验
 	if query.Page <= 0 {
@@ -137,6 +139,8 @@ func (c *CommentDomainService) ListCommentByPage(ctx context.Context, query *do.
 }
 
 // GetCommentByID 根据ID查询评论：仅参数校验 + 数据库查询
+// 该方法不做可见性判断，会返回任意审核状态的评论，只允许内部流程和管理端用例使用；
+// 公开入口必须走 GetPublicComment。
 func (c *CommentDomainService) GetCommentByID(ctx context.Context, commentID uint64) (*do.CommentDO, error) {
 	// 参数校验
 	if commentID <= 0 {
@@ -159,6 +163,43 @@ func (c *CommentDomainService) GetCommentByID(ctx context.Context, commentID uin
 
 	logger.Info("[DOMAIN] 根据ID查询评论成功", zap.Uint64("comment_id", commentID))
 	return convert.CommentModelToDO(commentModel), nil
+}
+
+// ListPublicComments 公开评论分页查询：可见范围由领域强制为"仅已通过"。
+// 调用方传入的审核状态和软删除条件一律被覆盖，因此无论访客怎么构造筛选参数，
+// 都无法翻出待审核或已拒绝的评论；这条规则对任何入口（HTTP、任务、未来 RPC）都成立。
+func (c *CommentDomainService) ListPublicComments(ctx context.Context, query *do.CommentQuery) ([]do.CommentDO, int64, error) {
+	if query == nil {
+		logger.Warn("[DOMAIN] 公开评论分页查询失败：查询条件为空")
+		return nil, 0, common.ParamErr
+	}
+
+	// 服务端钉死可见范围，忽略调用方传入值
+	passed := consts.CommentStatusPassed
+	query.Status = &passed
+	query.WithDeleted = false
+
+	return c.ListCommentByPage(ctx, query)
+}
+
+// GetPublicComment 公开评论详情：只返回审核通过的评论。
+// 未通过审核的评论按"不存在"处理并复用 CommentNotFoundErr，
+// 避免访客通过错误码差异探测某条评论是否存在、是否被拒绝。
+func (c *CommentDomainService) GetPublicComment(ctx context.Context, commentID uint64) (*do.CommentDO, error) {
+	comment, err := c.GetCommentByID(ctx, commentID)
+	if err != nil {
+		return nil, err
+	}
+
+	if comment.Status != consts.CommentStatusPassed {
+		logger.Warn("[DOMAIN] 公开查询命中未通过审核的评论，按不存在处理",
+			zap.Uint64("comment_id", commentID),
+			zap.Int("status", comment.Status),
+		)
+		return nil, common.CommentNotFoundErr
+	}
+
+	return comment, nil
 }
 
 // UpdateComment 更新评论：仅业务校验 + 数据库操作

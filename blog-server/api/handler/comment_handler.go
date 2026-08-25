@@ -88,7 +88,8 @@ func (h *CommentHandler) CreateComment(c *gin.Context) {
 	response.WriteResp(c, nil, common.OK)
 }
 
-// ListCommentByPage 分页查询评论 GET /api/blog/v1/comment/listCommentByPage
+// ListCommentByPage 分页查询评论（公开入口，免登录）GET /api/blog/v1/comment/listComment
+// 可见范围与字段脱敏由 App/Domain 保证：只返回审核通过的评论，响应体为不含隐私字段的 CommentVO。
 func (h *CommentHandler) ListCommentByPage(c *gin.Context) {
 	var req dto.CommentPageQueryReq
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -103,8 +104,6 @@ func (h *CommentHandler) ListCommentByPage(c *gin.Context) {
 	query := &service.CommentListQuery{
 		ArticleID: req.ArticleID,
 		ParentID:  req.ParentID,
-		Status:    req.Status,
-		AdminID:   req.AdminID,
 		Nickname:  req.Nickname,
 		Content:   req.Content,
 		Page:      req.Page,
@@ -112,7 +111,7 @@ func (h *CommentHandler) ListCommentByPage(c *gin.Context) {
 		OrderBy:   req.OrderBy,
 		OrderDir:  req.OrderDir,
 	}
-	list, total, err := h.commentAppService.ListCommentByPage(ctx, query)
+	list, total, err := h.commentAppService.ListPublicComments(ctx, query)
 	if err != nil {
 		logger.Error("[API] 分页查询评论失败", zap.Any("query", req), zap.Error(err))
 		response.WriteResp(c, nil, err.(common.Errno))
@@ -125,7 +124,8 @@ func (h *CommentHandler) ListCommentByPage(c *gin.Context) {
 	}, common.OK)
 }
 
-// GetCommentByID 根据ID查询评论 GET /api/blog/v1/comment/getCommentByID
+// GetCommentByID 根据ID查询评论（公开入口，免登录）GET /api/blog/v1/comment/getCommentById
+// 未通过审核的评论按不存在返回，响应体为不含隐私字段的 CommentVO。
 func (h *CommentHandler) GetCommentByID(c *gin.Context) {
 	idStr := c.Query("id")
 	id, err := strconv.ParseUint(idStr, 10, 64)
@@ -138,7 +138,7 @@ func (h *CommentHandler) GetCommentByID(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 	defer cancel()
 
-	comment, err := h.commentAppService.GetCommentByID(ctx, id)
+	comment, err := h.commentAppService.GetPublicComment(ctx, id)
 	if err != nil {
 		logger.Error("根据ID查询评论失败", zap.Uint64("comment_id", id), zap.Error(err))
 		response.WriteResp(c, nil, err.(common.Errno))

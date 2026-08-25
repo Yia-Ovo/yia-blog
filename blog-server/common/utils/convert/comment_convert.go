@@ -2,6 +2,7 @@
 package convert
 
 import (
+	"blog-server/api/dto"
 	"blog-server/domain/do"
 	"blog-server/infra/model"
 )
@@ -54,6 +55,34 @@ func CommentModelListToDOList(list []*model.CommentModel) []do.CommentDO {
 	res := make([]do.CommentDO, 0, len(list))
 	for _, v := range list {
 		res = append(res, *CommentModelToDO(v))
+	}
+	return res
+}
+
+// CommentDOToVO DO 转公开展示 VO。
+// 只映射访客可见字段，Email、IP、UserAgent、Status、UserID、AdminID、DeletedAt
+// 一律不参与映射，保证公开响应不携带隐私和内部状态。
+func CommentDOToVO(d *do.CommentDO) *dto.CommentVO {
+	if d == nil {
+		return nil
+	}
+	return &dto.CommentVO{
+		ID:        d.ID,
+		ArticleID: d.ArticleID,
+		ParentID:  d.ParentID,
+		Nickname:  d.Nickname,
+		Avatar:    d.Avatar,
+		Content:   d.Content,
+		Likes:     d.Likes,
+		CreateAt:  d.CreateAt,
+	}
+}
+
+// CommentDOListToVOList DO 列表转公开展示 VO 列表。
+func CommentDOListToVOList(list []do.CommentDO) []dto.CommentVO {
+	res := make([]dto.CommentVO, 0, len(list))
+	for i := range list {
+		res = append(res, *CommentDOToVO(&list[i]))
 	}
 	return res
 }
