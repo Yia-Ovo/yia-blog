@@ -7,7 +7,12 @@ import (
 	"blog-server/infra/model"
 )
 
+// CommentDOToModel 领域对象转 GORM 模型。
+// 入参 nil 返回 nil，由调用方在第一次解引用前判空（convert 层统一 nil 契约）。
 func CommentDOToModel(do *do.CommentDO) *model.CommentModel {
+	if do == nil {
+		return nil
+	}
 	return &model.CommentModel{
 		ID:        do.ID,
 		UserID:    do.UserID,

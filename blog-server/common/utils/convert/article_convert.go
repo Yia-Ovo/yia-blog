@@ -70,11 +70,16 @@ func ArticleDOToModel(d *do.ArticleDO) *model.ArticleModel {
 	}
 }
 
-// ArticleModelListToDO 模型列表转DO列表
+// ArticleModelListToDOList 模型列表转DO列表。
+// ArticleModelToDO 对 nil 元素返回 nil，此处跳过而非解引用，避免 panic。
 func ArticleModelListToDOList(list []*model.ArticleModel) []do.ArticleDO {
 	res := make([]do.ArticleDO, 0, len(list))
 	for _, v := range list {
-		res = append(res, *ArticleModelToDO(v))
+		d := ArticleModelToDO(v)
+		if d == nil {
+			continue
+		}
+		res = append(res, *d)
 	}
 	return res
 }

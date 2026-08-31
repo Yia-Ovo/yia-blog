@@ -92,9 +92,21 @@ func (a *AdminDomainService) UpdatePWD(ctx context.Context, adminId uint64, newP
 // role / status 不在本用例的写入范围内：它们分别由 ChangeAdminRole、UpdateAdminStatus 维护，
 // Repo 的更新列也不含这两列，因此这里的读-改-写不会把旧权限值覆盖回去。
 func (a *AdminDomainService) UpdateAdminInfo(ctx context.Context, adminId uint64, data *do.AdminDO) error {
+	// 判空必须在第一次解引用之前：下方按字段覆盖会直接读 data
+	if data == nil {
+		logger.Warn("[DOMAIN] 更新管理员信息失败：更新数据为空", zap.Uint64("admin_id", adminId))
+		return common.ParamErr
+	}
+
 	adminDO, err := a.FindAdminByID(ctx, adminId)
 	if err != nil {
 		return err
+	}
+	// 记录不存在时由上面的 err 拦截；此处兜底 FindAdminByID 理论上的 (nil, nil)，
+	// 避免下方读-改-写解引用空指针
+	if adminDO == nil {
+		logger.Warn("[DOMAIN] 更新管理员信息失败：管理员不存在", zap.Uint64("admin_id", adminId))
+		return common.AdminNotFoundErr
 	}
 
 	if data.AdminName != "" {

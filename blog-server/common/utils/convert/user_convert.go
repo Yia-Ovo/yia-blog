@@ -35,9 +35,13 @@ func UserModelToDO(m *model.UserModel) *do.UserDO {
 	}
 }
 
+// UserDOToModel 领域对象转 GORM 模型。
+// 入参 nil 返回 nil，由调用方在第一次解引用前判空（convert 层统一 nil 契约）。
+// 空值防穿透缓存不依赖本函数返回空对象：isEmptyUser 同时接受 nil 与 ID==0，
+// 因此 SetUserToRedis 收到 nil 仍会写入空值占位并套用短 TTL，行为与返回空对象时一致。
 func UserDOToModel(d *do.UserDO) *model.UserModel {
 	if d == nil {
-		return &model.UserModel{}
+		return nil
 	}
 	return &model.UserModel{
 		ID:           d.ID,

@@ -151,9 +151,21 @@ func (u *UserDomainService) FindUserByID(ctx context.Context, userId uint64) (*d
 
 // UpdateUserInfo 领域层：更新用户信息
 func (u *UserDomainService) UpdateUserInfo(ctx context.Context, userId uint64, updateData *do.UserDO) error {
+	// 判空必须在第一次解引用之前：下方按字段覆盖会直接读 updateData
+	if updateData == nil {
+		logger.Warn("[DOMAIN] 更新用户信息失败：更新数据为空", zap.Uint64("userId", userId))
+		return common.ParamErr
+	}
+
 	userDO, err := u.FindUserByID(ctx, userId)
 	if err != nil {
 		return common.UserQueryErr
+	}
+	// 记录不存在时由上面的 err 拦截；此处兜底 FindUserByID 理论上的 (nil, nil)，
+	// 避免下方读-改-写解引用空指针
+	if userDO == nil {
+		logger.Warn("[DOMAIN] 更新用户信息失败：用户不存在", zap.Uint64("userId", userId))
+		return common.UserNotFoundErr
 	}
 
 	// 业务赋值规则

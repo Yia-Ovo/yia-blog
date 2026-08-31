@@ -39,6 +39,11 @@ func NewArticleDomainService(articleMysqlRepo repo.ArticleMysqlRepo) *ArticleDom
 // CreateArticle 创建文章：仅业务校验 + 数据库操作
 func (a *ArticleDomainService) CreateArticle(ctx context.Context, articleDO *do.ArticleDO) error {
 	// 业务规则校验
+	// 判空必须在第一次解引用之前：convert 层统一 nil 契约后，nil 不应流到持久化层
+	if articleDO == nil {
+		logger.Warn("创建文章失败：领域对象为空")
+		return common.ParamErr
+	}
 	if articleDO.Title == "" {
 		logger.Warn("创建文章失败：标题不能为空", zap.String("title", articleDO.Title))
 		return common.ErrArticleTitleEmpty
