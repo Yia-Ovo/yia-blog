@@ -30,10 +30,12 @@ func NewCategoryMysqlRepo(db *gorm.DB) *categoryMysqlRepo {
 
 // --------------------- 1. 创建分类 ---------------------
 func (c *categoryMysqlRepo) CreateCategory(ctx context.Context, category *model.CategoryModel) error {
-
+	if category == nil {
+		return gorm.ErrInvalidData
+	}
 	if err := c.db.WithContext(ctx).Create(category).Error; err != nil {
 		logger.Error("CreateCategory failed", zap.String("name", category.Name), zap.Error(err))
-		return err
+		return translateDuplicateKey(err)
 	}
 	return nil
 }
@@ -142,7 +144,7 @@ func (c *categoryMysqlRepo) UpdateCategory(ctx context.Context, upd *do.Category
 		Updates(updateData)
 	if result.Error != nil {
 		logger.Error("UpdateCategory failed", zap.Uint64("category_id", upd.ID), zap.Error(result.Error))
-		return result.Error
+		return translateDuplicateKey(result.Error)
 	}
 	// 存在性由 Domain 先行校验；这里为 0 说明校验后被并发软删除，或本次值与原值完全相同。
 	// MySQL 不区分这两种情况，故只记日志不报错。

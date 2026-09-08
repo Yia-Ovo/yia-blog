@@ -96,8 +96,8 @@ func TestCreateCategory_RejectsEmptyName(t *testing.T) {
 
 	err := svc.CreateCategory(context.Background(), &do.CategoryDO{Name: "", Sort: 1, Status: 1})
 
-	if err != common.ParamErr {
-		t.Errorf("err = %v, 期望 %v", err, common.ParamErr)
+	if err != common.ErrCategoryNameEmpty {
+		t.Errorf("err = %v, 期望 %v", err, common.ErrCategoryNameEmpty)
 	}
 	if fake.createCalled {
 		t.Error("空名称不应触达 Repo")
@@ -197,8 +197,8 @@ func TestUpdateCategory_RejectsEmptyName(t *testing.T) {
 
 	err := svc.UpdateCategory(context.Background(), &do.CategoryUpdate{ID: 7, Name: ""})
 
-	if err != common.ParamErr {
-		t.Errorf("err = %v, 期望 %v", err, common.ParamErr)
+	if err != common.ErrCategoryNameEmpty {
+		t.Errorf("err = %v, 期望 %v", err, common.ErrCategoryNameEmpty)
 	}
 	if fake.updateCalled {
 		t.Error("空名称不应触达 Repo")

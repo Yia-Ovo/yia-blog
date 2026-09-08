@@ -13,11 +13,14 @@ package service
 
 import (
 	"blog-server/common"
+	"blog-server/common/consts"
 	"blog-server/common/utils/convert"
 	"blog-server/common/utils/logger"
 	"blog-server/domain/do"
 	"blog-server/domain/repo"
 	"context"
+	"errors"
+	"unicode/utf8"
 
 	"go.uber.org/zap"
 )
@@ -41,9 +44,8 @@ func (c *CategoryDomainService) CreateCategory(ctx context.Context, categoryDO *
 		logger.Warn("创建分类失败：领域对象为空")
 		return common.ParamErr
 	}
-	if categoryDO.Name == "" {
-		logger.Warn("创建分类失败：分类名称不能为空")
-		return common.ParamErr
+	if err := validateCategoryFields(categoryDO.Name, &categoryDO.Sort, &categoryDO.Status); err != nil {
+		return err
 	}
 
 	// DO转Model：新建时 ID 为 0，主键交给数据库自增，create_at/update_at 由表默认值填充
@@ -52,6 +54,9 @@ func (c *CategoryDomainService) CreateCategory(ctx context.Context, categoryDO *
 	// 调用MySQL仓储
 	err := c.categoryMysqlRepo.CreateCategory(ctx, categoryModel)
 	if err != nil {
+		if errors.Is(err, repo.ErrDuplicateKey) {
+			return common.CategoryExistErr
+		}
 		logger.Error("创建分类数据库操作失败", zap.String("name", categoryDO.Name), zap.Error(err))
 		return common.DatabaseErr
 	}
@@ -122,9 +127,8 @@ func (c *CategoryDomainService) UpdateCategory(ctx context.Context, upd *do.Cate
 		logger.Warn("更新分类失败：ID非法", zap.Uint64("id", upd.ID))
 		return common.ParamErr
 	}
-	if upd.Name == "" {
-		logger.Warn("更新分类失败：名称不能为空", zap.Uint64("id", upd.ID))
-		return common.ParamErr
+	if err := validateCategoryFields(upd.Name, upd.Sort, upd.Status); err != nil {
+		return err
 	}
 
 	// 更新前确认分类存在：MySQL 下 RowsAffected==0 无法区分「记录不存在」与「值未变化」，
@@ -137,6 +141,9 @@ func (c *CategoryDomainService) UpdateCategory(ctx context.Context, upd *do.Cate
 	// 否则 Sort/Status 的 nil 会在 Model 的值类型字段上退化成 0，指针语义前功尽弃。
 	err := c.categoryMysqlRepo.UpdateCategory(ctx, upd)
 	if err != nil {
+		if errors.Is(err, repo.ErrDuplicateKey) {
+			return common.CategoryExistErr
+		}
 		logger.Error("更新分类数据库操作失败", zap.Uint64("id", upd.ID), zap.Error(err))
 		return common.DatabaseErr
 	}
@@ -166,5 +173,22 @@ func (c *CategoryDomainService) DeleteCategory(ctx context.Context, id uint64) e
 	}
 
 	logger.Info("删除分类成功", zap.Uint64("id", id))
+	return nil
+}
+
+// validateCategoryFields 使创建和更新遵守相同规则，名称长度按字符与数据库/DTO 对齐。
+func validateCategoryFields(name string, sort, status *int) error {
+	if name == "" {
+		return common.ErrCategoryNameEmpty
+	}
+	if utf8.RuneCountInString(name) > consts.CategoryNameMaxLength {
+		return common.ErrCategoryNameTooLong
+	}
+	if sort != nil && *sort < 0 {
+		return common.ErrCategorySortInvalid
+	}
+	if status != nil && *status != consts.CategoryStatusDisabled && *status != consts.CategoryStatusEnabled {
+		return common.ParamErr.WithMsg("分类状态不合法")
+	}
 	return nil
 }

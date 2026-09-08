@@ -16,6 +16,9 @@ import "errors"
 // 未命中时返回它，避免把具体缓存驱动的错误类型泄漏到 App 层。
 var ErrCacheMiss = errors.New("repo: cache miss")
 
+// ErrDuplicateKey 表示唯一约束冲突，由 Repo 翻译驱动错误，Domain 决定业务错误码。
+var ErrDuplicateKey = errors.New("repo: duplicate key")
+
 // ErrNoRowsAffected 表示带业务条件的更新未命中任何行。Repo 实现应在 WHERE 叠加了
 // 业务约束（如 AND role = ?）却影响 0 行时返回它，让 Domain 能区分「更新成功」与
 // 「条件不满足」——目标不存在、已软删除，或在权限校验通过后被并发改动。

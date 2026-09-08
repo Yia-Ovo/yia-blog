@@ -2,10 +2,17 @@ package repo
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
 	"blog-server/domain/do"
+	domainrepo "blog-server/domain/repo"
+	"blog-server/infra/model"
+
+	mysqldriver "github.com/go-sql-driver/mysql"
+	"gorm.io/gorm"
 )
 
 func TestCategorySQLPreservesOmittedFieldsAndExplicitZero(t *testing.T) {
@@ -40,6 +47,37 @@ func TestCategorySQLPreservesOmittedFieldsAndExplicitZero(t *testing.T) {
 				t.Fatalf("unexpected arguments for name-only update: %v", result.args)
 			}
 		})
+	}
+}
+
+func TestCategoryDuplicateKeyTranslation(t *testing.T) {
+	dbErr := errors.New("database unavailable")
+	for _, operation := range []string{"create", "update"} {
+		for _, tc := range []struct {
+			name string
+			err  error
+			want error
+		}{
+			{"mysql", &mysqldriver.MySQLError{Number: 1062, Message: "duplicate name"}, domainrepo.ErrDuplicateKey},
+			{"wrapped mysql", fmt.Errorf("driver: %w", &mysqldriver.MySQLError{Number: 1062}), domainrepo.ErrDuplicateKey},
+			{"translated gorm", gorm.ErrDuplicatedKey, domainrepo.ErrDuplicateKey},
+			{"database failure", dbErr, dbErr},
+		} {
+			t.Run(operation+"/"+tc.name, func(t *testing.T) {
+				db := newSQLTestDB(t)
+				captureSQL(t, db, operation, &sqlCapture{err: tc.err})
+				r := NewCategoryMysqlRepo(db)
+				var err error
+				if operation == "create" {
+					err = r.CreateCategory(context.Background(), &model.CategoryModel{Name: "tech", Status: 1})
+				} else {
+					err = r.UpdateCategory(context.Background(), &do.CategoryUpdate{ID: 1, Name: "tech"})
+				}
+				if !errors.Is(err, tc.want) {
+					t.Fatalf("returned %v, want %v", err, tc.want)
+				}
+			})
+		}
 	}
 }
 

@@ -37,6 +37,11 @@ const (
 	AdminRoleSuper  = 0
 	AdminRoleNormal = 1
 
+	// 分类名称上限与现有 varchar(64) 列及 DTO 校验一致。
+	CategoryNameMaxLength  = 64
+	CategoryStatusDisabled = 0
+	CategoryStatusEnabled  = 1
+
 	// 评论状态
 	CommentStatusPending  = 0 // 待审核
 	CommentStatusPassed   = 1 // 已通过
