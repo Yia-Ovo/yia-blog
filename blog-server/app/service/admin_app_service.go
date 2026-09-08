@@ -21,6 +21,7 @@ import (
 	"blog-server/domain/repo"
 	"blog-server/domain/service"
 	"context"
+	"errors"
 	"regexp"
 
 	"go.uber.org/zap"
@@ -52,18 +53,14 @@ func (s *AdminAppService) CreateAdmin(
 		logger.Warn("[APP] 创建管理员参数为空")
 		return nil, common.ParamErr.WithMsg("参数不能为空")
 	}
+	if req.Role == nil {
+		return nil, common.ParamErr.WithMsg("角色不能为空")
+	}
 
 	// 密码格式校验
 	if msg := password.CheckPasswordFormat("", req.Password); msg != "" {
 		logger.Warn("[APP] 密码格式错误", zap.String("reason", msg))
 		return nil, common.UserNewPasswordInvalidErr.WithMsg(msg)
-	}
-
-	// 检查是否已存在
-	_, err := s.adminDomainService.FindAdminByName(ctx, req.AdminName)
-	if err == nil {
-		logger.Warn("[APP] 管理员已存在", zap.String("admin_name", req.AdminName))
-		return nil, common.AdminAlreadyExistErr.WithMsg("该管理员已存在")
 	}
 
 	// 执行创建
@@ -188,6 +185,10 @@ func (s *AdminAppService) GetAdminInfo(ctx context.Context, id uint64) (*dto.Adm
 	logger.Info("[APP] 管理员缓存未命中，查询数据库")
 	adminDO, err := s.adminDomainService.FindAdminByID(ctx, id)
 	if err != nil {
+		if errors.Is(err, common.AdminNotFoundErr) {
+			_ = s.adminRedisRepo.SetAdminToRedis(ctx, id, nil)
+			return nil, err
+		}
 		logger.Error("[APP] 查询管理员失败", zap.Error(err))
 		return nil, err.(common.Errno).WithMsg("获取信息失败")
 	}
@@ -241,10 +242,13 @@ func (s *AdminAppService) UpdateAdminRole(ctx context.Context, operatorID uint64
 		return common.ParamErr.WithMsg("角色不能为空")
 	}
 
-	err := s.adminDomainService.UpdateAdminRole(ctx, operatorID, req.ID, *req.Role)
+	changed, err := s.adminDomainService.UpdateAdminRole(ctx, operatorID, req.ID, *req.Role)
 	if err != nil {
 		logger.Error("[APP] 修改管理员角色失败", zap.Error(err))
 		return err.(common.Errno).WithMsg("修改失败")
+	}
+	if !changed {
+		return nil
 	}
 
 	// 角色已变，清目标的信息缓存与在线令牌：Repo 侧已递增 token_version 使旧 token 失效，

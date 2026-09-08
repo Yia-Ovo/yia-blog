@@ -85,8 +85,7 @@ var (
 	AdminUpdateErr          = Errno{Code: 16004, Msg: "Update admin info failed"}
 	AdminQueryErr           = Errno{Code: 16005, Msg: "Query admin failed"}
 	AdminAccountDisabledErr = Errno{Code: 16006, Msg: "Admin account disabled"}
-	// AdminChangeSelfRoleErr 目前无人返回：「不能对自己执行该操作」由 ensureCanManageAdmin
-	// 统一返回 PermissionDeniedErr，角色/状态/密码三条管理路径共用同一套提示。保留错误码以免前端映射失效。
+	// AdminChangeSelfRoleErr 角色管理用例拒绝修改自己的角色，状态/密码管理仍返回 PermissionDeniedErr。
 	AdminChangeSelfRoleErr = Errno{Code: 16007, Msg: "Admin can't change self role"}
 	AdminRoleInvalidErr    = Errno{Code: 16008, Msg: "Admin role invalid"}
 	// AdminConcurrentModifyErr 权限校验通过后目标被并发改动（提升为超管 / 删除），

@@ -32,17 +32,17 @@ func (a *AdminDomainService) Login(ctx context.Context, adminName string, passwo
 
 	adminModel, err := a.adminMysqlRepo.FindAdminByName(ctx, adminName)
 	if err != nil {
-		if errors.Is(err, common.AdminNotFoundErr) {
-			return nil, common.LoginPasswordErr
-		}
 		logger.Warn("[DOMAIN] 管理员查询失败", zap.Error(err), zap.String("admin_name", adminName))
-		return nil, common.AdminQueryErr
+		return nil, common.AdminQueryErr.WithErr(err)
+	}
+	if adminModel == nil {
+		return nil, common.LoginPasswordErr
 	}
 
 	adminDO := convert.AdminModelToDO(adminModel)
 
 	// 状态校验
-	if adminDO.Status == 0 {
+	if adminDO.Status != consts.AdminStatusEnabled {
 		return nil, common.AdminAccountDisabledErr
 	}
 
@@ -136,23 +136,32 @@ func (a *AdminDomainService) UpdateAdminInfo(ctx context.Context, adminId uint64
 // UpdateAdminRole 变更管理员角色。
 // operatorID 是操作者（来自鉴权态），targetID 是被操作对象。
 // 权限不变量由 ensureCanManageAdmin 统一保证：操作者须为启用的超管、不能操作自己、目标须为普通管理员。
-// 因目标不能是超管，本用例只能「提升普通管理员」或「在普通管理员之间重设角色」，
-// 无法降级任何超管——「最后一个超管被降级」的自锁场景因此不可能发生，无需额外计数保护。
-func (a *AdminDomainService) UpdateAdminRole(ctx context.Context, operatorID uint64, targetID uint64, role int) error {
-	// 含「不能对自己执行该操作」，故此处无需再单独判 operatorID == targetID
+// 目标不能是超管，沿用仅允许提升普通管理员的规则；相同角色返回 changed=false，
+// App 据此保留缓存和在线令牌，避免未发生变更也强制登出。
+func (a *AdminDomainService) UpdateAdminRole(ctx context.Context, operatorID uint64, targetID uint64, role int) (changed bool, err error) {
+	if operatorID == targetID {
+		return false, common.AdminChangeSelfRoleErr
+	}
 	if err := a.ensureCanManageAdmin(ctx, operatorID, targetID); err != nil {
-		return err
+		return false, err
 	}
 
 	if role != consts.AdminRoleSuper && role != consts.AdminRoleNormal {
-		return common.AdminRoleInvalidErr
+		return false, common.AdminRoleInvalidErr
+	}
+	// ensureCanManageAdmin 已保证目标当前为普通管理员。
+	if role == consts.AdminRoleNormal {
+		return false, nil
 	}
 
 	if err := a.adminMysqlRepo.ChangeAdminRole(ctx, targetID, role); err != nil {
+		if errors.Is(err, repo.ErrNoRowsAffected) {
+			return false, common.AdminConcurrentModifyErr
+		}
 		logger.Warn("[DOMAIN] 管理员角色修改失败", zap.Error(err), zap.Uint64("admin_id", targetID))
-		return common.AdminUpdateErr
+		return false, common.AdminUpdateErr.WithErr(err)
 	}
-	return nil
+	return true, nil
 }
 
 // CreateAdmin 创建管理员
@@ -161,6 +170,9 @@ func (a *AdminDomainService) CreateAdmin(ctx context.Context, name, pwd string, 
 	if err == nil {
 		logger.Warn("[DOMAIN] 管理员已存在", zap.String("admin_name", name))
 		return nil, common.AdminAlreadyExistErr
+	}
+	if !errors.Is(err, common.AdminNotFoundErr) {
+		return nil, err
 	}
 
 	hashPwd, err := bcrypt.GenerateFromPassword([]byte(pwd), bcrypt.DefaultCost)
@@ -191,7 +203,10 @@ func (a *AdminDomainService) FindAdminByID(ctx context.Context, id uint64) (*do.
 	model, err := a.adminMysqlRepo.FindAdminByID(ctx, id)
 	if err != nil {
 		logger.Warn("[DOMAIN] 管理员查询失败", zap.Error(err), zap.Uint64("admin_id", id))
-		return nil, common.AdminQueryErr
+		return nil, common.AdminQueryErr.WithErr(err)
+	}
+	if model == nil {
+		return nil, common.AdminNotFoundErr
 	}
 	return convert.AdminModelToDO(model), nil
 }
@@ -201,7 +216,10 @@ func (a *AdminDomainService) FindAdminByName(ctx context.Context, name string) (
 	model, err := a.adminMysqlRepo.FindAdminByName(ctx, name)
 	if err != nil {
 		logger.Warn("[DOMAIN] 管理员查询失败", zap.Error(err), zap.String("admin_name", name))
-		return nil, common.AdminQueryErr
+		return nil, common.AdminQueryErr.WithErr(err)
+	}
+	if model == nil {
+		return nil, common.AdminNotFoundErr
 	}
 	return convert.AdminModelToDO(model), nil
 }
@@ -225,6 +243,9 @@ func (a *AdminDomainService) ListAdmin(ctx context.Context, page, size int) ([]*
 // operatorId 是操作者（来自鉴权态），adminID 是被操作对象；
 // 权限不变量由 ensureCanManageAdmin 保证，Repo 侧 SQL 条件做并发兜底。
 func (a *AdminDomainService) UpdateAdminStatus(ctx context.Context, operatorId uint64, adminID uint64, status int) error {
+	if status != consts.AdminStatusEnabled && status != consts.AdminStatusDisabled {
+		return common.ParamErr.WithMsg("管理员状态不合法")
+	}
 	if err := a.ensureCanManageAdmin(ctx, operatorId, adminID); err != nil {
 		return err
 	}
@@ -245,6 +266,9 @@ func (a *AdminDomainService) UpdateAdminStatus(ctx context.Context, operatorId u
 // operatorID 是操作者（来自鉴权态），adminID 是被重置对象；
 // 权限不变量由 ensureCanManageAdmin 保证，Repo 侧 SQL 条件做并发兜底。
 func (a *AdminDomainService) ResetAdminPWD(ctx context.Context, operatorID uint64, adminID uint64, newPwd string) error {
+	if newPwd == "" {
+		return common.ParamErr.WithMsg("新密码不能为空")
+	}
 	if err := a.ensureCanManageAdmin(ctx, operatorID, adminID); err != nil {
 		return err
 	}
@@ -266,13 +290,13 @@ func (a *AdminDomainService) ResetAdminPWD(ctx context.Context, operatorID uint6
 	return nil
 }
 
-// 工具函数
-func (s *AdminDomainService) ensureCanManageAdmin(ctx context.Context, operatorID, targetID uint64) error {
+// ensureCanManageAdmin 保证启用的超管只能管理其他普通管理员，任何入口都必须遵守。
+func (a *AdminDomainService) ensureCanManageAdmin(ctx context.Context, operatorID, targetID uint64) error {
 	if operatorID == targetID {
 		return common.PermissionDeniedErr.WithMsg("不能对自己执行该操作")
 	}
 	// 1. 操作者：必须存在、启用、且为超级管理员
-	operator, err := s.adminMysqlRepo.FindAdminByID(ctx, operatorID)
+	operator, err := a.adminMysqlRepo.FindAdminByID(ctx, operatorID)
 	if err != nil {
 		return common.AdminQueryErr.WithErr(err)
 	}
@@ -284,17 +308,16 @@ func (s *AdminDomainService) ensureCanManageAdmin(ctx context.Context, operatorI
 		return common.PermissionDeniedErr.WithMsg("仅启用的超级管理员可执行该操作")
 	}
 	// 2. 目标：必须存在、且为普通管理员
-	target, err := s.adminMysqlRepo.FindAdminByID(ctx, targetID)
+	target, err := a.adminMysqlRepo.FindAdminByID(ctx, targetID)
 	if err != nil {
 		return common.AdminQueryErr.WithErr(err)
-
 	}
 	if target == nil {
 		return common.AdminNotFoundErr
 	}
 
-	if convert.AdminModelToDO(target).Role == consts.AdminRoleSuper {
-		return common.PermissionDeniedErr.WithMsg("不能操作其他超级管理员")
+	if convert.AdminModelToDO(target).Role != consts.AdminRoleNormal {
+		return common.PermissionDeniedErr.WithMsg("只能操作普通管理员")
 	}
 
 	return nil

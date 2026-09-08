@@ -14,6 +14,7 @@ import (
 	"blog-server/domain/repo"
 	"blog-server/infra/model"
 	"context"
+	"errors"
 	"time"
 
 	"go.uber.org/zap"
@@ -59,9 +60,10 @@ func (r *adminMysqlRepo) FindAdminByName(ctx context.Context, adminName string) 
 		First(&adminModel).Error
 
 	if err != nil {
-		if err != gorm.ErrRecordNotFound {
-			logger.Error("[MYSQL] 根据管理员名称查询失败", zap.String("admin_name", adminName), zap.Error(err))
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
 		}
+		logger.Error("[MYSQL] 根据管理员名称查询失败", zap.String("admin_name", adminName), zap.Error(err))
 		return nil, err
 	}
 
@@ -77,9 +79,10 @@ func (r *adminMysqlRepo) FindAdminByID(ctx context.Context, adminID uint64) (*mo
 		First(&adminModel).Error
 
 	if err != nil {
-		if err != gorm.ErrRecordNotFound {
-			logger.Error("[MYSQL] 根据管理员ID查询失败", zap.Uint64("admin_id", adminID), zap.Error(err))
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
 		}
+		logger.Error("[MYSQL] 根据管理员ID查询失败", zap.Uint64("admin_id", adminID), zap.Error(err))
 		return nil, err
 	}
 
@@ -151,10 +154,9 @@ func (r *adminMysqlRepo) UpdateAdminInfo(ctx context.Context, adminModel *model.
 	return nil
 }
 
-// ChangeAdminRole 变更管理员角色，并递增 token_version 使被改动者的旧 token 立即失效
-// （降级后旧 token 不能继续带着超管权限）。
+// ChangeAdminRole 变更普通管理员的角色，并递增 token_version 使旧 token 立即失效。
 // 不接收操作者 id：操作者身份是领域规则，由 AdminDomainService.ensureCanManageAdmin 校验。
-// 待补：与 UpdateAdminStatus 一致的 AND role = ? 并发兜底，以及 RowsAffected == 0 的哨兵返回。
+// 目标在校验后已被提升或删除时返回 ErrNoRowsAffected，不能静默报告成功。
 func (r *adminMysqlRepo) ChangeAdminRole(ctx context.Context, targetID uint64, role int) error {
 	updateData := map[string]interface{}{
 		"role":          role,
@@ -162,12 +164,15 @@ func (r *adminMysqlRepo) ChangeAdminRole(ctx context.Context, targetID uint64, r
 		"update_at":     time.Now(),
 	}
 	result := r.adminBaseQuery(ctx).
-		Where("id = ?", targetID).
+		Where("id = ? AND role = ?", targetID, consts.AdminRoleNormal).
 		Updates(updateData)
 
 	if err := result.Error; err != nil {
 		logger.Error("[MYSQL] 更新管理员信息失败", zap.Uint64("admin_id", targetID), zap.Error(err))
 		return err
+	}
+	if result.RowsAffected == 0 {
+		return repo.ErrNoRowsAffected
 	}
 	return nil
 }
