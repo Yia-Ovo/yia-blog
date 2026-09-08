@@ -51,7 +51,9 @@ func (a *AdminDomainService) Login(ctx context.Context, adminName string, passwo
 		return nil, common.LoginPasswordErr
 	}
 
-	_ = a.adminMysqlRepo.UpdateLastLoginInfo(ctx, adminDO.ID, adminDO.LastLoginAt)
+	loginAt := time.Now()
+	_ = a.adminMysqlRepo.UpdateLastLoginInfo(ctx, adminDO.ID, &loginAt)
+	adminDO.LastLoginAt = &loginAt
 	return adminDO, nil
 }
 

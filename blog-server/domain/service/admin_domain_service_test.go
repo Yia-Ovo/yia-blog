@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"blog-server/common"
 	"blog-server/common/consts"
@@ -29,6 +30,7 @@ type adminSecurityRepo struct {
 	ownPassword  string
 	resetHash    string
 	info         *do.AdminInfoUpdate
+	loginAt      *time.Time
 }
 
 func (r *adminSecurityRepo) FindAdminByID(_ context.Context, id uint64) (*model.AdminModel, error) {
@@ -67,6 +69,11 @@ func (r *adminSecurityRepo) UpdateAdminInfo(_ context.Context, id uint64, info *
 	r.writes++
 	r.writtenID, r.info = id, info
 	return r.writeErr
+}
+
+func (r *adminSecurityRepo) UpdateLastLoginInfo(_ context.Context, _ uint64, at *time.Time) error {
+	r.loginAt = at
+	return nil
 }
 
 func adminPair() *adminSecurityRepo {
@@ -245,4 +252,24 @@ func TestAdminLookupAndLoginNotFound(t *testing.T) {
 	assertAdminErrCode(t, err, common.AdminQueryErr.Code)
 	_, err = s.Login(context.Background(), "existing", "Password123")
 	assertAdminErrCode(t, err, common.AdminQueryErr.Code)
+}
+
+func TestAdminLoginRecordsCurrentTime(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("Password123"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldTime := time.Now().Add(-24 * time.Hour)
+	r := &adminSecurityRepo{nameResult: &model.AdminModel{
+		ID: 1, Password: string(hash), Status: consts.AdminStatusEnabled, LastLoginAt: &oldTime,
+	}}
+	before := time.Now()
+	admin, err := NewAdminDomainService(r).Login(context.Background(), "admin", "Password123")
+	assertAdminErrCode(t, err, 0)
+	if r.loginAt == nil || r.loginAt.Before(before) || r.loginAt.After(time.Now()) {
+		t.Fatalf("login time was not refreshed: %v", r.loginAt)
+	}
+	if admin.LastLoginAt == nil || !admin.LastLoginAt.Equal(*r.loginAt) {
+		t.Fatal("login result and persisted login time disagree")
+	}
 }
