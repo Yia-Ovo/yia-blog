@@ -16,6 +16,7 @@ import (
 	"blog-server/infra/model"
 	"context"
 	"errors"
+	"time"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -104,27 +105,47 @@ func (a *articleMysqlRepo) GetArticleById(ctx context.Context, id uint64) (*mode
 
 // --------------------- 4. 删除文章（软删除） ---------------------
 func (a *articleMysqlRepo) DeleteArticle(ctx context.Context, id uint64) error {
-	err := a.db.WithContext(ctx).Delete(&model.ArticleModel{}, id).Error
+	result := a.db.WithContext(ctx).Delete(&model.ArticleModel{}, id)
 
-	if err != nil {
+	if err := result.Error; err != nil {
 		logger.Error("[MYSQL] 删除文章失败", zap.Uint64("article_id", id), zap.Error(err))
 		return err
 	}
-	if a.db.RowsAffected == 0 {
+	if result.RowsAffected == 0 {
 		logger.Warn("[MYSQL] 删除文章无数据影响", zap.Uint64("article_id", id))
 	}
 	return nil
 }
 
 // --------------------- 5. 更新文章 ---------------------
+// UpdateArticle 只写可编辑列，作者、计数、创建时间与软删除标记由各自流程维护。
+// Updates 不会像 Save 那样在目标已删除时回退为 INSERT，也不回写读取时的旧计数。
 func (a *articleMysqlRepo) UpdateArticle(ctx context.Context, article *model.ArticleModel) error {
-	err := a.db.WithContext(ctx).Save(article).Error
+	if article == nil || article.ID == 0 {
+		return gorm.ErrInvalidData
+	}
+	result := a.db.WithContext(ctx).Model(&model.ArticleModel{}).
+		Where("id = ?", article.ID).
+		Updates(map[string]interface{}{
+			"title":          article.Title,
+			"cover":          article.Cover,
+			"summary":        article.Summary,
+			"content":        article.Content,
+			"category_id":    article.CategoryID,
+			"tag_ids":        article.TagIDs,
+			"status":         article.Status,
+			"sort":           article.Sort,
+			"is_top":         article.IsTop,
+			"comment_status": article.CommentStatus,
+			"publish_at":     article.PublishAt,
+			"update_at":      time.Now(),
+		})
 
-	if err != nil {
+	if err := result.Error; err != nil {
 		logger.Error("[MYSQL] 更新文章失败", zap.Uint64("article_id", article.ID), zap.String("title", article.Title), zap.Error(err))
 		return err
 	}
-	if a.db.RowsAffected == 0 {
+	if result.RowsAffected == 0 {
 		logger.Warn("[MYSQL] 更新文章无数据影响", zap.Uint64("article_id", article.ID))
 	}
 	return nil

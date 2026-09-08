@@ -121,8 +121,8 @@ func (a *ArticleDomainService) GetArticleById(ctx context.Context, id uint64) (*
 	return convert.ArticleModelToDO(articleModel), nil
 }
 
-// UpdateArticle 更新文章（管理员/任意）：加载既有行 → 合并可编辑字段 → 保存
-// 先加载既有行再覆盖，避免直接 Save 空模型把 user_id/admin_id/views/likes/create_at 清零
+// UpdateArticle 更新文章（管理员/任意）：加载既有行确认存在，再提交可编辑字段。
+// Repo 的更新白名单排除作者、计数、创建时间等系统字段。
 func (a *ArticleDomainService) UpdateArticle(ctx context.Context, articleDO *do.ArticleDO) error {
 	if err := validateArticleUpdate(articleDO); err != nil {
 		return err
@@ -230,6 +230,9 @@ func (a *ArticleDomainService) DeleteArticleByUser(ctx context.Context, userID u
 
 // validateArticleUpdate 更新文章的公共业务校验
 func validateArticleUpdate(articleDO *do.ArticleDO) error {
+	if articleDO == nil {
+		return common.ParamErr
+	}
 	if articleDO.ID <= 0 {
 		logger.Warn("更新文章失败：ID不能为空", zap.Uint64("article_id", articleDO.ID))
 		return common.ParamErr
@@ -281,6 +284,6 @@ func applyEditableFields(dst *model.ArticleModel, src *do.ArticleDO) {
 	dst.IsTop = src.IsTop
 	dst.CommentStatus = src.CommentStatus
 	dst.PublishAt = src.PublishAt
-	// 系统维护字段：刷新更新时间（既有行的 update_at 若原样 Save 不会自动刷新）
+	// 更新时间由本次编辑维护，Repo 同时保证 SQL 中不写入其他系统字段。
 	dst.UpdateAt = time.Now()
 }
