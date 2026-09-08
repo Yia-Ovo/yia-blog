@@ -97,13 +97,7 @@ func (h *CategoryHandler) GetCategoryById(c *gin.Context) {
 
 // UpdateCategory 更新分类 POST /api/blog/v1/category/updateCategory
 func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
-	type Req struct {
-		ID     uint64 `json:"id" binding:"required"`
-		Name   string `json:"name" binding:"required,max=64"`
-		Sort   int    `json:"sort"`
-		Status int    `json:"status"`
-	}
-	var req Req
+	var req dto.UpdateCategoryReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
 		return
@@ -112,6 +106,7 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 	defer cancel()
 
+	// Sort/Status 保持指针原样下传：nil 与 0 的区别一直保留到 Repo 组装更新列时才解释
 	err := h.categoryAppSrv.UpdateCategory(ctx, req.ID, req.Name, req.Sort, req.Status)
 	if err != nil {
 		response.WriteResp(c, nil, err.(common.Errno))

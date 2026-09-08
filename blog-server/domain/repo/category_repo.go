@@ -24,8 +24,8 @@ type CategoryMysqlRepo interface {
 	ListCategoryByPage(ctx context.Context, query *do.CategoryQuery) ([]*model.CategoryModel, int64, error)
 	// GetCategoryById 根据ID查询分类
 	GetCategoryById(ctx context.Context, id uint64) (*model.CategoryModel, error)
-	// UpdateCategory 更新分类
-	UpdateCategory(ctx context.Context, category *model.CategoryModel) error
+	// UpdateCategory 部分更新分类：upd 中为 nil 的可选列不进入 UPDATE 语句，保持库中原值
+	UpdateCategory(ctx context.Context, upd *do.CategoryUpdate) error
 	// DeleteCategory 软删除分类
 	DeleteCategory(ctx context.Context, id uint64) error
 }

@@ -131,21 +131,24 @@ func (s *CategoryAppService) GetCategoryById(ctx context.Context, id uint64) (ma
 	}, nil
 }
 
-// UpdateCategory 更新分类：调用领域服务
-func (s *CategoryAppService) UpdateCategory(ctx context.Context, id uint64, name string, sort int, status int) error {
+// UpdateCategory 更新分类：调用领域服务。
+// sort/status 为 nil 表示客户端本次未提交该字段。这里刻意不做 ptr.Val 压平——
+// 一旦压成 0 就与「显式提交 0」（排最前 / 禁用）无法区分，
+// 指针一路保留到 Repo 组装更新列时才解释。
+func (s *CategoryAppService) UpdateCategory(ctx context.Context, id uint64, name string, sort *int, status *int) error {
 	if id <= 0 {
 		logger.Warn("分类ID非法")
 		return common.ParamErr
 	}
 
-	categoryDO := &do.CategoryDO{
+	categoryUpdate := &do.CategoryUpdate{
 		ID:     id,
 		Name:   name,
 		Sort:   sort,
 		Status: status,
 	}
 
-	err := s.categoryDomainService.UpdateCategory(ctx, categoryDO)
+	err := s.categoryDomainService.UpdateCategory(ctx, categoryUpdate)
 	if err != nil {
 		logger.Error("更新分类失败", zap.Uint64("category_id", id), zap.Error(err))
 		return err

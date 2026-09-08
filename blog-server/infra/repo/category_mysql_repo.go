@@ -114,23 +114,40 @@ func (c *categoryMysqlRepo) DeleteCategory(ctx context.Context, id uint64) error
 }
 
 // --------------------- 5. 更新分类 ---------------------
-func (c *categoryMysqlRepo) UpdateCategory(ctx context.Context, category *model.CategoryModel) error {
+// UpdateCategory 部分更新分类。更新列按 upd 里实际提交的字段动态组装：
+// Sort/Status 为 nil 说明本次未提交，该列不进 map，SQL 中就不出现，库里原值保持不变；
+// 非 nil 时用 map 写入，保证 sort=0 / status=0 这类合法零值也能落库
+// （若改用 struct 更新，GORM 会跳过零值字段，「禁用分类」将永远失效）。
+// create_at/deleted_at 始终不在白名单内，不受本次更新影响。
+func (c *categoryMysqlRepo) UpdateCategory(ctx context.Context, upd *do.CategoryUpdate) error {
+	if upd == nil || upd.ID == 0 {
+		logger.Error("UpdateCategory failed，更新入参非法")
+		return gorm.ErrInvalidData
+	}
+
+	// name 由 Domain 保证非空，恒定参与更新；sort/status 仅在客户端显式提交时才写入
+	updateData := map[string]interface{}{
+		"name": upd.Name,
+	}
+	if upd.Sort != nil {
+		updateData["sort"] = *upd.Sort
+	}
+	if upd.Status != nil {
+		updateData["status"] = *upd.Status
+	}
+
 	result := c.db.WithContext(ctx).
 		Model(&model.CategoryModel{}).
-		Where("id = ?", category.ID). // 显式 WHERE，不依赖「Model 非零字段转条件」的隐式规则
-		Updates(map[string]interface{}{ // 用 map：status=0 等零值也会更新
-			"name":   category.Name,
-			"sort":   category.Sort,
-			"status": category.Status,
-		}) // create_at/deleted_at 不在白名单，保持原值
+		Where("id = ?", upd.ID). // 显式 WHERE，不依赖「Model 非零字段转条件」的隐式规则
+		Updates(updateData)
 	if result.Error != nil {
-		logger.Error("UpdateCategory failed", zap.Uint64("category_id", category.ID), zap.Error(result.Error))
+		logger.Error("UpdateCategory failed", zap.Uint64("category_id", upd.ID), zap.Error(result.Error))
 		return result.Error
 	}
 	// 存在性由 Domain 先行校验；这里为 0 说明校验后被并发软删除，或本次值与原值完全相同。
 	// MySQL 不区分这两种情况，故只记日志不报错。
 	if result.RowsAffected == 0 { // 取本次 result，不再读 c.db
-		logger.Warn("UpdateCategory no rows affected", zap.Uint64("category_id", category.ID))
+		logger.Warn("UpdateCategory no rows affected", zap.Uint64("category_id", upd.ID))
 	}
 	return nil
 }

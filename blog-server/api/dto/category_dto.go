@@ -40,3 +40,17 @@ type CreateCategoryReq struct {
 	Sort   int    `json:"sort" default:"0"`               // 排序
 	Status int    `json:"status" default:"1"`             // 状态
 }
+
+// ---------------- 更新分类参数 ----------------
+// UpdateCategoryReq 更新分类的请求体，只接受客户端真正拥有的三个字段。
+// Sort/Status 用指针区分「未提交该字段」（nil，保持库中原值）与「提交了 0」：
+// 这两列的 0 都是合法业务值（sort=0 排在最前、status=0 禁用），
+// 若用值类型 int，客户端只提交 {id, name} 改个名字，
+// 也会被当成「显式提交了 0」而把分类静默改成禁用 + 排序归零。
+// create_at / deleted_at 等服务端字段不接受客户端提交，由 Repo 的更新白名单排除。
+type UpdateCategoryReq struct {
+	ID     uint64 `json:"id" binding:"required"`          // 目标分类 ID，必填
+	Name   string `json:"name" binding:"required,max=64"` // 分类名称，必填，最长 64
+	Sort   *int   `json:"sort"`                           // 排序值；nil 表示本次不修改
+	Status *int   `json:"status"`                         // 状态 1 正常 / 0 禁用；nil 表示本次不修改
+}

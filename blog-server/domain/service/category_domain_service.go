@@ -108,39 +108,40 @@ func (c *CategoryDomainService) GetCategoryById(ctx context.Context, id uint64) 
 	return convert.CategoryModelToDO(model), nil
 }
 
-// UpdateCategory 更新分类：仅业务校验 + 数据库操作
-func (c *CategoryDomainService) UpdateCategory(ctx context.Context, categoryDO *do.CategoryDO) error {
+// UpdateCategory 更新分类：仅业务校验 + 数据库操作。
+// upd.Sort/Status 为 nil 表示本次未提交该字段，领域层刻意不替它们填充原值：
+// 未提交的列由 Repo 排除在 UPDATE 白名单之外，UPDATE 只写本次真正修改的列，
+// 从而不会像「读全量再整体写回」那样把并发提交的改动覆盖成旧值。
+func (c *CategoryDomainService) UpdateCategory(ctx context.Context, upd *do.CategoryUpdate) error {
 	// 业务规则校验
-	if categoryDO == nil {
+	if upd == nil {
 		logger.Warn("更新分类失败：领域对象为空")
 		return common.ParamErr
 	}
-	if categoryDO.ID <= 0 {
-		logger.Warn("更新分类失败：ID非法", zap.Uint64("id", categoryDO.ID))
+	if upd.ID <= 0 {
+		logger.Warn("更新分类失败：ID非法", zap.Uint64("id", upd.ID))
 		return common.ParamErr
 	}
-	if categoryDO.Name == "" {
-		logger.Warn("更新分类失败：名称不能为空", zap.Uint64("id", categoryDO.ID))
+	if upd.Name == "" {
+		logger.Warn("更新分类失败：名称不能为空", zap.Uint64("id", upd.ID))
 		return common.ParamErr
 	}
 
 	// 更新前确认分类存在：MySQL 下 RowsAffected==0 无法区分「记录不存在」与「值未变化」，
 	// 故存在性在领域层显式校验，Repo 的 RowsAffected 只作并发删除的兜底日志。
-	if _, err := c.GetCategoryById(ctx, categoryDO.ID); err != nil {
+	if _, err := c.GetCategoryById(ctx, upd.ID); err != nil {
 		return err
 	}
 
-	// DO转Model
-	categoryModel := convert.CategoryDOToModel(categoryDO)
-
-	// 更新数据库
-	err := c.categoryMysqlRepo.UpdateCategory(ctx, categoryModel)
+	// 更新数据库：直接下传 CategoryUpdate，不经 DO→Model 转换，
+	// 否则 Sort/Status 的 nil 会在 Model 的值类型字段上退化成 0，指针语义前功尽弃。
+	err := c.categoryMysqlRepo.UpdateCategory(ctx, upd)
 	if err != nil {
-		logger.Error("更新分类数据库操作失败", zap.Uint64("id", categoryDO.ID), zap.Error(err))
+		logger.Error("更新分类数据库操作失败", zap.Uint64("id", upd.ID), zap.Error(err))
 		return common.DatabaseErr
 	}
 
-	logger.Info("更新分类成功", zap.Uint64("id", categoryDO.ID))
+	logger.Info("更新分类成功", zap.Uint64("id", upd.ID))
 	return nil
 }
 
