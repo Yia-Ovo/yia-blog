@@ -15,6 +15,7 @@ import (
 	"blog-server/domain/do"
 	"blog-server/infra/model"
 	"context"
+	"errors"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -89,7 +90,7 @@ func (c *categoryMysqlRepo) GetCategoryById(ctx context.Context, id uint64) (*mo
 	if err != nil {
 		// 记录不存在不是故障：返回 (nil, nil) 由 Domain 翻译成 CategoryNotFoundErr，
 		// 避免 gorm.ErrRecordNotFound 渗入领域层，也避免「不存在」被误报成 DatabaseErr。
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			logger.Warn("GetCategoryById: category not found", zap.Uint64("category_id", id))
 			return nil, nil
 		}

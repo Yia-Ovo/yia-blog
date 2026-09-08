@@ -81,6 +81,15 @@ func TestCategoryDuplicateKeyTranslation(t *testing.T) {
 	}
 }
 
+func TestCategoryWrappedNotFoundIsMissing(t *testing.T) {
+	db := newSQLTestDB(t)
+	captureSQL(t, db, "query", &sqlCapture{err: fmt.Errorf("query: %w", gorm.ErrRecordNotFound)})
+	category, err := NewCategoryMysqlRepo(db).GetCategoryById(context.Background(), 99)
+	if err != nil || category != nil {
+		t.Fatalf("wrapped not-found = %+v, %v; want nil, nil", category, err)
+	}
+}
+
 func TestCategoryDeleteUsesSoftDelete(t *testing.T) {
 	db := newSQLTestDB(t)
 	result := &sqlCapture{rows: 1}
