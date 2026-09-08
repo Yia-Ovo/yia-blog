@@ -30,7 +30,8 @@ type AdminUpdatePWDReq struct {
 	NewPassword string `json:"new_password" binding:"required,min=6,max=20"`
 }
 
-// 修改基础信息
+// AdminUpdateInfoReq 只允许修改个人资料，权限与密码字段不接受客户端提交。
+// nil 表示保留原值；Avatar/Email/Remark 可用空字符串清空，AdminName 不允许为空。
 type AdminUpdateInfoReq struct {
 	AdminName *string `json:"admin_name,omitempty" binding:"omitempty,min=1,max=16"`
 	Avatar    *string `json:"avatar,omitempty"`

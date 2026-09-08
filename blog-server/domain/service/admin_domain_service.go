@@ -87,46 +87,21 @@ func (a *AdminDomainService) UpdatePWD(ctx context.Context, adminId uint64, newP
 	return nil
 }
 
-// UpdateAdminInfo 更新管理员个人资料。data 只承载客户端可编辑的四个字段，
-// 空字符串视为「未提交该字段」，保留原值。
-// role / status 不在本用例的写入范围内：它们分别由 ChangeAdminRole、UpdateAdminStatus 维护，
-// Repo 的更新列也不含这两列，因此这里的读-改-写不会把旧权限值覆盖回去。
-func (a *AdminDomainService) UpdateAdminInfo(ctx context.Context, adminId uint64, data *do.AdminDO) error {
-	// 判空必须在第一次解引用之前：下方按字段覆盖会直接读 data
-	if data == nil {
+// UpdateAdminInfo 校验管理员资料更新，nil 字段保持不变，空字符串可清空非账号字段。
+// Repo 直接接收部分更新，不把读取时的旧值重新写回，也不改变角色、状态或登录态。
+func (a *AdminDomainService) UpdateAdminInfo(ctx context.Context, adminId uint64, data *do.AdminInfoUpdate) error {
+	if data == nil || adminId == 0 {
 		logger.Warn("[DOMAIN] 更新管理员信息失败：更新数据为空", zap.Uint64("admin_id", adminId))
 		return common.ParamErr
 	}
-
-	adminDO, err := a.FindAdminByID(ctx, adminId)
-	if err != nil {
+	if data.AdminName != nil && *data.AdminName == "" {
+		return common.ParamErr.WithMsg("管理员账号不能为空")
+	}
+	if _, err := a.FindAdminByID(ctx, adminId); err != nil {
 		return err
 	}
-	// 记录不存在时由上面的 err 拦截；此处兜底 FindAdminByID 理论上的 (nil, nil)，
-	// 避免下方读-改-写解引用空指针
-	if adminDO == nil {
-		logger.Warn("[DOMAIN] 更新管理员信息失败：管理员不存在", zap.Uint64("admin_id", adminId))
-		return common.AdminNotFoundErr
-	}
 
-	if data.AdminName != "" {
-		adminDO.AdminName = data.AdminName
-	}
-	if data.Avatar != "" {
-		adminDO.Avatar = data.Avatar
-	}
-
-	if data.Email != "" {
-		adminDO.Email = data.Email
-	}
-	if data.Remark != "" {
-		adminDO.Remark = data.Remark
-	}
-
-	adminDO.UpdateAt = time.Now()
-	model := convert.AdminDOToModel(adminDO)
-
-	if err := a.adminMysqlRepo.UpdateAdminInfo(ctx, model); err != nil {
+	if err := a.adminMysqlRepo.UpdateAdminInfo(ctx, adminId, data); err != nil {
 		logger.Warn("[DOMAIN] 管理员信息更新失败", zap.Error(err), zap.Uint64("admin_id", adminId))
 		return common.AdminUpdateErr
 	}

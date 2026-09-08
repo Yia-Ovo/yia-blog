@@ -8,6 +8,7 @@ import (
 	"blog-server/api/dto"
 	"blog-server/common"
 	"blog-server/common/consts"
+	"blog-server/domain/do"
 	"blog-server/domain/repo"
 	domainsvc "blog-server/domain/service"
 	"blog-server/infra/model"
@@ -18,6 +19,7 @@ type adminFlowRepo struct {
 	admins   map[uint64]*model.AdminModel
 	writeErr error
 	writes   int
+	info     *do.AdminInfoUpdate
 }
 
 func (r *adminFlowRepo) FindAdminByID(_ context.Context, id uint64) (*model.AdminModel, error) {
@@ -26,6 +28,12 @@ func (r *adminFlowRepo) FindAdminByID(_ context.Context, id uint64) (*model.Admi
 
 func (r *adminFlowRepo) ChangeAdminRole(_ context.Context, _ uint64, _ int) error {
 	r.writes++
+	return r.writeErr
+}
+
+func (r *adminFlowRepo) UpdateAdminInfo(_ context.Context, _ uint64, info *do.AdminInfoUpdate) error {
+	r.writes++
+	r.info = info
 	return r.writeErr
 }
 
@@ -96,6 +104,26 @@ func TestAdminRoleOmittedIsNotPromotion(t *testing.T) {
 	var errno common.Errno
 	if !errors.As(err, &errno) || errno.Code != common.ParamErr.Code {
 		t.Fatalf("omitted role must fail before domain: %v", err)
+	}
+}
+
+func TestAdminInfoDoesNotFlattenPointersOrClearSessions(t *testing.T) {
+	empty := ""
+	r := &adminFlowRepo{admins: map[uint64]*model.AdminModel{
+		1: {ID: 1, Role: consts.AdminRoleSuper, Status: consts.AdminStatusEnabled},
+	}}
+	cache := &adminFlowCache{}
+	s := NewAdminAppService(domainsvc.NewAdminDomainService(r), cache)
+	_, err := s.UpdateAdminInfo(context.Background(), 1, &dto.AdminUpdateInfoReq{Email: &empty, Avatar: &empty, Remark: &empty})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.info == nil || r.info.AdminName != nil || r.info.Email == nil || *r.info.Email != "" ||
+		r.info.Avatar == nil || r.info.Remark == nil {
+		t.Fatalf("submitted pointer state was lost: %+v", r.info)
+	}
+	if len(cache.deleted) != 1 || cache.deleted[0] != 1 || len(cache.cleared) != 0 {
+		t.Fatalf("profile cache/session invalidation: deleted=%v, cleared=%v", cache.deleted, cache.cleared)
 	}
 }
 

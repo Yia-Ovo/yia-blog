@@ -274,22 +274,20 @@ func (s *AdminAppService) UpdateAdminInfo(ctx context.Context, id uint64, req *d
 		return nil, common.ParamErr.WithMsg("邮箱格式不正确")
 	}
 
-	updateData := &do.AdminDO{
-		AdminName: ptr.Val(req.AdminName),
-		Avatar:    ptr.Val(req.Avatar),
-		Email:     ptr.Val(req.Email),
-		Remark:    ptr.Val(req.Remark),
+	updateData := &do.AdminInfoUpdate{
+		AdminName: req.AdminName,
+		Avatar:    req.Avatar,
+		Email:     req.Email,
+		Remark:    req.Remark,
 	}
 
 	err := s.adminDomainService.UpdateAdminInfo(ctx, id, updateData)
 	if err != nil {
 		logger.Error("[APP] 更新管理员信息失败", zap.Error(err), zap.Uint64("id", id))
 		return nil, err.(common.Errno).WithMsg("更新失败")
-	} else {
-		_ = s.adminRedisRepo.DelAdminFromRedis(ctx, id)
-		logger.Info("[APP] 管理员信息更新成功，缓存已清理", zap.Uint64("id", id))
-
 	}
+	_ = s.adminRedisRepo.DelAdminFromRedis(ctx, id)
+	logger.Info("[APP] 管理员信息更新成功，缓存已清理", zap.Uint64("id", id))
 	return s.GetAdminInfo(ctx, id)
 }
 

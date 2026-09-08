@@ -11,6 +11,7 @@ package repo
 import (
 	"blog-server/common/consts"
 	"blog-server/common/utils/logger"
+	"blog-server/domain/do"
 	"blog-server/domain/repo"
 	"blog-server/infra/model"
 	"context"
@@ -116,39 +117,45 @@ func (r *adminMysqlRepo) ListAdmin(ctx context.Context, page, pageSize int) ([]*
 }
 
 // --------------------- 5. 更新管理员信息 ---------------------
-// UpdateAdminInfo 更新管理员个人资料。更新列收敛为本用例真正拥有的四个字段 + update_at：
-// role 由 ChangeAdminRole 维护、status 由 UpdateAdminStatus 维护，都不从这里写入——
-// Domain 侧是「读全量 DO → 改若干字段 → 整体写回」，一旦把这两列放进 map，
-// 读取那一刻的旧值就会覆盖掉期间刚生效的降级或禁用（Lost Update）。
-// 同理不递增 token_version：改昵称头像不该踢掉自己的登录态。
-func (r *adminMysqlRepo) UpdateAdminInfo(ctx context.Context, adminModel *model.AdminModel) error {
-	if adminModel == nil || adminModel.ID == 0 {
-		logger.Error("[MYSQL] 更新管理员信息失败，管理员模型非法")
+// UpdateAdminInfo 只更新本次提交的资料列，避免用读出的旧资料覆盖并发修改。
+// nil 不写入，非 nil 的空字符串用于清空；权限列与 token_version 不属于本用例。
+func (r *adminMysqlRepo) UpdateAdminInfo(ctx context.Context, adminID uint64, update *do.AdminInfoUpdate) error {
+	if update == nil || adminID == 0 {
+		logger.Error("[MYSQL] 更新管理员信息失败，更新入参非法")
 		return gorm.ErrInvalidData
 	}
 
-	adminModel.UpdateAt = time.Now()
-	updateData := map[string]interface{}{
-		"admin_name": adminModel.AdminName,
-		"avatar":     adminModel.Avatar,
-		"email":      adminModel.Email,
-		"remark":     adminModel.Remark,
-		"update_at":  adminModel.UpdateAt,
+	updateData := map[string]interface{}{}
+	if update.AdminName != nil {
+		updateData["admin_name"] = *update.AdminName
 	}
+	if update.Avatar != nil {
+		updateData["avatar"] = *update.Avatar
+	}
+	if update.Email != nil {
+		updateData["email"] = *update.Email
+	}
+	if update.Remark != nil {
+		updateData["remark"] = *update.Remark
+	}
+	if len(updateData) == 0 {
+		return nil
+	}
+	updateData["update_at"] = time.Now()
 
 	result := r.adminBaseQuery(ctx).
-		Where("id = ?", adminModel.ID).
+		Where("id = ?", adminID).
 		Updates(updateData)
 
 	if err := result.Error; err != nil {
-		logger.Error("[MYSQL] 更新管理员信息失败", zap.Uint64("admin_id", adminModel.ID), zap.Error(err))
+		logger.Error("[MYSQL] 更新管理员信息失败", zap.Uint64("admin_id", adminID), zap.Error(err))
 		return err
 	}
 
 	// 这里不返回 ErrNoRowsAffected：本方法无角色等业务条件，0 行只说明提交内容与库中一致，
 	// 属正常情况，不是并发冲突。
 	if result.RowsAffected == 0 {
-		logger.Warn("[MYSQL] 更新管理员信息无数据变更", zap.Uint64("admin_id", adminModel.ID))
+		logger.Warn("[MYSQL] 更新管理员信息无数据变更", zap.Uint64("admin_id", adminID))
 	}
 
 	return nil

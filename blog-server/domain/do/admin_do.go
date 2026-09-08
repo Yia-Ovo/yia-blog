@@ -19,6 +19,16 @@ type AdminDO struct {
 	Remark       string     `json:"remark"`        // 备注
 }
 
+// AdminInfoUpdate 管理员个人资料的部分更新。nil 表示保留原值；
+// 头像、邮箱、备注可显式传空字符串清空，账号名必须非空。
+// 角色、状态、密码和令牌版本由各自领域用例维护，不接受本用例修改。
+type AdminInfoUpdate struct {
+	AdminName *string
+	Avatar    *string
+	Email     *string
+	Remark    *string
+}
+
 // FormatCreateAt 业务方法：格式化创建时间为字符串（给前端展示用）
 func (a *AdminDO) FormatCreateAt() string {
 	return a.CreateAt.Format("2006-01-02 15:04:05")

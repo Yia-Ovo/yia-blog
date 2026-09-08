@@ -8,6 +8,7 @@ import (
 
 	"blog-server/common"
 	"blog-server/common/consts"
+	"blog-server/domain/do"
 	"blog-server/domain/repo"
 	"blog-server/infra/model"
 
@@ -27,6 +28,7 @@ type adminSecurityRepo struct {
 	status       int
 	ownPassword  string
 	resetHash    string
+	info         *do.AdminInfoUpdate
 }
 
 func (r *adminSecurityRepo) FindAdminByID(_ context.Context, id uint64) (*model.AdminModel, error) {
@@ -58,6 +60,12 @@ func (r *adminSecurityRepo) ResetAdminPWDByID(_ context.Context, id uint64, hash
 func (r *adminSecurityRepo) UpdatePWD(_ context.Context, id uint64, hash string) error {
 	r.writes++
 	r.writtenID, r.ownPassword = id, hash
+	return r.writeErr
+}
+
+func (r *adminSecurityRepo) UpdateAdminInfo(_ context.Context, id uint64, info *do.AdminInfoUpdate) error {
+	r.writes++
+	r.writtenID, r.info = id, info
 	return r.writeErr
 }
 
@@ -194,6 +202,32 @@ func TestSuperAdminCanChangeOwnPassword(t *testing.T) {
 	assertAdminErrCode(t, err, 0)
 	if r.writtenID != 1 || r.resetHash != "" || bcrypt.CompareHashAndPassword([]byte(r.ownPassword), []byte("New12345")) != nil {
 		t.Fatal("own-password change used the management reset path or stored an invalid hash")
+	}
+}
+
+func TestAdminInfoPreservesOptionalFields(t *testing.T) {
+	r := adminPair()
+	empty := ""
+	input := &do.AdminInfoUpdate{Email: &empty, Avatar: &empty, Remark: &empty}
+	err := NewAdminDomainService(r).UpdateAdminInfo(context.Background(), 1, input)
+	assertAdminErrCode(t, err, 0)
+	if r.info == nil || r.info.AdminName != nil || r.info.Email == nil || *r.info.Email != "" ||
+		r.info.Avatar == nil || *r.info.Avatar != "" || r.info.Remark == nil || *r.info.Remark != "" {
+		t.Fatalf("optional fields lost their submitted state: %+v", r.info)
+	}
+	if r.admins[1].Role != consts.AdminRoleSuper || r.admins[1].Status != consts.AdminStatusEnabled {
+		t.Fatal("profile update mutated the loaded permissions")
+	}
+}
+
+func TestAdminInfoRejectsEmptyNameOrMissingAdmin(t *testing.T) {
+	empty := ""
+	r := adminPair()
+	s := NewAdminDomainService(r)
+	assertAdminErrCode(t, s.UpdateAdminInfo(context.Background(), 1, &do.AdminInfoUpdate{AdminName: &empty}), common.ParamErr.Code)
+	assertAdminErrCode(t, s.UpdateAdminInfo(context.Background(), 3, &do.AdminInfoUpdate{Email: &empty}), common.AdminNotFoundErr.Code)
+	if r.writes != 0 {
+		t.Fatal("invalid profile update reached a write")
 	}
 }
 

@@ -10,6 +10,7 @@
 package repo
 
 import (
+	"blog-server/domain/do"
 	"blog-server/infra/model"
 	"context"
 	"time"
@@ -30,9 +31,8 @@ type AdminMysqlRepo interface {
 	// FindAdminByID 根据ID查询管理员；不存在返回 (nil, nil)，故障返回 error。
 	FindAdminByID(ctx context.Context, adminID uint64) (*model.AdminModel, error)
 	// UpdateAdminInfo 更新管理员个人资料（昵称/头像/邮箱/备注）。
-	// 只写这四列与 update_at：role 由 ChangeAdminRole 维护、status 由 UpdateAdminStatus 维护，
-	// 均不从本方法写入，避免读-改-写把旧权限值覆盖回去；也不触碰 token_version，改资料不踢登录态。
-	UpdateAdminInfo(ctx context.Context, adminModel *model.AdminModel) error
+	// 仅写非 nil 字段与 update_at，空字符串允许清空；不触碰权限列或 token_version。
+	UpdateAdminInfo(ctx context.Context, adminID uint64, update *do.AdminInfoUpdate) error
 	// UpdateLastLoginInfo 更新最后登录时间
 	UpdateLastLoginInfo(ctx context.Context, adminID uint64, loginAt *time.Time) error
 	// ChangeAdminRole 变更管理员角色，并递增 token_version 使目标的旧 token 立即失效。
