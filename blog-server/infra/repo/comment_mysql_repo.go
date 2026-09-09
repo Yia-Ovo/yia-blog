@@ -9,6 +9,7 @@
 package repo
 
 import (
+	"blog-server/common/consts"
 	"blog-server/domain/do"
 	"blog-server/infra/model"
 	"context"
@@ -59,6 +60,9 @@ func (r *commentMysqlRepo) GetCommentByID(ctx context.Context, commentID uint64)
 // ListCommentByPage 分页查询评论列表 + 总数
 func (r *commentMysqlRepo) ListCommentByPage(ctx context.Context, query *do.CommentQuery) (list []*model.CommentModel, total int64, err error) {
 	tx := r.db.WithContext(ctx).Model(&model.CommentModel{})
+	if query.PublishedArticleOnly {
+		tx = tx.Where("EXISTS (SELECT 1 FROM `article` WHERE `article`.`id` = `comment`.`article_id` AND `article`.`status` = ? AND `article`.`deleted_at` IS NULL)", consts.ArticleStatusPublished)
+	}
 
 	// 1. 构建查询条件
 	// 文章ID

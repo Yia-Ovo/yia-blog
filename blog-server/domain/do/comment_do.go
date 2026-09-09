@@ -39,7 +39,7 @@ type CommentDO struct {
 }
 
 // CommentQuery 评论列表查询条件。
-// 该对象会从 query string 绑定，并由 Repo 转换为 SQL 筛选、排序和分页条件。
+// 由 App 从 HTTP DTO 构造，公开范围再由 Domain 强制设置，Repo 转换为 SQL 条件。
 type CommentQuery struct {
 	// 精确筛选条件
 	ArticleID uint64  `form:"articleID" json:"articleID"` // 大于 0 时按所属文章筛选；0 表示不按文章筛选
@@ -61,4 +61,6 @@ type CommentQuery struct {
 
 	// 软删除控制预留字段；当前 Repo 尚未根据该字段调用 Unscoped
 	WithDeleted bool `form:"withDeleted" json:"withDeleted"` // 预期仅供管理员查询已删除评论
+	// PublishedArticleOnly 由公开领域用例强制开启，客户端不能关闭。
+	PublishedArticleOnly bool `form:"-" json:"-"`
 }

@@ -51,7 +51,7 @@ type commentHandlerArticleRepo struct {
 }
 
 func (f *commentHandlerArticleRepo) GetArticleById(_ context.Context, articleID uint64) (*model.ArticleModel, error) {
-	return &model.ArticleModel{ID: articleID}, nil
+	return &model.ArticleModel{ID: articleID, Status: consts.ArticleStatusPublished, CommentStatus: consts.ArticleCommentsEnabled}, nil
 }
 
 type commentHandlerRedisRepo struct {

@@ -283,6 +283,9 @@ func (c *CommentAppService) GetArticleCommentCount(ctx context.Context, articleI
 		logger.Warn("获取文章评论数失败：文章ID非法", zap.Uint64("article_id", articleID))
 		return 0, common.ParamErr
 	}
+	if err := c.commentDomainService.EnsureArticlePublic(ctx, articleID); err != nil {
+		return 0, err
+	}
 
 	// 优先读缓存
 	count, err := c.commentRedisRepo.GetArticleCommentCount(ctx, articleID)

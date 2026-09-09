@@ -18,6 +18,7 @@ import (
 	"blog-server/domain/do"
 	"blog-server/domain/repo"
 	"context"
+	"errors"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -69,9 +70,12 @@ func (c *CommentDomainService) CreateComment(ctx context.Context, commentDO *do.
 		logger.Error("[DOMAIN] 创建评论失败：查询文章失败", zap.Uint64("article_id", commentDO.ArticleID), zap.Error(err))
 		return common.DatabaseErr
 	}
-	if article == nil {
+	if article == nil || article.Status != consts.ArticleStatusPublished {
 		logger.Warn("[DOMAIN] 创建评论失败：文章不存在", zap.Uint64("article_id", commentDO.ArticleID))
 		return common.ArticleNotFoundErr
+	}
+	if article.CommentStatus != consts.ArticleCommentsEnabled {
+		return common.PermissionDeniedErr.WithMsg("文章已关闭评论")
 	}
 
 	if commentDO.ParentID != 0 {
@@ -165,7 +169,22 @@ func (c *CommentDomainService) GetCommentByID(ctx context.Context, commentID uin
 	return convert.CommentModelToDO(commentModel), nil
 }
 
-// ListPublicComments 公开评论分页查询：可见范围由领域强制为"仅已通过"。
+// EnsureArticlePublic 校验文章当前对访客可见；缓存命中也必须先通过该领域规则。
+func (c *CommentDomainService) EnsureArticlePublic(ctx context.Context, articleID uint64) error {
+	if articleID == 0 {
+		return common.ParamErr
+	}
+	article, err := c.articleMysqlRepo.GetArticleById(ctx, articleID)
+	if err != nil {
+		return common.DatabaseErr
+	}
+	if article == nil || article.Status != consts.ArticleStatusPublished {
+		return common.ArticleNotFoundErr
+	}
+	return nil
+}
+
+// ListPublicComments 公开评论分页只允许已发布文章下的已通过评论。
 // 调用方传入的审核状态和软删除条件一律被覆盖，因此无论访客怎么构造筛选参数，
 // 都无法翻出待审核或已拒绝的评论；这条规则对任何入口（HTTP、任务、未来 RPC）都成立。
 func (c *CommentDomainService) ListPublicComments(ctx context.Context, query *do.CommentQuery) ([]do.CommentDO, int64, error) {
@@ -173,11 +192,18 @@ func (c *CommentDomainService) ListPublicComments(ctx context.Context, query *do
 		logger.Warn("[DOMAIN] 公开评论分页查询失败：查询条件为空")
 		return nil, 0, common.ParamErr
 	}
+	if query.ArticleID != 0 {
+		if err := c.EnsureArticlePublic(ctx, query.ArticleID); err != nil {
+			return nil, 0, err
+		}
+	}
 
 	// 服务端钉死可见范围，忽略调用方传入值
 	passed := consts.CommentStatusPassed
 	query.Status = &passed
 	query.WithDeleted = false
+	// ArticleID=0 时仍需通过关联文章筛选，不能靠单个 ID 的预检替代 SQL 范围。
+	query.PublishedArticleOnly = true
 
 	return c.ListCommentByPage(ctx, query)
 }
@@ -199,6 +225,12 @@ func (c *CommentDomainService) GetPublicComment(ctx context.Context, commentID u
 		return nil, common.CommentNotFoundErr
 	}
 
+	if err := c.EnsureArticlePublic(ctx, comment.ArticleID); err != nil {
+		if errors.Is(err, common.ArticleNotFoundErr) || errors.Is(err, common.ParamErr) {
+			return nil, common.CommentNotFoundErr
+		}
+		return nil, err
+	}
 	return comment, nil
 }
 

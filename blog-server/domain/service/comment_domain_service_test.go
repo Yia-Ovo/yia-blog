@@ -33,7 +33,7 @@ type fakeCommentMysqlRepo struct {
 	deleteErr    error
 
 	// listQuery 记录最终下发到 Repo 的查询条件，用于断言领域层是否钉死了可见范围
-	listQuery *do.CommentQuery
+	listQuery  *do.CommentQuery
 	listResult []*model.CommentModel
 	listTotal  int64
 }
@@ -107,7 +107,7 @@ func (f *fakeCommentArticleRepo) GetArticleById(_ context.Context, articleID uin
 	if f.missing {
 		return nil, nil
 	}
-	return &model.ArticleModel{ID: articleID}, nil
+	return &model.ArticleModel{ID: articleID, Status: consts.ArticleStatusPublished, CommentStatus: consts.ArticleCommentsEnabled}, nil
 }
 
 func newTestCommentDomainService(commentRepo repo.CommentMysqlRepo) *CommentDomainService {
