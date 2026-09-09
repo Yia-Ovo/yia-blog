@@ -44,6 +44,14 @@ type UserFindInfoReq struct {
 }
 
 // ================= 出参 ===================
+// PublicUserInfo 公开展示白名单，不嵌入包含邮箱和账号控制字段的本人资料。
+type PublicUserInfo struct {
+	ID        uint64 `json:"id"`
+	NickName  string `json:"nick_name"`
+	Avatar    string `json:"avatar"`
+	Signature string `json:"signature"`
+}
+
 // UserBaseDTO：基础用户字段【被详情、登录信息共用，核心去重】
 type UserBaseDTO struct {
 	ID           uint64 `json:"id"`

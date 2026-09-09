@@ -59,7 +59,20 @@ func UserDOToModel(d *do.UserDO) *model.UserModel {
 	}
 }
 
-// UserDOToBaseDTO 列表/简易查询：只返回基础信息
+// UserDOToPublicUserInfo 只投影访客可见字段，不能复用本人资料 DTO。
+func UserDOToPublicUserInfo(user *do.UserDO) *dto.PublicUserInfo {
+	if user == nil {
+		return nil
+	}
+	return &dto.PublicUserInfo{
+		ID:        user.ID,
+		NickName:  user.NickName,
+		Avatar:    user.Avatar,
+		Signature: user.Signature,
+	}
+}
+
+// UserDOToBaseDTO 供登录和本人资料使用，包含邮箱与账号状态，不能用于公开响应。
 func UserDOToBaseDTO(do *do.UserDO) dto.UserBaseDTO {
 	if do == nil {
 		return dto.UserBaseDTO{}

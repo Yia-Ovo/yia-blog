@@ -270,8 +270,8 @@ func (s *UserAppService) UpdateUserInfo(ctx context.Context, userID uint64, req 
 	return s.GetUserInfo(ctx, userID)
 }
 
-// FindUserByNickname 根据昵称查询用户
-func (s *UserAppService) FindUserByNickname(ctx context.Context, req *dto.UserFindInfoReq) (*dto.UserInfoData, error) {
+// FindUserByNickname 根据昵称查询公开资料，完整资料由鉴权后的 GetUserInfo 返回。
+func (s *UserAppService) FindUserByNickname(ctx context.Context, req *dto.UserFindInfoReq) (*dto.PublicUserInfo, error) {
 	if req == nil {
 		logger.Warn("[APP] 查询用户参数为空")
 		return nil, common.ParamErr.WithMsg("查询参数不能为空")
@@ -288,5 +288,5 @@ func (s *UserAppService) FindUserByNickname(ctx context.Context, req *dto.UserFi
 		return nil, err.(common.Errno).WithMsg("用户信息查询异常")
 	}
 
-	return convert.UserDOToUserInfoData(userDO), nil
+	return convert.UserDOToPublicUserInfo(userDO), nil
 }
