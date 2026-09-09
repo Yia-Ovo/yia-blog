@@ -139,7 +139,7 @@ func (s *ArticleAppService) ListArticleByPage(ctx context.Context, req *dto.Arti
 
 	// 组装返回
 	authorMemo := make(map[authorRef]*dto.AuthorInfo) // 同页去重，避免同一作者多篇文章重复查询
-	var respList []map[string]interface{}
+	respList := make([]map[string]interface{}, 0, len(articleDOList))
 	for _, articleDO := range articleDOList {
 		respList = append(respList, map[string]interface{}{
 			"id":          articleDO.ID,
@@ -160,13 +160,14 @@ func (s *ArticleAppService) ListArticleByPage(ctx context.Context, req *dto.Arti
 		})
 	}
 
-	pages := (total + int64(req.PageSize) - 1) / int64(req.PageSize)
+	// 查询与响应共用 Domain 归一化后的分页值，原始请求可能为 0 或超出上限。
+	pages := (total + int64(query.PageSize) - 1) / int64(query.PageSize)
 	return &dto.PageResult{
 		Total:    total,
 		Pages:    int(pages),
 		List:     respList,
-		PageNum:  req.PageNum,
-		PageSize: req.PageSize,
+		PageNum:  query.PageNum,
+		PageSize: query.PageSize,
 	}, nil
 }
 

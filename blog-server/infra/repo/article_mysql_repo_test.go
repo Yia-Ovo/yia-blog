@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"blog-server/common/consts"
+	"blog-server/domain/do"
 	"blog-server/infra/model"
 
 	"gorm.io/gorm"
@@ -58,5 +60,42 @@ func TestArticleUpdateRejectsMissingIdentity(t *testing.T) {
 		if err := r.UpdateArticle(context.Background(), article); !errors.Is(err, gorm.ErrInvalidData) {
 			t.Fatalf("invalid article returned %v", err)
 		}
+	}
+}
+
+func TestArticleListSQLUsesSameScopeForCountAndRows(t *testing.T) {
+	db := newSQLTestDB(t)
+	var statements []sqlCapture
+	if err := db.Callback().Query().After("gorm:query").Register("test:article_page", func(tx *gorm.DB) {
+		statements = append(statements, sqlCapture{sql: tx.Statement.SQL.String(), args: append([]interface{}(nil), tx.Statement.Vars...)})
+		if count, ok := tx.Statement.Dest.(*int64); ok {
+			*count = 11
+			tx.RowsAffected = 1
+			// DryRun 不会像正常执行那样重置 SQL；模拟清理，允许后续 Find 独立生成语句。
+			tx.Statement.SQL.Reset()
+			tx.Statement.Vars = nil
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	status, top, category := consts.ArticleStatusPublished, 0, uint64(9)
+	_, _, err := NewArticleMysqlRepo(db).ListArticleByPage(context.Background(), &do.ArticleQuery{
+		PageNum: 2, PageSize: 5, Title: "needle", CategoryID: &category, Status: &status, IsTop: &top,
+	})
+	if err != nil || len(statements) != 2 {
+		t.Fatalf("count and rows not queried: statements=%+v err=%v", statements, err)
+	}
+	for _, statement := range statements {
+		for _, condition := range []string{"title LIKE ?", "category_id = ?", "status = ?", "is_top = ?", "deleted_at"} {
+			if !strings.Contains(statement.sql, condition) {
+				t.Fatalf("query scope lost %q: %s", condition, statement.sql)
+			}
+		}
+		if len(statement.args) < 4 || statement.args[0] != "%needle%" || statement.args[1] != category || statement.args[2] != status || statement.args[3] != top {
+			t.Fatalf("query parameters changed: %v", statement.args)
+		}
+	}
+	if !strings.Contains(statements[1].sql, "LIMIT ? OFFSET ?") || statements[1].args[4] != 5 || statements[1].args[5] != 5 {
+		t.Fatalf("pagination SQL mismatch: %+v", statements[1])
 	}
 }

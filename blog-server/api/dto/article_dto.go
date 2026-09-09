@@ -55,12 +55,12 @@ type UpdateArticleReq struct {
 
 // ArticlePageQuery 文章分页查询
 type ArticlePageQuery struct {
-	PageNum    int     `json:"page_num"`
-	PageSize   int     `json:"page_size"`
-	Title      string  `json:"title"`
-	CategoryID *uint64 `json:"category_id"`
-	Status     *int    `json:"status"`
-	IsTop      *int    `json:"is_top"`
+	PageNum    int     `json:"page_num" form:"page_num"`
+	PageSize   int     `json:"page_size" form:"page_size"`
+	Title      string  `json:"title" form:"title"`
+	CategoryID *uint64 `json:"category_id" form:"category_id"`
+	Status     *int    `json:"status" form:"status"` // 公开用例始终限定已发布，不能通过筛选读取草稿。
+	IsTop      *int    `json:"is_top" form:"is_top"`
 }
 
 // AuthorInfo 文章作者信息（读取时按 user_id/admin_id 实时关联填充，作者不存在时为 null）

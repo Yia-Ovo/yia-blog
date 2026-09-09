@@ -85,7 +85,7 @@ func (s *CategoryAppService) ListCategoryByPage(ctx context.Context, req *dto.Ca
 	}
 
 	// 组装返回
-	var respList []map[string]interface{}
+	respList := make([]map[string]interface{}, 0, len(categoryDOList))
 	for _, categoryDO := range categoryDOList {
 		respList = append(respList, map[string]interface{}{
 			"id":         categoryDO.ID,
@@ -97,13 +97,14 @@ func (s *CategoryAppService) ListCategoryByPage(ctx context.Context, req *dto.Ca
 		})
 	}
 
-	pages := (total + int64(req.PageSize) - 1) / int64(req.PageSize)
+	// Domain 会把超限条数归一化，响应必须与实际查询采用同一组值。
+	pages := (total + int64(query.PageSize) - 1) / int64(query.PageSize)
 	return &dto.PageResult{
 		Total:    total,
 		Pages:    int(pages),
 		List:     respList,
-		PageNum:  req.PageNum,
-		PageSize: req.PageSize,
+		PageNum:  query.PageNum,
+		PageSize: query.PageSize,
 	}, nil
 }
 

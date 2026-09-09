@@ -104,7 +104,7 @@ func TestPublicArticleDetailVisibility(t *testing.T) {
 }
 
 func TestPublicArticleListForcesPublished(t *testing.T) {
-	for _, query := range []string{"PageNum=1&PageSize=10", "PageNum=1&PageSize=10&Status=0", "PageNum=1&PageSize=10&Status=2"} {
+	for _, query := range []string{"page_num=1&page_size=10", "page_num=1&page_size=10&status=0", "page_num=1&page_size=10&status=2"} {
 		t.Run(query, func(t *testing.T) {
 			r := &publicArticleRepo{articles: []*model.ArticleModel{
 				{ID: 1, Status: consts.ArticleStatusDraft, Summary: "private-summary-marker"},
@@ -131,5 +131,65 @@ func TestPublicArticleListForcesPublished(t *testing.T) {
 				t.Fatalf("public scope bypassed: query=%+v response=%s", r.query, w.Body.String())
 			}
 		})
+	}
+}
+
+func TestArticlePaginationUsesEffectiveQuery(t *testing.T) {
+	for _, tt := range []struct {
+		query                    string
+		total                    int
+		page, size, pages, count int
+	}{
+		{"", 0, 1, 10, 0, 0},
+		{"page_num=0&page_size=0", 11, 1, 10, 2, 10},
+		{"page_num=-1&page_size=-5", 11, 1, 10, 2, 10},
+		{"page_num=1&page_size=101", 11, 1, 10, 2, 10},
+		{"page_num=2&page_size=5", 11, 2, 5, 3, 5},
+		{"page_num=2&page_size=10", 11, 2, 10, 2, 1},
+		{"page_num=3&page_size=10", 11, 3, 10, 2, 0},
+	} {
+		t.Run(tt.query, func(t *testing.T) {
+			r := &publicArticleRepo{}
+			for i := 0; i < tt.total; i++ {
+				r.articles = append(r.articles, &model.ArticleModel{ID: uint64(i + 1), Status: consts.ArticleStatusPublished})
+			}
+			w := httptest.NewRecorder()
+			publicTestEngine(&ioc.Container{ArticleApp: articleTestApp(r)}).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/blog/v1/article/listArticle?"+tt.query, nil))
+			var body struct {
+				Code int
+				Data struct {
+					Total, PageNum, PageSize, Pages int
+					List                            []map[string]interface{}
+				}
+			}
+			if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+				t.Fatalf("invalid response HTTP %d: %s", w.Code, w.Body.String())
+			}
+			if w.Code != http.StatusOK || body.Code != common.OK.Code || body.Data.Total != tt.total || body.Data.PageNum != tt.page || body.Data.PageSize != tt.size || body.Data.Pages != tt.pages || len(body.Data.List) != tt.count || body.Data.List == nil {
+				t.Fatalf("pagination mismatch: HTTP %d %s", w.Code, w.Body.String())
+			}
+			if r.query.PageNum != body.Data.PageNum || r.query.PageSize != body.Data.PageSize {
+				t.Fatalf("query/response mismatch: query=%+v response=%+v", r.query, body.Data)
+			}
+		})
+	}
+}
+
+func TestArticleQueryBindsSnakeCaseFilters(t *testing.T) {
+	r := &publicArticleRepo{}
+	w := httptest.NewRecorder()
+	publicTestEngine(&ioc.Container{ArticleApp: articleTestApp(r)}).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/blog/v1/article/listArticle?page_num=2&page_size=5&title=needle&category_id=9&is_top=0&status=0", nil))
+	q := r.query
+	if q == nil || q.PageNum != 2 || q.PageSize != 5 || q.Title != "needle" || q.CategoryID == nil || *q.CategoryID != 9 || q.IsTop == nil || *q.IsTop != 0 || q.Status == nil || *q.Status != consts.ArticleStatusPublished {
+		t.Fatalf("filters lost or visibility bypassed: query=%+v response=%s", q, w.Body.String())
+	}
+	for _, bad := range []string{"page_num=no", "page_size=no", "category_id=no", "is_top=no", "status=no"} {
+		r := &publicArticleRepo{}
+		w := httptest.NewRecorder()
+		publicTestEngine(&ioc.Container{ArticleApp: articleTestApp(r)}).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/blog/v1/article/listArticle?"+bad, nil))
+		var body struct{ Code int }
+		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil || body.Code != common.ParamErr.Code || r.query != nil {
+			t.Fatalf("invalid query reached repo: %s response=%s", bad, w.Body.String())
+		}
 	}
 }
