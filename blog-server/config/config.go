@@ -304,9 +304,9 @@ func setDefaultConfig(vipConf *viper.Viper) {
 	vipConf.SetDefault("gin.cors.enabled", false)
 	vipConf.SetDefault("gin.cors.allow_origins", []string{"https://your-blog.com"})
 	vipConf.SetDefault("gin.cors.allow_methods", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
-	vipConf.SetDefault("gin.cors.allow_headers", []string{"Content-Type", "Authorization", "X-Requested-With"})
+	vipConf.SetDefault("gin.cors.allow_headers", []string{"Content-Type", "Authorization", "Admin-Authorization", "X-Requested-With"})
 	vipConf.SetDefault("gin.cors.allow_credentials", true)
-	vipConf.SetDefault("gin.cors.max_age", 3600) // 24小时
+	vipConf.SetDefault("gin.cors.max_age", 3600) // 1小时
 
 	// Gin Gzip 默认配置
 	vipConf.SetDefault("gin.gzip.enable_gzip", true)

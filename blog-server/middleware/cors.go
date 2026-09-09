@@ -10,7 +10,7 @@
 1、兼容空Origin：开发环境下Postman/curl无Origin头可正常请求，生产环境严格校验
 2、白名单校验：浏览器跨域请求的Origin必须在白名单内
 3、响应头设置：复用配置文件参数，不再硬编码
-4、预检请求优先：OPTIONS请求提前处理，避免被白名单拦截
+4、预检请求在来源、方法和请求头校验后返回完整允许头，不进入业务鉴权
 5、跨域规范：严格遵循CORS协议规范，保证跨域请求合法性
  *
  * Copyright (c) 2026 by Yia 1372594487@qq.com, All Rights Reserved.
@@ -39,26 +39,15 @@ func Cors(conf *config.GlobalConfig) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
-		// 【优化1：优先处理预检请求OPTIONS】避免预检请求被白名单拦截
-		if c.Request.Method == http.MethodOptions {
-			c.Header("Access-Control-Max-Age", strconv.Itoa(conf.Gin.CORS.MaxAge))
-			c.AbortWithStatus(http.StatusNoContent)
+		// 同一个 URL 的无 Origin 响应也要声明 Vary，避免共享缓存混用两类响应。
+		c.Writer.Header().Add("Vary", "Origin")
+		// 无 Origin 的请求无需 CORS 头，避免与凭据标记组合成无效的通配来源。
+		if origin == "" {
+			c.Next()
 			return
 		}
-
-		// 【核心修复：兼容空Origin + 白名单校验】
-		// 空Origin：Postman/curl等工具发起的请求，直接允许（开发环境友好）
-		// 非空Origin：必须在白名单内，保证浏览器跨域安全
-		allow := false
-		if origin == "" {
-			allow = true // 兼容无Origin的工具请求
-		} else if slices.Contains(allowOrigins, origin) {
-			allow = true // 浏览器跨域请求，Origin在白名单内
-		}
-
-		// 校验不通过，返回403并记录日志
-		if !allow {
-			logger.Warn("CORS violation",
+		if !slices.Contains(allowOrigins, origin) {
+			logger.Warn("[MIDDLEWARE] CORS violation",
 				zap.String("origin", origin),
 				zap.String("path", c.Request.URL.Path),
 			)
@@ -66,19 +55,38 @@ func Cors(conf *config.GlobalConfig) gin.HandlerFunc {
 			return
 		}
 
-		// 【优化2：复用配置文件参数，不再硬编码】
-		// 设置允许的Origin：非空则用真实Origin，空则设为*（适配工具请求）
-		if origin != "" {
-			c.Header("Access-Control-Allow-Origin", origin)
-		} else {
-			c.Header("Access-Control-Allow-Origin", "*")
+		requestedMethod := c.GetHeader("Access-Control-Request-Method")
+		preflight := c.Request.Method == http.MethodOptions && requestedMethod != ""
+		if preflight {
+			c.Writer.Header().Add("Vary", "Access-Control-Request-Method")
+			c.Writer.Header().Add("Vary", "Access-Control-Request-Headers")
+			if !slices.Contains(conf.Gin.CORS.AllowMethods, requestedMethod) {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+			for _, header := range strings.Split(c.GetHeader("Access-Control-Request-Headers"), ",") {
+				header = strings.TrimSpace(header)
+				if header != "" && !slices.ContainsFunc(conf.Gin.CORS.AllowHeaders, func(allowed string) bool {
+					return strings.EqualFold(header, strings.TrimSpace(allowed))
+				}) {
+					c.AbortWithStatus(http.StatusForbidden)
+					return
+				}
+			}
 		}
+
+		c.Header("Access-Control-Allow-Origin", origin)
 		c.Header("Access-Control-Allow-Methods", allowMethods)
 		c.Header("Access-Control-Allow-Headers", allowHeaders)
 
 		// 允许携带Cookie/Token（如JWT）
 		if conf.Gin.CORS.AllowCredentials {
 			c.Header("Access-Control-Allow-Credentials", "true")
+		}
+		if preflight {
+			c.Header("Access-Control-Max-Age", strconv.Itoa(conf.Gin.CORS.MaxAge))
+			c.AbortWithStatus(http.StatusNoContent)
+			return
 		}
 
 		// 继续执行后续中间件/处理函数
