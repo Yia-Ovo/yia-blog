@@ -143,6 +143,9 @@ func (a *AdminDomainService) UpdateAdminRole(ctx context.Context, operatorID uin
 
 // CreateAdmin 创建管理员
 func (a *AdminDomainService) CreateAdmin(ctx context.Context, name, pwd string, role int) (*do.AdminDO, error) {
+	if role != consts.AdminRoleSuper && role != consts.AdminRoleNormal {
+		return nil, common.AdminRoleInvalidErr
+	}
 	_, err := a.FindAdminByName(ctx, name)
 	if err == nil {
 		logger.Warn("[DOMAIN] 管理员已存在", zap.String("admin_name", name))
@@ -162,7 +165,7 @@ func (a *AdminDomainService) CreateAdmin(ctx context.Context, name, pwd string, 
 		AdminName: name,
 		Password:  string(hashPwd),
 		Role:      role,
-		Status:    1,
+		Status:    consts.AdminStatusEnabled,
 		CreateAt:  time.Now(),
 		UpdateAt:  time.Now(),
 	}

@@ -22,7 +22,7 @@ package dto
 
 import "time"
 
-// CreateArticleReq 创建文章请求
+// CreateArticleReq 创建文章请求；CommentStatus 未传时由 Domain 默认允许，显式 0 表示关闭。
 type CreateArticleReq struct {
 	Title         string     `json:"title"`
 	Cover         string     `json:"cover"`
@@ -33,7 +33,7 @@ type CreateArticleReq struct {
 	Status        int        `json:"status"`
 	Sort          int        `json:"sort"`
 	IsTop         int        `json:"is_top"`
-	CommentStatus int        `json:"comment_status"`
+	CommentStatus *int       `json:"comment_status"`
 	PublishAt     *time.Time `json:"publish_at"`
 }
 

@@ -38,18 +38,22 @@ func NewCategoryDomainService(categoryMysqlRepo repo.CategoryMysqlRepo) *Categor
 }
 
 // CreateCategory 创建分类：仅业务校验 + 数据库操作
-func (c *CategoryDomainService) CreateCategory(ctx context.Context, categoryDO *do.CategoryDO) error {
+func (c *CategoryDomainService) CreateCategory(ctx context.Context, categoryDO *do.CategoryCreate) error {
 	// 业务规则校验
 	if categoryDO == nil {
 		logger.Warn("创建分类失败：领域对象为空")
 		return common.ParamErr
 	}
-	if err := validateCategoryFields(categoryDO.Name, &categoryDO.Sort, &categoryDO.Status); err != nil {
+	status := consts.CategoryStatusEnabled
+	if categoryDO.Status != nil {
+		status = *categoryDO.Status
+	}
+	if err := validateCategoryFields(categoryDO.Name, &categoryDO.Sort, &status); err != nil {
 		return err
 	}
 
 	// DO转Model：新建时 ID 为 0，主键交给数据库自增，create_at/update_at 由表默认值填充
-	categoryModel := convert.CategoryDOToModel(categoryDO)
+	categoryModel := convert.CategoryDOToModel(&do.CategoryDO{Name: categoryDO.Name, Sort: categoryDO.Sort, Status: status})
 
 	// 调用MySQL仓储
 	err := c.categoryMysqlRepo.CreateCategory(ctx, categoryModel)

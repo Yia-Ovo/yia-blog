@@ -18,11 +18,11 @@ import (
 
 // AdminModel 管理员表模型，不内嵌 gorm.Model，以匹配现有表的 create_at/update_at 字段。
 type AdminModel struct {
-	ID           uint64         `gorm:"primaryKey;autoIncrement;comment:主键ID"`                                // 数据库自增主键
-	AdminName    string         `gorm:"type:varchar(64);not null;uniqueIndex:idx_admin_name;comment:管理员登录账号"` // 管理员登录时使用的唯一账号
-	Password     string         `gorm:"type:varchar(255);not null;comment:bcrypt密码哈希" json:"-"` // 只保存 bcrypt 哈希；json:"-" 确保不写入 info 缓存、不返回客户端
+	ID           uint64         `gorm:"primaryKey;autoIncrement;comment:主键ID"`                                                     // 数据库自增主键
+	AdminName    string         `gorm:"type:varchar(64);not null;uniqueIndex:idx_admin_name;comment:管理员登录账号"`                      // 管理员登录时使用的唯一账号
+	Password     string         `gorm:"type:varchar(255);not null;comment:bcrypt密码哈希" json:"-"`                                    // 只保存 bcrypt 哈希；json:"-" 确保不写入 info 缓存、不返回客户端
 	Avatar       string         `gorm:"type:varchar(255);default:null;comment:管理员头像地址"`                                            // 可为空的头像 URL
-	Role         int            `gorm:"type:tinyint(1);not null;default:1;comment:角色(0超级管理员,1普通管理员)"`                              // 权限角色，以 common/consts 中的管理员角色常量为准
+	Role         int            `gorm:"type:tinyint(1);not null;comment:角色(0超级管理员,1普通管理员)"`                                        // Domain 显式赋值；ORM 不填默认值，保留合法的超管角色 0
 	Status       int            `gorm:"type:tinyint(1);not null;default:1;comment:账号状态(0禁用,1启用)"`                                  // 禁用后鉴权中间件会拒绝该管理员
 	TokenVersion uint64         `gorm:"type:bigint unsigned;not null;default:0;comment:令牌版本号"`                                     // 安全信息变化时递增，用于让旧 JWT 立即失效
 	LastLoginAt  *time.Time     `gorm:"type:datetime;default:null;comment:最后登录时间"`                                                 // 尚未成功登录时为 nil

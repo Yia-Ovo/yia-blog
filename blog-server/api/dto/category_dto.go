@@ -38,7 +38,7 @@ type PageResult struct {
 type CreateCategoryReq struct {
 	Name   string `json:"name" binding:"required,max=64"` // 名称必填
 	Sort   int    `json:"sort" default:"0"`               // 排序
-	Status int    `json:"status" default:"1"`             // 状态
+	Status *int   `json:"status"`                         // 未传默认启用，显式 0 创建禁用分类
 }
 
 // ---------------- 更新分类参数 ----------------

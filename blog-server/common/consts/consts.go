@@ -52,9 +52,11 @@ const (
 	CommentStatusRejected = 2 // 已拒绝
 
 	// 文章状态；公开读取只允许已发布文章。
-	ArticleStatusDraft     = 0
-	ArticleStatusPublished = 1
-	ArticleStatusOffline   = 2
+	ArticleStatusDraft      = 0
+	ArticleStatusPublished  = 1
+	ArticleStatusOffline    = 2
+	ArticleCommentsDisabled = 0
+	ArticleCommentsEnabled  = 1
 
 	// 文章作者类型（读取时按 user_id/admin_id 关联，标记作者来源）
 	AuthorTypeUser  = "user"  // 普通用户作者

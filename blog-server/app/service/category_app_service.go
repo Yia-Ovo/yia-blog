@@ -46,7 +46,7 @@ func (s *CategoryAppService) CreateCategory(ctx context.Context, req *dto.Create
 	}
 
 	// DTO 转换为领域对象
-	categoryDO := &do.CategoryDO{
+	categoryDO := &do.CategoryCreate{
 		Name:   req.Name,
 		Sort:   req.Sort,
 		Status: req.Status,

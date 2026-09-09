@@ -33,7 +33,7 @@ func TestCategoryValidationUsesBusinessErrors(t *testing.T) {
 				s := NewCategoryDomainService(r)
 				var err error
 				if operation == "create" {
-					err = s.CreateCategory(context.Background(), &do.CategoryDO{Name: tc.value, Sort: tc.sort, Status: tc.status})
+					err = s.CreateCategory(context.Background(), &do.CategoryCreate{Name: tc.value, Sort: tc.sort, Status: &tc.status})
 				} else {
 					err = s.UpdateCategory(context.Background(), &do.CategoryUpdate{ID: 1, Name: tc.value, Sort: &tc.sort, Status: &tc.status})
 				}
@@ -69,7 +69,7 @@ func TestCategoryDuplicateNameIsNotDatabaseFailure(t *testing.T) {
 				existing: &model.CategoryModel{ID: 1}, createErr: tc.err, updateErr: tc.err,
 			}
 			s := NewCategoryDomainService(r)
-			if err := s.CreateCategory(context.Background(), &do.CategoryDO{Name: "tech", Status: 1}); !errors.Is(err, tc.want) {
+			if err := s.CreateCategory(context.Background(), &do.CategoryCreate{Name: "tech"}); !errors.Is(err, tc.want) {
 				t.Fatalf("create returned %v, want %v", err, tc.want)
 			}
 			if err := s.UpdateCategory(context.Background(), &do.CategoryUpdate{ID: 1, Name: "tech"}); !errors.Is(err, tc.want) {

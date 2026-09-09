@@ -36,7 +36,7 @@ type ArticleModel struct {
 	Comments       int            `gorm:"not null;default:0;comment:评论数"`                                                            // 文章评论数量的冗余统计字段
 	CommentContext []CommentModel `gorm:"foreignKey:ArticleID;references:ID"`                                                        // GORM 评论关联集合，不对应 article 表中的实际列
 	IsTop          int            `gorm:"type:tinyint(1);not null;default:0;comment:置顶状态(0不置顶,1置顶)"`                                 // 控制文章是否优先展示
-	CommentStatus  int            `gorm:"type:tinyint(1);not null;default:1;comment:评论开关(0禁止,1允许)"`                                  // 控制文章是否允许新增评论
+	CommentStatus  int            `gorm:"type:tinyint(1);not null;comment:评论开关(0禁止,1允许)"`                                            // Domain 决定创建默认值；ORM 保留明确关闭评论的 0
 	PublishAt      *time.Time     `gorm:"type:datetime;default:null;comment:发布时间"`                                                   // 草稿未发布时可为 nil
 	CreateAt       time.Time      `gorm:"type:datetime;not null;default:CURRENT_TIMESTAMP;comment:创建时间"`                             // 文章记录创建时间
 	UpdateAt       time.Time      `gorm:"type:datetime;not null;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;comment:更新时间"` // 文章记录最后更新时间

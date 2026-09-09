@@ -38,7 +38,7 @@ func NewArticleDomainService(articleMysqlRepo repo.ArticleMysqlRepo) *ArticleDom
 }
 
 // CreateArticle 创建文章：仅业务校验 + 数据库操作
-func (a *ArticleDomainService) CreateArticle(ctx context.Context, articleDO *do.ArticleDO) error {
+func (a *ArticleDomainService) CreateArticle(ctx context.Context, articleDO *do.ArticleCreate) error {
 	// 业务规则校验
 	// 判空必须在第一次解引用之前：convert 层统一 nil 契约后，nil 不应流到持久化层
 	if articleDO == nil {
@@ -62,8 +62,20 @@ func (a *ArticleDomainService) CreateArticle(ctx context.Context, articleDO *do.
 		return common.ErrArticleContentEmpty
 	}
 
-	// DO转Model
-	articleModel := convert.ArticleDOToModel(articleDO)
+	commentStatus := consts.ArticleCommentsEnabled
+	if articleDO.CommentStatus != nil {
+		commentStatus = *articleDO.CommentStatus
+	}
+	if commentStatus != consts.ArticleCommentsDisabled && commentStatus != consts.ArticleCommentsEnabled {
+		return common.ParamErr.WithMsg("评论开关不合法")
+	}
+	articleModel := convert.ArticleDOToModel(&do.ArticleDO{
+		UserID: articleDO.UserID, AdminID: articleDO.AdminID,
+		Title: articleDO.Title, Cover: articleDO.Cover, Summary: articleDO.Summary,
+		Content: articleDO.Content, CategoryID: articleDO.CategoryID, TagIDs: articleDO.TagIDs,
+		Status: articleDO.Status, Sort: articleDO.Sort, IsTop: articleDO.IsTop,
+		CommentStatus: commentStatus, PublishAt: articleDO.PublishAt,
+	})
 
 	// 调用MySQL仓储
 	err := a.articleMysqlRepo.CreateArticle(ctx, articleModel)

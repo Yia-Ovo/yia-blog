@@ -45,6 +45,24 @@ type ArticleDO struct {
 	UpdateAt      time.Time
 }
 
+// ArticleCreate 文章创建入参，作者身份来自鉴权，计数和主键由服务端维护。
+// CommentStatus 为 nil 时默认允许，指向 0 时明确关闭评论。
+type ArticleCreate struct {
+	UserID        uint64
+	AdminID       uint64
+	Title         string
+	Cover         string
+	Summary       string
+	Content       string
+	CategoryID    uint64
+	TagIDs        string
+	Status        int
+	Sort          int
+	IsTop         int
+	CommentStatus *int
+	PublishAt     *time.Time
+}
+
 // ArticleQuery 文章分页查询条件
 type ArticleQuery struct {
 	PageNum    int

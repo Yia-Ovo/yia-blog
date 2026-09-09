@@ -52,7 +52,8 @@ func TestCreateCategory_PersistsSubmittedFields(t *testing.T) {
 	fake := &fakeCategoryMysqlRepo{}
 	svc := NewCategoryDomainService(fake)
 
-	err := svc.CreateCategory(context.Background(), &do.CategoryDO{Name: "tech", Sort: 5, Status: 1})
+	status := 1
+	err := svc.CreateCategory(context.Background(), &do.CategoryCreate{Name: "tech", Sort: 5, Status: &status})
 	if err != nil {
 		t.Fatalf("CreateCategory 返回错误: %v", err)
 	}
@@ -94,7 +95,7 @@ func TestCreateCategory_RejectsEmptyName(t *testing.T) {
 	fake := &fakeCategoryMysqlRepo{}
 	svc := NewCategoryDomainService(fake)
 
-	err := svc.CreateCategory(context.Background(), &do.CategoryDO{Name: "", Sort: 1, Status: 1})
+	err := svc.CreateCategory(context.Background(), &do.CategoryCreate{Name: "", Sort: 1})
 
 	if err != common.ErrCategoryNameEmpty {
 		t.Errorf("err = %v, 期望 %v", err, common.ErrCategoryNameEmpty)

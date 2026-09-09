@@ -53,7 +53,7 @@ func (s *ArticleAppService) CreateArticle(ctx context.Context, userID uint64, re
 	}
 
 	// DTO 转换为领域对象
-	articleDO := &do.ArticleDO{
+	articleDO := &do.ArticleCreate{
 		UserID:        userID,
 		AdminID:       0,
 		Title:         req.Title,
@@ -88,7 +88,7 @@ func (s *ArticleAppService) AdminCreateArticle(ctx context.Context, adminID uint
 	}
 
 	// DTO 转换为领域对象：作者为管理员
-	articleDO := &do.ArticleDO{
+	articleDO := &do.ArticleCreate{
 		UserID:        0,
 		AdminID:       adminID,
 		Title:         req.Title,

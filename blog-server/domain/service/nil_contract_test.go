@@ -55,7 +55,7 @@ func TestUpdateAdminInfo_RejectsNilData(t *testing.T) {
 func TestCreateArticle_NonNilDOPassesNilCheck(t *testing.T) {
 	svc := NewArticleDomainService(nil)
 
-	err := svc.CreateArticle(context.Background(), &do.ArticleDO{Title: ""})
+	err := svc.CreateArticle(context.Background(), &do.ArticleCreate{Title: ""})
 
 	if err == common.ParamErr {
 		t.Error("合法（非 nil）DO 被 nil 守卫误拦成 ParamErr")

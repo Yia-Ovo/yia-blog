@@ -21,7 +21,7 @@ type CategoryModel struct {
 	ID        uint64         `gorm:"primaryKey;autoIncrement;comment:主键ID"`                                                     // 数据库自增主键
 	Name      string         `gorm:"type:varchar(64);not null;uniqueIndex:idx_name;comment:分类名称"`                               // 分类名称；idx_name 为单列唯一索引，软删除后旧行仍占用该名称
 	Sort      int            `gorm:"type:int;not null;default:0;comment:排序权重(值越小越靠前)"`                                          // 分类列表的展示顺序
-	Status    int            `gorm:"type:tinyint(1);not null;default:1;comment:分类状态(0禁用,1启用)"`                                  // 禁用后不应作为可选分类展示
+	Status    int            `gorm:"type:tinyint(1);not null;comment:分类状态(0禁用,1启用)"`                                            // Domain 决定创建默认值；ORM 保留显式禁用的 0
 	CreateAt  time.Time      `gorm:"type:datetime;not null;default:CURRENT_TIMESTAMP;comment:创建时间"`                             // 分类记录创建时间
 	UpdateAt  time.Time      `gorm:"type:datetime;not null;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;comment:更新时间"` // 分类记录最后更新时间
 	DeletedAt gorm.DeletedAt `gorm:"type:datetime;default:null;comment:软删除时间"`                                                  // 非空表示已软删除，普通查询会自动过滤

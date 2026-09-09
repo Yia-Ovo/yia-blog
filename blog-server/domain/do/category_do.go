@@ -22,6 +22,13 @@ type CategoryDO struct {
 	IsDeleted bool      `json:"is_deleted"`
 }
 
+// CategoryCreate 区分省略状态与显式禁用；主键和创建时间不接受客户端提交。
+type CategoryCreate struct {
+	Name   string
+	Sort   int
+	Status *int
+}
+
 // CategoryQuery 领域查询条件（给Repo用，和前端无关）
 type CategoryQuery struct {
 	PageNum  int
