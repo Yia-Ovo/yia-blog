@@ -25,10 +25,10 @@ type CommentMysqlRepo interface {
 	UpdateCommentByUser(ctx context.Context, commentID uint64, userID uint64, content string, status int) (int64, error)
 	// DeleteCommentByUser 按评论ID和用户ID软删除评论
 	DeleteCommentByUser(ctx context.Context, commentID uint64, userID uint64) (int64, error)
-	// LikeComment 评论点赞(数据库+1)
-	LikeComment(ctx context.Context, commentID uint64) error
-	// DisLikeComment 评论取消点赞(数据库-1)
-	DisLikeComment(ctx context.Context, commentID uint64) error
+	// LikeComment 在事务中新增唯一关系并增加计数；已有关系时 changed=false。
+	LikeComment(ctx context.Context, userID, commentID uint64) (changed bool, err error)
+	// DisLikeComment 只删除本人的关系并减少计数；关系不存在时 changed=false。
+	DisLikeComment(ctx context.Context, userID, commentID uint64) (changed bool, err error)
 	// GetCommentByID 根据ID查询评论(基础方法，建议加上)
 	GetCommentByID(ctx context.Context, commentID uint64) (*model.CommentModel, error)
 }
@@ -40,12 +40,14 @@ type CommentRedisRepo interface {
 	GetCommentLikeCount(ctx context.Context, commentID uint64) (int, error)
 	// SetCommentLikeCount 设置评论点赞数
 	SetCommentLikeCount(ctx context.Context, commentID uint64, count int) error
+	// DelCommentLikeCount 数据库提交后失效缓存，避免双写增量和乱序写回。
+	DelCommentLikeCount(ctx context.Context, commentID uint64) error
 	// IncrCommentLikeCount 评论点赞数+1
 	IncrCommentLikeCount(ctx context.Context, commentID uint64) error
 	// DecrCommentLikeCount 评论点赞数-1
 	DecrCommentLikeCount(ctx context.Context, commentID uint64) error
 
-	// --------------------- 用户点赞去重 ---------------------
+	// --------------------- 旧 Bitmap 兼容读写，不作为当前请求的幂等凭证 ---------------------
 	// CheckUserLikeComment 检查用户是否已点赞该评论
 	CheckUserLikeComment(ctx context.Context, userID uint64, commentID uint64) (bool, error)
 	// AddUserLikeRecord 添加用户点赞记录

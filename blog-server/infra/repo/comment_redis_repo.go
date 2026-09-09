@@ -63,6 +63,11 @@ func (r *commentRedisRepo) SetCommentLikeCount(ctx context.Context, commentID ui
 	return r.rdb.Set(ctx, key, count, r.getLikeCacheExpire()).Err()
 }
 
+// DelCommentLikeCount 在持久化点赞事务完成后使旧计数失效。
+func (r *commentRedisRepo) DelCommentLikeCount(ctx context.Context, commentID uint64) error {
+	return r.rdb.Del(ctx, fmt.Sprintf(keyCommentLikeCount, commentID)).Err()
+}
+
 func (r *commentRedisRepo) IncrCommentLikeCount(ctx context.Context, commentID uint64) error {
 	key := fmt.Sprintf(keyCommentLikeCount, commentID)
 	err := r.rdb.Incr(ctx, key).Err()
@@ -85,7 +90,7 @@ func (r *commentRedisRepo) DecrCommentLikeCount(ctx context.Context, commentID u
 	return err
 }
 
-// ===================== 用户点赞去重（Bitmap + 自动过期） =====================
+// ===================== 旧 Bitmap 兼容接口；当前点赞幂等由 MySQL 关系表保证 =====================
 // CheckUserLikeComment 检查是否点赞
 func (r *commentRedisRepo) CheckUserLikeComment(ctx context.Context, userID uint64, commentID uint64) (bool, error) {
 	key := fmt.Sprintf(keyUserLikeRecord, userID)

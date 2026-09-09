@@ -11,6 +11,7 @@ package repo
 import (
 	"blog-server/common/consts"
 	"blog-server/domain/do"
+	domainrepo "blog-server/domain/repo"
 	"blog-server/infra/model"
 	"context"
 	"errors"
@@ -155,18 +156,83 @@ func (r *commentMysqlRepo) DeleteCommentByUser(
 	return result.RowsAffected, result.Error
 }
 
-// LikeComment 评论点赞（原子操作，并发安全）
-func (r *commentMysqlRepo) LikeComment(ctx context.Context, commentID uint64) error {
-	return r.db.WithContext(ctx).
-		Model(&model.CommentModel{}).
-		Where("id = ?", commentID).
-		UpdateColumn("likes", gorm.Expr("likes + 1")).Error
+// lockCommentForLike 串行化同一评论的点赞/撤回，并防止校验后评论被并发删除。
+func lockCommentForLike(tx *gorm.DB, commentID uint64, publicOnly bool) error {
+	query := tx.Select("id").Where("id = ?", commentID)
+	if publicOnly {
+		query = query.Where("status = ?", consts.CommentStatusPassed).
+			Where("EXISTS (SELECT 1 FROM `article` WHERE `article`.`id` = `comment`.`article_id` AND `article`.`status` = ? AND `article`.`deleted_at` IS NULL)", consts.ArticleStatusPublished)
+	}
+	var comment model.CommentModel
+	err := query.Clauses(clause.Locking{Strength: "UPDATE"}).First(&comment).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return domainrepo.ErrNoRowsAffected
+	}
+	return err
 }
 
-// DisLikeComment 取消评论点赞（原子操作，防止负数）
-func (r *commentMysqlRepo) DisLikeComment(ctx context.Context, commentID uint64) error {
-	return r.db.WithContext(ctx).
-		Model(&model.CommentModel{}).
-		Where("id = ? AND likes > 0", commentID).
-		UpdateColumn("likes", gorm.Expr("likes - 1")).Error
+// LikeComment 唯一关系与计数在同一事务提交，失败重试不会重复累计。
+func (r *commentMysqlRepo) LikeComment(ctx context.Context, userID, commentID uint64) (bool, error) {
+	if userID == 0 || commentID == 0 {
+		return false, gorm.ErrInvalidData
+	}
+	changed := false
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := lockCommentForLike(tx, commentID, true); err != nil {
+			return err
+		}
+		like := &model.CommentLikeModel{CommentID: commentID, UserID: userID, CreateAt: time.Now()}
+		if err := tx.Create(like).Error; err != nil {
+			// 使用唯一键错误识别重复，不依赖受 clientFoundRows 影响的 upsert 行数。
+			if errors.Is(translateDuplicateKey(err), domainrepo.ErrDuplicateKey) {
+				return nil
+			}
+			return err
+		}
+		result := tx.Model(&model.CommentModel{}).Where("id = ?", commentID).
+			UpdateColumn("likes", gorm.Expr("likes + 1"))
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return domainrepo.ErrNoRowsAffected
+		}
+		changed = true
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+	return changed, nil
+}
+
+// DisLikeComment 只有本人确有关系时才扣减计数，计数失败会回滚关系删除。
+func (r *commentMysqlRepo) DisLikeComment(ctx context.Context, userID, commentID uint64) (bool, error) {
+	if userID == 0 || commentID == 0 {
+		return false, gorm.ErrInvalidData
+	}
+	changed := false
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 允许撤回自己的既有点赞，无需评论仍处于公开状态。
+		if err := lockCommentForLike(tx, commentID, false); err != nil {
+			return err
+		}
+		result := tx.Where("comment_id = ? AND user_id = ?", commentID, userID).Delete(&model.CommentLikeModel{})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return nil
+		}
+		if err := tx.Model(&model.CommentModel{}).Where("id = ?", commentID).
+			UpdateColumn("likes", gorm.Expr("GREATEST(likes - 1, 0)")).Error; err != nil {
+			return err
+		}
+		changed = true
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+	return changed, nil
 }

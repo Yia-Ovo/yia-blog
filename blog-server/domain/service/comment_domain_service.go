@@ -317,32 +317,36 @@ func (c *CommentDomainService) DeleteComment(
 	return comment.ArticleID, nil
 }
 
-// LikeComment 评论点赞：仅业务校验（评论存在）+ 数据库点赞
-// Redis 相关逻辑全部移至应用服务
-func (c *CommentDomainService) LikeComment(ctx context.Context, commentID uint64) error {
-	// 校验评论是否存在
-	comment, err := c.GetCommentByID(ctx, commentID)
+// LikeComment 仅允许给公开评论点赞，用户身份与资源身份一起传入持久化幂等用例。
+func (c *CommentDomainService) LikeComment(ctx context.Context, userID, commentID uint64) error {
+	if userID == 0 || commentID == 0 {
+		return common.ParamErr
+	}
+	_, err := c.GetPublicComment(ctx, commentID)
 	if err != nil {
 		return err
 	}
-	if comment == nil {
-		return common.CommentNotFoundErr
-	}
-
-	// 数据库点赞+1
-	err = c.commentMysqlRepo.LikeComment(ctx, commentID)
+	changed, err := c.commentMysqlRepo.LikeComment(ctx, userID, commentID)
 	if err != nil {
+		if errors.Is(err, repo.ErrNoRowsAffected) {
+			return common.CommentNotFoundErr
+		}
 		logger.Error("评论点赞数据库操作失败", zap.Uint64("comment_id", commentID), zap.Error(err))
 		return common.DatabaseErr
+	}
+	if !changed {
+		return common.ErrCommentAlreadyLiked
 	}
 
 	logger.Info("评论点赞数据库操作成功", zap.Uint64("comment_id", commentID))
 	return nil
 }
 
-// DisLikeComment 取消评论点赞：仅数据库取消点赞
-// Redis 相关逻辑全部移至应用服务
-func (c *CommentDomainService) DisLikeComment(ctx context.Context, commentID uint64) error {
+// DisLikeComment 用户可撤回自己的既有点赞，只有持久化关系存在才会减少计数。
+func (c *CommentDomainService) DisLikeComment(ctx context.Context, userID, commentID uint64) error {
+	if userID == 0 || commentID == 0 {
+		return common.ParamErr
+	}
 	// 校验评论是否存在
 	comment, err := c.GetCommentByID(ctx, commentID)
 	if err != nil {
@@ -353,10 +357,16 @@ func (c *CommentDomainService) DisLikeComment(ctx context.Context, commentID uin
 	}
 
 	// 数据库点赞-1
-	err = c.commentMysqlRepo.DisLikeComment(ctx, commentID)
+	changed, err := c.commentMysqlRepo.DisLikeComment(ctx, userID, commentID)
 	if err != nil {
+		if errors.Is(err, repo.ErrNoRowsAffected) {
+			return common.CommentNotFoundErr
+		}
 		logger.Error("取消点赞数据库操作失败", zap.Uint64("comment_id", commentID), zap.Error(err))
 		return common.DatabaseErr
+	}
+	if !changed {
+		return common.ErrCommentNotLiked
 	}
 
 	logger.Info("取消评论点赞数据库操作成功", zap.Uint64("comment_id", commentID))

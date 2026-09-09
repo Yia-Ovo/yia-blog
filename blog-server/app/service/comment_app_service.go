@@ -217,7 +217,7 @@ func (c *CommentAppService) DeleteComment(
 	return nil
 }
 
-// LikeComment 评论点赞：应用层处理Redis防重 + 调用领域服务DB操作
+// LikeComment 由领域用例持久化判重，App 仅在提交后失效缓存。
 func (c *CommentAppService) LikeComment(ctx context.Context, userID uint64, commentID uint64) error {
 	// 参数校验
 	if userID <= 0 || commentID <= 0 {
@@ -225,24 +225,14 @@ func (c *CommentAppService) LikeComment(ctx context.Context, userID uint64, comm
 		return common.ParamErr
 	}
 
-	// 1. 应用层编排：Redis校验重复点赞（防重逻辑）
-	exist, err := c.commentRedisRepo.CheckUserLikeComment(ctx, userID, commentID)
-	if err != nil {
-		logger.Warn("检查点赞记录失败，降级执行", zap.Error(err))
+	err := c.commentDomainService.LikeComment(ctx, userID, commentID)
+	if err == nil || errors.Is(err, common.ErrCommentAlreadyLiked) {
+		c.invalidateCommentLikeCount(ctx, commentID)
 	}
-	if exist {
-		return common.ErrCommentAlreadyLiked
-	}
-
-	// 2. 调用领域服务：执行数据库点赞（纯业务）
-	err = c.commentDomainService.LikeComment(ctx, commentID)
 	if err != nil {
 		return err
 	}
 
-	// 3. 应用层编排：更新Redis缓存
-	_ = c.commentRedisRepo.IncrCommentLikeCount(ctx, commentID)
-	_ = c.commentRedisRepo.AddUserLikeRecord(ctx, userID, commentID)
 	logger.Info("评论点赞成功", zap.Uint64("user_id", userID), zap.Uint64("comment_id", commentID))
 	return nil
 }
@@ -255,26 +245,22 @@ func (c *CommentAppService) DisLikeComment(ctx context.Context, userID uint64, c
 		return common.ParamErr
 	}
 
-	// 1. 应用层编排：Redis校验是否已点赞
-	exist, err := c.commentRedisRepo.CheckUserLikeComment(ctx, userID, commentID)
-	if err != nil {
-		logger.Warn("检查点赞记录失败，降级执行", zap.Error(err))
+	err := c.commentDomainService.DisLikeComment(ctx, userID, commentID)
+	if err == nil || errors.Is(err, common.ErrCommentNotLiked) {
+		c.invalidateCommentLikeCount(ctx, commentID)
 	}
-	if !exist {
-		return common.ErrCommentNotLiked
-	}
-
-	// 2. 调用领域服务：执行数据库取消点赞
-	err = c.commentDomainService.DisLikeComment(ctx, commentID)
 	if err != nil {
 		return err
 	}
 
-	// 3. 应用层编排：更新Redis缓存
-	_ = c.commentRedisRepo.DecrCommentLikeCount(ctx, commentID)
-	_ = c.commentRedisRepo.DelUserLikeRecord(ctx, userID, commentID)
 	logger.Info("取消点赞成功", zap.Uint64("user_id", userID), zap.Uint64("comment_id", commentID))
 	return nil
+}
+
+func (c *CommentAppService) invalidateCommentLikeCount(ctx context.Context, commentID uint64) {
+	if err := c.commentRedisRepo.DelCommentLikeCount(ctx, commentID); err != nil {
+		logger.Warn("[APP] 点赞已持久化，计数缓存失效失败", zap.Uint64("comment_id", commentID), zap.Error(err))
+	}
 }
 
 // GetArticleCommentCount 获取文章评论总数（Redis缓存优先，防击穿）
