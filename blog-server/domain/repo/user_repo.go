@@ -11,6 +11,7 @@
 package repo
 
 import (
+	"blog-server/domain/do"
 	"blog-server/infra/model"
 	"context"
 	"time"
@@ -20,7 +21,8 @@ type UserMysqlRepo interface {
 	CreateUser(ctx context.Context, userModel *model.UserModel) error
 	FindUserByNickname(ctx context.Context, nickName string) (*model.UserModel, error)
 	FindUserByID(ctx context.Context, userID uint64) (*model.UserModel, error)
-	UpdateUserInfo(ctx context.Context, userModel *model.UserModel) error
+	// UpdateUserInfo 仅持久化已提供的资料列；目标已删除时返回 ErrNoRowsAffected。
+	UpdateUserInfo(ctx context.Context, userID uint64, update *do.UserInfoUpdate) error
 	UpdateLastLoginInfo(ctx context.Context, userID uint64, loginAt *time.Time) error
 	UpdatePWD(ctx context.Context, userID uint64, password string) error
 }

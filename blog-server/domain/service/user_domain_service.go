@@ -18,7 +18,9 @@ import (
 	"blog-server/infra/model"
 	"context"
 	"errors"
-	"time"
+	"regexp"
+	"strings"
+	"unicode/utf8"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -149,46 +151,36 @@ func (u *UserDomainService) FindUserByID(ctx context.Context, userId uint64) (*d
 	return convert.UserModelToDO(userModel), nil
 }
 
-// UpdateUserInfo 领域层：更新用户信息
-func (u *UserDomainService) UpdateUserInfo(ctx context.Context, userId uint64, updateData *do.UserDO) error {
-	// 判空必须在第一次解引用之前：下方按字段覆盖会直接读 updateData
-	if updateData == nil {
-		logger.Warn("[DOMAIN] 更新用户信息失败：更新数据为空", zap.Uint64("userId", userId))
+var userEmailPattern = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+
+// UpdateUserInfo 校验本人资料的部分更新，保留未提交字段与显式零值的区别。
+func (u *UserDomainService) UpdateUserInfo(ctx context.Context, userId uint64, updateData *do.UserInfoUpdate) error {
+	if userId == 0 || updateData == nil {
 		return common.ParamErr
+	}
+	if updateData.NickName != nil && (strings.TrimSpace(*updateData.NickName) == "" || utf8.RuneCountInString(*updateData.NickName) > consts.UserNicknameMaxLength) {
+		return common.ParamErr.WithMsg("昵称不能为空且最多16个字符")
+	}
+	if updateData.Gender != nil && (*updateData.Gender < consts.UserGenderUnknown || *updateData.Gender > consts.UserGenderFemale) {
+		return common.ParamErr.WithMsg("性别取值不合法，仅支持0/1/2")
+	}
+	if updateData.Email != nil && *updateData.Email != "" && !userEmailPattern.MatchString(*updateData.Email) {
+		return common.ParamErr.WithMsg("邮箱格式不正确")
 	}
 
 	userDO, err := u.FindUserByID(ctx, userId)
 	if err != nil {
-		return common.UserQueryErr
+		return err
 	}
-	// 记录不存在时由上面的 err 拦截；此处兜底 FindUserByID 理论上的 (nil, nil)，
-	// 避免下方读-改-写解引用空指针
 	if userDO == nil {
 		logger.Warn("[DOMAIN] 更新用户信息失败：用户不存在", zap.Uint64("userId", userId))
 		return common.UserNotFoundErr
 	}
 
-	// 业务赋值规则
-	if updateData.NickName != "" {
-		userDO.NickName = updateData.NickName
-	}
-	if updateData.Avatar != "" {
-		userDO.Avatar = updateData.Avatar
-	}
-	if updateData.Signature != "" {
-		userDO.Signature = updateData.Signature
-	}
-	if updateData.Email != "" {
-		userDO.Email = updateData.Email
-	}
-	if updateData.Gender >= 0 {
-		userDO.Gender = updateData.Gender
-	}
-
-	userDO.UpdateAt = time.Now()
-	userModel := convert.UserDOToModel(userDO)
-
-	if err := u.userMysqlRepo.UpdateUserInfo(ctx, userModel); err != nil {
+	if err := u.userMysqlRepo.UpdateUserInfo(ctx, userId, updateData); err != nil {
+		if errors.Is(err, repo.ErrNoRowsAffected) {
+			return common.UserNotFoundErr
+		}
 		logger.Warn("[DOMAIN] 用户信息更新失败", zap.Error(err), zap.Uint64("userId", userId))
 		return common.UserUpdateErr
 	}

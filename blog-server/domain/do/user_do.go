@@ -18,6 +18,16 @@ type UserDO struct {
 	Email        string     `json:"email"`
 }
 
+// UserInfoUpdate 仅包含用户本人可编辑的资料。nil 保留原值，非 nil 的零值用于清空或重置。
+// 账号状态、密码和令牌版本由独立用例维护，不能经由资料更新回写。
+type UserInfoUpdate struct {
+	NickName  *string
+	Avatar    *string
+	Gender    *int
+	Signature *string
+	Email     *string
+}
+
 // FormatCreateAt 业务方法：格式化创建时间为字符串（给前端展示用）
 func (u *UserDO) FormatCreateAt() string {
 	return u.CreateAt.Format("2006-01-02 15:04:05")

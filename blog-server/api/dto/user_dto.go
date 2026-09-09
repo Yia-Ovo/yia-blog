@@ -29,7 +29,8 @@ type UserUpdatePWDReq struct {
 	NewPassword string `json:"new_password" binding:"required,min=6,max=20"`
 }
 
-// 修改基础信息（字段非必填，omitempty配合前端不传不更新）
+// UserUpdateInfoReq 只接受本人可编辑资料；nil 不更新，空串可清空头像/签名/邮箱，gender=0 可重置。
+// status/password/token_version 不接受客户端提交，由独立领域用例维护。
 type UserUpdateInfoReq struct {
 	NickName  *string `json:"nick_name,omitempty" binding:"omitempty,min=1,max=16"`
 	Avatar    *string `json:"avatar,omitempty"`

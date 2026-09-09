@@ -10,6 +10,7 @@ package repo
 
 import (
 	"blog-server/common/utils/logger"
+	"blog-server/domain/do"
 	"blog-server/domain/repo"
 	"blog-server/infra/model"
 	"context"
@@ -86,27 +87,52 @@ func (r *userMysqlRepo) FindUserByID(ctx context.Context, userID uint64) (*model
 }
 
 // --------------------- 4. 更新用户信息 ---------------------
-func (r *userMysqlRepo) UpdateUserInfo(ctx context.Context, userModel *model.UserModel) error {
-	if userModel == nil || userModel.ID == 0 {
+// UpdateUserInfo 只写本次提供的资料列，不回写查询时的账号状态或其他旧资料。
+func (r *userMysqlRepo) UpdateUserInfo(ctx context.Context, userID uint64, update *do.UserInfoUpdate) error {
+	if update == nil || userID == 0 {
 		logger.Error("[MYSQL] 更新用户信息失败，用户模型非法")
 		return gorm.ErrInvalidData
 	}
 
-	// 自动更新时间
-	userModel.UpdateAt = time.Now()
+	updateData := map[string]interface{}{}
+	if update.NickName != nil {
+		updateData["nick_name"] = *update.NickName
+	}
+	if update.Avatar != nil {
+		updateData["avatar"] = *update.Avatar
+	}
+	if update.Gender != nil {
+		updateData["gender"] = *update.Gender
+	}
+	if update.Signature != nil {
+		updateData["signature"] = *update.Signature
+	}
+	if update.Email != nil {
+		updateData["email"] = *update.Email
+	}
+	if len(updateData) == 0 {
+		return nil
+	}
+	updateData["update_at"] = time.Now()
 
 	result := r.userBaseQuery(ctx).
-		Where("id = ?", userModel.ID).
-		Select("nick_name", "avatar", "gender", "signature", "email", "status", "update_at").
-		Updates(userModel)
+		Where("id = ?", userID).
+		Updates(updateData)
 
 	if err := result.Error; err != nil {
-		logger.Error("[MYSQL] 更新用户信息失败", zap.Uint64("user_id", userModel.ID), zap.Error(err))
+		logger.Error("[MYSQL] 更新用户信息失败", zap.Uint64("user_id", userID), zap.Error(err))
 		return err
 	}
 
 	if result.RowsAffected == 0 {
-		logger.Warn("[MYSQL] 更新用户信息无数据变更", zap.Uint64("user_id", userModel.ID))
+		// 相同值更新可能返回 0，复核存在性以区分幂等重试与并发删除。
+		var count int64
+		if err := r.userBaseQuery(ctx).Where("id = ?", userID).Count(&count).Error; err != nil {
+			return err
+		}
+		if count == 0 {
+			return repo.ErrNoRowsAffected
+		}
 	}
 
 	return nil

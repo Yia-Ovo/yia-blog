@@ -15,12 +15,10 @@ import (
 	"blog-server/common/utils/jwt"
 	"blog-server/common/utils/logger"
 	"blog-server/common/utils/password"
-	"blog-server/common/utils/ptr"
 	"blog-server/domain/do"
 	"blog-server/domain/repo"
 	"blog-server/domain/service"
 	"context"
-	"regexp"
 
 	"go.uber.org/zap"
 )
@@ -239,29 +237,18 @@ func (s *UserAppService) UpdateUserInfo(ctx context.Context, userID uint64, req 
 		return nil, common.ParamErr.WithMsg("请求参数非法")
 	}
 
-	// 性别校验
-	if req.Gender != nil && (*req.Gender < 0 || *req.Gender > 2) {
-		return nil, common.ParamErr.WithMsg("性别取值不合法，仅支持0/1/2")
-	}
-
-	// 邮箱校验
-	var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-	if req.Email != nil && *req.Email != "" && !emailRegex.MatchString(*req.Email) {
-		return nil, common.ParamErr.WithMsg("邮箱格式不正确")
-	}
-
-	updateData := &do.UserDO{
-		NickName:  ptr.Val(req.NickName),
-		Avatar:    ptr.Val(req.Avatar),
-		Gender:    ptr.Val(req.Gender),
-		Signature: ptr.Val(req.Signature),
-		Email:     ptr.Val(req.Email),
+	updateData := &do.UserInfoUpdate{
+		NickName:  req.NickName,
+		Avatar:    req.Avatar,
+		Gender:    req.Gender,
+		Signature: req.Signature,
+		Email:     req.Email,
 	}
 
 	err := s.userDomainService.UpdateUserInfo(ctx, userID, updateData)
 	if err != nil {
 		logger.Error("[APP] 更新用户信息失败", zap.Uint64("user_id", userID), zap.Error(err))
-		return nil, err.(common.Errno).WithMsg("用户信息更新失败")
+		return nil, err
 	}
 
 	_ = s.userRedisRepo.DelUserFromRedis(ctx, userID)

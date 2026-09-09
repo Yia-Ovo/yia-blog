@@ -26,9 +26,13 @@ const (
 	IsDisable = -1
 
 	// 用户状态常量定义
-	UserStatusEnabled  = 1 // 正常启用
-	UserStatusDisabled = 2 // 禁用
-	UserStatusLocked   = 3 // 锁定
+	UserStatusEnabled     = 1 // 正常启用
+	UserStatusDisabled    = 2 // 禁用
+	UserStatusLocked      = 3 // 锁定
+	UserNicknameMaxLength = 16
+	UserGenderUnknown     = 0
+	UserGenderMale        = 1
+	UserGenderFemale      = 2
 	// 管理员状态常量定义
 	AdminStatusDisabled = 0 // 禁用
 	AdminStatusEnabled  = 1 // 正常启用
