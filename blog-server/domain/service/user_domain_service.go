@@ -20,6 +20,7 @@ import (
 	"errors"
 	"regexp"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"go.uber.org/zap"
@@ -79,21 +80,25 @@ func (u *UserDomainService) UpdatePWD(ctx context.Context, userId uint64, newPas
 func (u *UserDomainService) Login(ctx context.Context, nickName string, password string) (*do.UserDO, error) {
 	userModel, err := u.userMysqlRepo.FindUserByNickname(ctx, nickName)
 	if err != nil {
-		if errors.Is(err, common.UserNotFoundErr) {
-			return nil, common.LoginPasswordErr
-		}
 		logger.Warn("[DOMAIN] 用户查询失败", zap.Error(err), zap.String("nickname", nickName))
 		return nil, common.UserQueryErr
 	}
 
 	userDO := convert.UserModelToDO(userModel)
+	// 不存在与密码错误使用同一语义，且在读取账号状态前拦住空记录。
+	if userDO == nil {
+		return nil, common.LoginPasswordErr
+	}
 
 	// 账号状态校验
 	switch userDO.Status {
+	case consts.UserStatusEnabled:
 	case consts.UserStatusDisabled:
 		return nil, common.UserAccountDisabledErr
 	case consts.UserStatusLocked:
 		return nil, common.LoginAccountLockedErr
+	default:
+		return nil, common.UserAccountDisabledErr
 	}
 
 	// 密码校验
@@ -101,8 +106,12 @@ func (u *UserDomainService) Login(ctx context.Context, nickName string, password
 		return nil, common.LoginPasswordErr
 	}
 
-	// 更新登录信息（允许失败）
-	_ = u.userMysqlRepo.UpdateLastLoginInfo(ctx, userDO.ID, userDO.LastLoginAt)
+	// 登录审计记录本次时间；写入失败仍沿用现有的允许登录策略。
+	now := time.Now()
+	userDO.LastLoginAt = &now
+	if err := u.userMysqlRepo.UpdateLastLoginInfo(ctx, userDO.ID, userDO.LastLoginAt); err != nil {
+		logger.Warn("[DOMAIN] 更新用户登录时间失败", zap.Uint64("user_id", userDO.ID), zap.Error(err))
+	}
 	return userDO, nil
 }
 
@@ -138,6 +147,9 @@ func (u *UserDomainService) FindUserByNickname(ctx context.Context, nickName str
 		logger.Warn("[DOMAIN] 用户查询失败", zap.Error(err), zap.String("nickname", nickName))
 		return nil, common.UserQueryErr
 	}
+	if userModel == nil || userModel.ID == 0 {
+		return nil, common.UserNotFoundErr
+	}
 	return convert.UserModelToDO(userModel), nil
 }
 
@@ -147,6 +159,9 @@ func (u *UserDomainService) FindUserByID(ctx context.Context, userId uint64) (*d
 	if err != nil {
 		logger.Warn("[DOMAIN] 用户查询失败", zap.Error(err), zap.Uint64("userId", userId))
 		return nil, common.UserQueryErr
+	}
+	if userModel == nil || userModel.ID == 0 {
+		return nil, common.UserNotFoundErr
 	}
 	return convert.UserModelToDO(userModel), nil
 }

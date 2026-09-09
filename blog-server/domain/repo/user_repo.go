@@ -19,6 +19,7 @@ import (
 
 type UserMysqlRepo interface {
 	CreateUser(ctx context.Context, userModel *model.UserModel) error
+	// 查询未命中返回 (nil, nil)，数据库故障返回非 nil error。
 	FindUserByNickname(ctx context.Context, nickName string) (*model.UserModel, error)
 	FindUserByID(ctx context.Context, userID uint64) (*model.UserModel, error)
 	// UpdateUserInfo 仅持久化已提供的资料列；目标已删除时返回 ErrNoRowsAffected。

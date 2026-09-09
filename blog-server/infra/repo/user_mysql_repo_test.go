@@ -3,11 +3,13 @@ package repo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
 	"blog-server/domain/do"
 	domainrepo "blog-server/domain/repo"
+	"blog-server/infra/model"
 
 	"gorm.io/gorm"
 )
@@ -76,6 +78,31 @@ func TestUserProfileZeroRowsDistinguishesRetryFromDeletion(t *testing.T) {
 		err := NewUserMysqlRepo(db).UpdateUserInfo(context.Background(), 7, &do.UserInfoUpdate{NickName: &name})
 		if (exists && err != nil) || (!exists && !errors.Is(err, domainrepo.ErrNoRowsAffected)) {
 			t.Fatalf("wrong zero-row result: exists=%v err=%v", exists, err)
+		}
+	}
+}
+
+func TestUserLookupDistinguishesMissingAndFailure(t *testing.T) {
+	dbErr := errors.New("database unavailable")
+	for _, lookup := range []string{"id", "nickname"} {
+		for _, queryErr := range []error{gorm.ErrRecordNotFound, fmt.Errorf("wrapped: %w", gorm.ErrRecordNotFound), dbErr} {
+			db := newSQLTestDB(t)
+			captureSQL(t, db, "query", &sqlCapture{err: queryErr})
+			r := NewUserMysqlRepo(db)
+			var user *model.UserModel
+			var err error
+			if lookup == "id" {
+				user, err = r.FindUserByID(context.Background(), 7)
+			} else {
+				user, err = r.FindUserByNickname(context.Background(), "missing")
+			}
+			want := error(nil)
+			if queryErr == dbErr {
+				want = dbErr
+			}
+			if user != nil || !errors.Is(err, want) {
+				t.Fatalf("%s query %v: user=%+v err=%v", lookup, queryErr, user, err)
+			}
 		}
 	}
 }

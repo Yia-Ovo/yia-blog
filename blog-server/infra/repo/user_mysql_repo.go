@@ -14,6 +14,7 @@ import (
 	"blog-server/domain/repo"
 	"blog-server/infra/model"
 	"context"
+	"errors"
 	"time"
 
 	"go.uber.org/zap"
@@ -58,10 +59,11 @@ func (r *userMysqlRepo) FindUserByNickname(ctx context.Context, nickName string)
 		Where("nick_name = ?", nickName).
 		First(&userModel).Error
 
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
 	if err != nil {
-		if err != gorm.ErrRecordNotFound {
-			logger.Error("[MYSQL] 根据昵称查询用户失败", zap.String("nick_name", nickName), zap.Error(err))
-		}
+		logger.Error("[MYSQL] 根据昵称查询用户失败", zap.String("nick_name", nickName), zap.Error(err))
 		return nil, err
 	}
 
@@ -76,10 +78,11 @@ func (r *userMysqlRepo) FindUserByID(ctx context.Context, userID uint64) (*model
 		Where("id = ?", userID).
 		First(&userModel).Error
 
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
 	if err != nil {
-		if err != gorm.ErrRecordNotFound {
-			logger.Error("[MYSQL] 根据用户ID查询用户失败", zap.Uint64("user_id", userID), zap.Error(err))
-		}
+		logger.Error("[MYSQL] 根据用户ID查询用户失败", zap.Uint64("user_id", userID), zap.Error(err))
 		return nil, err
 	}
 

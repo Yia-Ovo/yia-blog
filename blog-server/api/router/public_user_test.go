@@ -67,3 +67,13 @@ func TestPublicUserProfileHasExactAllowlist(t *testing.T) {
 		t.Fatalf("private profile changed: %+v err=%v", private, err)
 	}
 }
+
+func TestPublicUserMissingReturnsNotFound(t *testing.T) {
+	app := appservice.NewUserAppService(domainservice.NewUserDomainService(&publicUserRepo{}), nil)
+	w := httptest.NewRecorder()
+	publicTestEngine(&ioc.Container{UserApp: app}).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/blog/v1/user/findUserByNickname?nick_name=missing", nil))
+	var body struct{ Code int }
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil || w.Code != http.StatusOK || body.Code != common.UserNotFoundErr.Code {
+		t.Fatalf("missing nickname reported as query failure: HTTP %d %s", w.Code, w.Body.String())
+	}
+}
