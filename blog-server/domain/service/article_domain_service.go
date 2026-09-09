@@ -11,6 +11,7 @@ package service
 
 import (
 	"blog-server/common"
+	"blog-server/common/consts"
 	"blog-server/common/utils/convert"
 	"blog-server/common/utils/logger"
 	"blog-server/domain/do"
@@ -75,8 +76,21 @@ func (a *ArticleDomainService) CreateArticle(ctx context.Context, articleDO *do.
 	return nil
 }
 
-// ListArticleByPage 文章分页查询：仅参数校验 + 数据库查询
+// ListPublicArticleByPage 公开列表强制限定已发布状态，客户端不能扩大可见范围。
+func (a *ArticleDomainService) ListPublicArticleByPage(ctx context.Context, query *do.ArticleQuery) ([]do.ArticleDO, int64, error) {
+	if query == nil {
+		return nil, 0, common.ParamErr
+	}
+	published := consts.ArticleStatusPublished
+	query.Status = &published
+	return a.ListArticleByPage(ctx, query)
+}
+
+// ListArticleByPage 内部文章分页查询，调用方负责选择公开或管理用例。
 func (a *ArticleDomainService) ListArticleByPage(ctx context.Context, query *do.ArticleQuery) ([]do.ArticleDO, int64, error) {
+	if query == nil {
+		return nil, 0, common.ParamErr
+	}
 	// 分页参数合法性校验
 	if query.PageNum < 1 {
 		query.PageNum = 1
@@ -96,7 +110,19 @@ func (a *ArticleDomainService) ListArticleByPage(ctx context.Context, query *do.
 	return convert.ArticleModelListToDOList(modelList), total, nil
 }
 
-// GetArticleById 根据ID查询文章：仅参数校验 + 数据库查询
+// GetPublicArticleByID 对未发布文章使用与不存在相同的错误，避免泄露私有内容。
+func (a *ArticleDomainService) GetPublicArticleByID(ctx context.Context, id uint64) (*do.ArticleDO, error) {
+	article, err := a.GetArticleById(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if article.Status != consts.ArticleStatusPublished {
+		return nil, common.ArticleNotFoundErr
+	}
+	return article, nil
+}
+
+// GetArticleById 内部读取允许取得草稿，供已完成权限校验的管理用例使用。
 func (a *ArticleDomainService) GetArticleById(ctx context.Context, id uint64) (*do.ArticleDO, error) {
 	// 参数校验
 	if id <= 0 {

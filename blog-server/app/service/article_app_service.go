@@ -131,7 +131,7 @@ func (s *ArticleAppService) ListArticleByPage(ctx context.Context, req *dto.Arti
 	}
 
 	// 调用领域服务
-	articleDOList, total, err := s.articleDomainService.ListArticleByPage(ctx, query)
+	articleDOList, total, err := s.articleDomainService.ListPublicArticleByPage(ctx, query)
 	if err != nil {
 		logger.Error("分页查询文章失败", zap.Error(err))
 		return nil, err
@@ -177,7 +177,7 @@ func (s *ArticleAppService) GetArticleById(ctx context.Context, id uint64) (map[
 		return nil, common.ParamErr
 	}
 
-	articleDO, err := s.articleDomainService.GetArticleById(ctx, id)
+	articleDO, err := s.articleDomainService.GetPublicArticleByID(ctx, id)
 	if err != nil {
 		logger.Error("查询文章详情失败", zap.Uint64("id", id), zap.Error(err))
 		return nil, err
