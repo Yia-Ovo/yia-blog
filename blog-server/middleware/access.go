@@ -13,39 +13,16 @@ package middleware
 import (
 	"blog-server/common/utils/logger"
 	"blog-server/config"
-	"bytes"
-	"io"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-type responseWriterWrapper struct {
-	gin.ResponseWriter
-	targetWriter io.Writer
-	compressed   bool
-	size         int
-	minSize      int
-}
-
-func AccessLogMiddleware(conf *config.GlobalConfig) gin.HandlerFunc {
+// AccessLogMiddleware 仅记录请求元数据，不预读请求体或复制响应体，保留流式读写能力。
+func AccessLogMiddleware(_ *config.GlobalConfig) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		// 只读取不打印
-		body, newBody := GetRequestBody(ctx)
-		_ = body // 不再打印请求体，避免乱码
-		ctx.Request.Body = newBody
-
 		begin := time.Now()
-
-		// 包装响应
-		var responseBody bytes.Buffer
-		multiWriter := io.MultiWriter(ctx.Writer, &responseBody)
-		ctx.Writer = &responseWriterWrapper{
-			ResponseWriter: ctx.Writer,
-			targetWriter:   multiWriter,
-			minSize:        conf.Gin.Gzip.MinSize,
-		}
 
 		ctx.Next()
 
@@ -63,19 +40,4 @@ func AccessLogMiddleware(conf *config.GlobalConfig) gin.HandlerFunc {
 			zap.Int64("dur_ms", dur),
 		)
 	}
-}
-
-func (w *responseWriterWrapper) Write(b []byte) (int, error) {
-	w.size += len(b)
-	if w.size >= w.minSize && w.Header().Get("Content-Encoding") != "" {
-		w.compressed = true
-	}
-	return w.targetWriter.Write(b)
-}
-
-func GetRequestBody(ctx *gin.Context) (string, io.ReadCloser) {
-	var buf bytes.Buffer
-	tee := io.TeeReader(ctx.Request.Body, &buf)
-	_, _ = io.ReadAll(tee)
-	return "", io.NopCloser(&buf)
 }
