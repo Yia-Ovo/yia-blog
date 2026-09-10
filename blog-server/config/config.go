@@ -95,16 +95,17 @@ type GzipConfig struct {
 }
 
 type MysqlConfig struct {
-	Dialect  string `yaml:"dialect"`  // 数据库方言
-	User     string `yaml:"user"`     // 用户名
-	Password string `yaml:"password"` // 密码
-	Host     string `yaml:"host"`     // 主机地址
-	Port     int    `yaml:"port"`     // 端口
-	Database string `yaml:"database"` // 数据库名
-	Charset  string `yaml:"charset"`  // 字符集
-	ShowSql  bool   `yaml:"show_sql"` // 是否显示SQL
-	MaxOpen  int    `yaml:"max_open"` // 最大连接数
-	MaxIdle  int    `yaml:"max_idle"` // 最大空闲连接数
+	Dialect         string        `yaml:"dialect"`           // 数据库方言
+	User            string        `yaml:"user"`              // 用户名
+	Password        string        `yaml:"password"`          // 密码
+	Host            string        `yaml:"host"`              // 主机地址
+	Port            int           `yaml:"port"`              // 端口
+	Database        string        `yaml:"database"`          // 数据库名
+	Charset         string        `yaml:"charset"`           // 字符集
+	ShowSql         bool          `yaml:"show_sql"`          // 是否显示SQL
+	MaxOpen         int           `yaml:"max_open"`          // 最大连接数
+	MaxIdle         int           `yaml:"max_idle"`          // 最大空闲连接数
+	ConnMaxLifetime time.Duration `yaml:"conn_max_lifetime"` // 连接最大存活时间，如 5m；未配置时使用服务端默认值。
 }
 
 type RedisConfig struct {

@@ -11,8 +11,10 @@
 package gorm
 
 import (
+	"blog-server/common/consts"
 	"blog-server/common/utils/logger"
 	"blog-server/config"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -64,11 +66,37 @@ func InitGorm(conf *config.GlobalConfig) *gorm.DB {
 	}
 
 	// 测试连接
-	sqlDB, _ := db.DB()
+	sqlDB, err := db.DB()
+	if err != nil {
+		logger.Panic("[MYSQL] 获取连接池失败", zap.Error(err))
+	}
+	configureSQLPool(sqlDB, conf.Mysql)
 	err = sqlDB.Ping()
 	if err != nil {
 		logger.Panic("sqlDB ping failed", zap.Error(err))
 	}
 	logger.Info("GORM init success")
 	return db
+}
+
+// configureSQLPool 使用配置限制连接总数、空闲数和寿命；合法的 max_idle=0 表示不保留空闲连接。
+func configureSQLPool(db *sql.DB, conf *config.MysqlConfig) {
+	maxOpen := conf.MaxOpen
+	if maxOpen <= 0 {
+		maxOpen = consts.DefaultMySQLMaxOpen
+	}
+	maxIdle := conf.MaxIdle
+	if maxIdle < 0 {
+		maxIdle = 0
+	}
+	if maxIdle > maxOpen {
+		maxIdle = maxOpen
+	}
+	lifetime := conf.ConnMaxLifetime
+	if lifetime <= 0 {
+		lifetime = consts.DefaultMySQLConnMaxLifetime
+	}
+	db.SetMaxOpenConns(maxOpen)
+	db.SetMaxIdleConns(maxIdle)
+	db.SetConnMaxLifetime(lifetime)
 }
