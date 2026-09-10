@@ -13,6 +13,7 @@ package server
 
 import (
 	"blog-server/api/router"
+	"blog-server/common/consts"
 	gin_util "blog-server/common/gin/init"
 	"blog-server/common/utils/logger"
 	"blog-server/config"
@@ -76,17 +77,28 @@ func (app *App) Run() {
 	// 3. 监听退出信号（优雅关闭）
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	defer signal.Stop(quit)
 	sig := <-quit
 	logger.Warn("开始关闭服务器", zap.String("收到信号", sig.String()))
 
-	// 4. 带超时的优雅关闭
-	timeout := time.Duration(config.GetGlobalConfig().Server.ShutdownTimeout) * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	if err := app.httpSrv.Shutdown(ctx); err != nil {
+	// 配置已经是 Duration，不能再次乘秒。
+	if err := app.shutdown(config.GetGlobalConfig().Server.ShutdownTimeout); err != nil {
 		logger.Error("服务器强制关闭", zap.Error(err))
 	} else {
 		logger.Info("服务器已优雅退出")
 	}
+}
+
+func (app *App) shutdown(timeout time.Duration) error {
+	if timeout <= 0 {
+		timeout = consts.DefaultShutdownTimeout
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	if err := app.httpSrv.Shutdown(ctx); err != nil {
+		// Shutdown 超时不会关闭活动连接，必须显式终止剩余连接。
+		_ = app.httpSrv.Close()
+		return err
+	}
+	return nil
 }

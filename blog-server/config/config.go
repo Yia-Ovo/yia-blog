@@ -63,7 +63,7 @@ type ServerConfig struct {
 	Env             string        `yaml:"env"`              // 运行环境
 	EnablePprof     bool          `yaml:"enable_pprof"`     // 是否启用性能分析
 	LogLevel        string        `yaml:"log_level"`        // 日志级别
-	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"` // 服务器关闭超时时间
+	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"` // 关闭期限，配置使用 5s/1m 等时长字符串；非正值采用服务端默认值。
 
 }
 
