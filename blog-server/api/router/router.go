@@ -177,6 +177,14 @@ func (r *Router) commentRouter(v1 *gin.RouterGroup) {
 	g.GET("/getCommentById", h.GetCommentByID)
 	g.GET("/getArticleCommentCount", h.GetArticleCommentCount)
 
+	moderation := handler.NewCommentModerationHandler(r.c.CommentModerationApp)
+	adminGroup := g.Group("/")
+	adminGroup.Use(middleware.DefaultAdminAuth())
+	{
+		adminGroup.GET("/listAdminComments", moderation.ListAdminComments)
+		adminGroup.POST("/reviewComment", moderation.ReviewComment)
+	}
+
 	g.Use(middleware.DefaultUserAuth())
 	{
 		g.POST("/createComment", h.CreateComment)

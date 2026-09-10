@@ -25,6 +25,9 @@ var AppContainer *Container
 
 // Container 真正的DI容器，所有依赖放在结构体里
 type Container struct {
+	CommentReviewRepo       domainRepo.CommentReviewRepo
+	CommentModerationDomain *domainSrv.CommentModerationDomainService
+	CommentModerationApp    *appSrv.CommentModerationAppService
 	// 基础
 	Config *config.GlobalConfig
 	DB     *gorm.DB
@@ -88,7 +91,9 @@ func NewContainer(
 	c.ArticleRepo = infraRepo.NewArticleMysqlRepo(db)
 	c.ArticleRedis = infraRepo.NewArticleRedisRepo(rdb, conf)
 
-	c.CommentRepo = infraRepo.NewCommentMysqlRepo(db)
+	commentRepo := infraRepo.NewCommentMysqlRepo(db)
+	c.CommentRepo = commentRepo
+	c.CommentReviewRepo = commentRepo
 	c.CommentRedis = infraRepo.NewCommentRedisRepo(rdb, conf)
 
 	// ========== 初始化领域服务 ==========
@@ -107,5 +112,7 @@ func NewContainer(
 	c.CommentApp = appSrv.NewCommentAppService(c.CommentDomain, c.CommentRedis)
 	c.ArticleManagementApp = appSrv.NewArticleManagementAppService(c.ArticleManagementDomain)
 
+	c.CommentModerationDomain = domainSrv.NewCommentModerationDomainService(c.CommentDomain, c.AdminDomain, c.CommentReviewRepo)
+	c.CommentModerationApp = appSrv.NewCommentModerationAppService(c.CommentModerationDomain, c.CommentRedis)
 	return c
 }
