@@ -60,6 +60,9 @@ func (a *articleMysqlRepo) ListArticleByPage(ctx context.Context, query *do.Arti
 	if query.IsTop != nil {
 		db = db.Where("is_top = ?", *query.IsTop)
 	}
+	if query.UserID != nil {
+		db = db.Where("user_id = ? AND admin_id = ?", *query.UserID, 0)
+	}
 
 	// 2. 查询总条数
 	if err := db.Count(&total).Error; err != nil {

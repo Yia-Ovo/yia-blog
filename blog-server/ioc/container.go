@@ -51,14 +51,16 @@ type Container struct {
 	// Category 领域服务
 	CategoryDomain *domainSrv.CategoryDomainService
 	// Article 领域服务
-	ArticleDomain *domainSrv.ArticleDomainService
+	ArticleDomain           *domainSrv.ArticleDomainService
+	ArticleManagementDomain *domainSrv.ArticleManagementDomainService
 
 	// App 应用服务
-	UserApp     *appSrv.UserAppService
-	AdminApp    *appSrv.AdminAppService
-	CategoryApp *appSrv.CategoryAppService
-	ArticleApp  *appSrv.ArticleAppService
-	CommentApp  *appSrv.CommentAppService
+	UserApp              *appSrv.UserAppService
+	AdminApp             *appSrv.AdminAppService
+	CategoryApp          *appSrv.CategoryAppService
+	ArticleApp           *appSrv.ArticleAppService
+	CommentApp           *appSrv.CommentAppService
+	ArticleManagementApp *appSrv.ArticleManagementAppService
 }
 
 // NewContainer 容器构造函数：自动依赖注入（DDD 标准）
@@ -95,6 +97,7 @@ func NewContainer(
 	c.UserDomain = domainSrv.NewUserDomainService(c.UserRepo)
 	c.CategoryDomain = domainSrv.NewCategoryDomainService(c.CategoryRepo)
 	c.ArticleDomain = domainSrv.NewArticleDomainService(c.ArticleRepo)
+	c.ArticleManagementDomain = domainSrv.NewArticleManagementDomainService(c.ArticleDomain, c.UserDomain, c.AdminDomain)
 
 	// ========== 初始化应用服务 ==========
 	c.UserApp = appSrv.NewUserAppService(c.UserDomain, c.UserRedis)
@@ -102,6 +105,7 @@ func NewContainer(
 	c.CategoryApp = appSrv.NewCategoryAppService(c.CategoryDomain, c.CategoryRedis)
 	c.ArticleApp = appSrv.NewArticleAppService(c.ArticleDomain, c.ArticleRedis, c.UserDomain, c.AdminDomain)
 	c.CommentApp = appSrv.NewCommentAppService(c.CommentDomain, c.CommentRedis)
+	c.ArticleManagementApp = appSrv.NewArticleManagementAppService(c.ArticleManagementDomain)
 
 	return c
 }

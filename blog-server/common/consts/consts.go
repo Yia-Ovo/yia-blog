@@ -57,6 +57,8 @@ const (
 	ArticleStatusOffline    = 2
 	ArticleCommentsDisabled = 0
 	ArticleCommentsEnabled  = 1
+	ArticleTopDisabled      = 0
+	ArticleTopEnabled       = 1
 
 	// 文章作者类型（读取时按 user_id/admin_id 关联，标记作者来源）
 	AuthorTypeUser  = "user"  // 普通用户作者

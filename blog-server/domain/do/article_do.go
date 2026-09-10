@@ -71,4 +71,5 @@ type ArticleQuery struct {
 	CategoryID *uint64 // 分类ID
 	Status     *int    // 文章状态
 	IsTop      *int    // 是否置顶
+	UserID     *uint64 // 本人管理列表的作者范围，由领域根据当前身份设置，不接受 HTTP 参数绑定。
 }

@@ -114,11 +114,11 @@ func (r *Router) adminRouter(v1 *gin.RouterGroup) {
 	adminSuper := g.Group("/")
 	adminSuper.Use(middleware.DefaultAdminAuth(), middleware.AdminSuperAuth())
 	{
-		adminSuper.POST("/create", h.CreateAdmin)                 // 创建管理员
-		adminSuper.GET("/list", h.ListAdmin)                      // 管理员列表
-		adminSuper.POST("/updateStatus", h.UpdateAdminStatus)     // 修改状态
-		adminSuper.POST("/resetPWD", h.ResetAdminPWD)             // 重置密码
-		adminSuper.POST("/updateAdminRole", h.UpdateAdminRole)    // 变更角色（可造超管，权限最高）
+		adminSuper.POST("/create", h.CreateAdmin)              // 创建管理员
+		adminSuper.GET("/list", h.ListAdmin)                   // 管理员列表
+		adminSuper.POST("/updateStatus", h.UpdateAdminStatus)  // 修改状态
+		adminSuper.POST("/resetPWD", h.ResetAdminPWD)          // 重置密码
+		adminSuper.POST("/updateAdminRole", h.UpdateAdminRole) // 变更角色（可造超管，权限最高）
 	}
 }
 
@@ -140,6 +140,7 @@ func (r *Router) categoryRouter(v1 *gin.RouterGroup) {
 func (r *Router) articleRouter(v1 *gin.RouterGroup) {
 	g := v1.Group("/article")
 	h := handler.NewArticleHandler(r.c.ArticleApp)
+	management := handler.NewArticleManagementHandler(r.c.ArticleManagementApp)
 
 	// 公开接口（无需登录）
 	g.GET("/listArticle", h.ListArticle)
@@ -149,6 +150,8 @@ func (r *Router) articleRouter(v1 *gin.RouterGroup) {
 	userGroup := g.Group("/")
 	userGroup.Use(middleware.DefaultUserAuth())
 	{
+		userGroup.GET("/listMyArticles", management.ListMyArticles)
+		userGroup.GET("/getMyArticle", management.GetMyArticle)
 		userGroup.POST("/createArticle", h.CreateArticle)
 		userGroup.POST("/updateArticle", h.UpdateArticle)
 		userGroup.POST("/deleteArticle", h.DeleteArticle)
@@ -158,6 +161,8 @@ func (r *Router) articleRouter(v1 *gin.RouterGroup) {
 	adminGroup := g.Group("/")
 	adminGroup.Use(middleware.DefaultAdminAuth())
 	{
+		adminGroup.GET("/listAdminArticles", management.ListAdminArticles)
+		adminGroup.GET("/getAdminArticle", management.GetAdminArticle)
 		adminGroup.POST("/adminCreateArticle", h.AdminCreateArticle)
 		adminGroup.POST("/adminUpdateArticle", h.AdminUpdateArticle)
 		adminGroup.POST("/adminDeleteArticle", h.AdminDeleteArticle)
