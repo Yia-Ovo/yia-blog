@@ -31,8 +31,8 @@ type Resp struct {
 func WriteResp(ctx *gin.Context, data any, errno common.Errno) {
 	ctx.JSON(http.StatusOK, Resp{
 		Code:   errno.Code,
-		Msg:    errno.Msg,    // 对外提示
-		ErrMsg: errno.ErrMsg, // 内部错误
+		Msg:    errno.Msg, // 对外提示
+		ErrMsg: "",        // 保留兼容字段，内部诊断信息不对外返回。
 		Data:   data,
 	})
 }
