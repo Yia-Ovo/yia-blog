@@ -49,12 +49,7 @@ func InitGorm(conf *config.GlobalConfig) *gorm.DB {
 	// 创建GORM日志适配器
 	gormLogger := gormlogger.New(
 		&zapWriterAdapter{writer: logger.GetWriter()}, // 使用适配器包装你的logger.Writer
-		gormlogger.Config{
-			SlowThreshold:             time.Second,     // 慢SQL阈值
-			LogLevel:                  gormlogger.Info, // 日志级别
-			IgnoreRecordNotFoundError: true,            // 忽略ErrRecordNotFound错误
-			Colorful:                  true,            // 彩色日志
-		},
+		gormLogConfig(conf),
 	)
 
 	// 连接数据库
@@ -77,6 +72,21 @@ func InitGorm(conf *config.GlobalConfig) *gorm.DB {
 	}
 	logger.Info("GORM init success")
 	return db
+}
+
+// gormLogConfig 按 show_sql 开启普通 SQL 日志；始终省略参数，避免日志写入密码或用户正文。
+func gormLogConfig(conf *config.GlobalConfig) gormlogger.Config {
+	level := gormlogger.Warn
+	if conf.Mysql.ShowSql {
+		level = gormlogger.Info
+	}
+	return gormlogger.Config{
+		SlowThreshold:             time.Second,
+		LogLevel:                  level,
+		IgnoreRecordNotFoundError: true,
+		ParameterizedQueries:      true,
+		Colorful:                  conf.Server.Env == "dev" && !conf.Gin.DisableConsoleColor,
+	}
 }
 
 // configureSQLPool 使用配置限制连接总数、空闲数和寿命；合法的 max_idle=0 表示不保留空闲连接。
