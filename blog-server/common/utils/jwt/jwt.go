@@ -13,6 +13,9 @@ import (
 	"blog-server/common"
 	"blog-server/config"
 	"context"
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
 	"strings"
 	"time"
 
@@ -52,6 +55,10 @@ func Init(cfg *config.GlobalConfig) {
 // --------------------------- 生成Token（用户/管理员） ---------------------------
 // GenerateUserToken 生成用户Token（传入 dto.UserBaseDTO）
 func GenerateUserToken(user *dto.UserBaseDTO) (string, error) {
+	tokenID, err := generateTokenID()
+	if err != nil {
+		return "", err
+	}
 	exp := time.Now().Add(tokenExpire)
 	tokenVersion := user.TokenVersion
 	claims := CustomClaims{
@@ -59,6 +66,7 @@ func GenerateUserToken(user *dto.UserBaseDTO) (string, error) {
 			ExpiresAt: jwt.NewNumericDate(exp),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    issuer,
+			ID:        tokenID,
 		},
 		UserID:       user.ID,
 		TokenVersion: &tokenVersion,
@@ -69,6 +77,10 @@ func GenerateUserToken(user *dto.UserBaseDTO) (string, error) {
 
 // GenerateAdminToken 生成管理员Token 传入 AdminBaseDTO
 func GenerateAdminToken(admin *dto.AdminBaseDTO) (string, error) {
+	tokenID, err := generateTokenID()
+	if err != nil {
+		return "", err
+	}
 	exp := time.Now().Add(tokenExpire)
 	tokenVersion := admin.TokenVersion
 	claims := AdminClaims{
@@ -76,12 +88,22 @@ func GenerateAdminToken(admin *dto.AdminBaseDTO) (string, error) {
 			ExpiresAt: jwt.NewNumericDate(exp),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    issuer,
+			ID:        tokenID,
 		},
 		AdminID:      admin.ID,
 		TokenVersion: &tokenVersion,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(adminSecret)
+}
+
+// generateTokenID 区分每次签发，避免同秒重新登录得到已被拉黑的旧令牌。
+func generateTokenID() (string, error) {
+	value := make([]byte, 16)
+	if _, err := rand.Read(value); err != nil {
+		return "", fmt.Errorf("generate token id: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(value), nil
 }
 
 // --------------------------- 解析Token（返回错误码，适配中间件） ---------------------------
