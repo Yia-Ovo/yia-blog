@@ -145,10 +145,12 @@ func (r *Router) articleRouter(v1 *gin.RouterGroup) {
 	g := v1.Group("/article")
 	h := handler.NewArticleHandler(r.c.ArticleApp)
 	management := handler.NewArticleManagementHandler(r.c.ArticleManagementApp)
+	images := handler.NewArticleImageHandler(r.c.ArticleImageApp)
 
 	// 公开接口（无需登录）
 	g.GET("/listArticle", h.ListArticle)
 	g.GET("/getArticleById", h.GetArticleById)
+	g.GET("/images/:name", images.Image)
 
 	// 普通用户：管理自己的文章（用户 token，仅本人）
 	userGroup := g.Group("/")
@@ -156,6 +158,7 @@ func (r *Router) articleRouter(v1 *gin.RouterGroup) {
 	{
 		userGroup.GET("/listMyArticles", management.ListMyArticles)
 		userGroup.GET("/getMyArticle", management.GetMyArticle)
+		userGroup.POST("/uploadImage", images.UploadUser)
 		userGroup.POST("/createArticle", h.CreateArticle)
 		userGroup.POST("/updateArticle", h.UpdateArticle)
 		userGroup.POST("/deleteArticle", h.DeleteArticle)
@@ -167,6 +170,7 @@ func (r *Router) articleRouter(v1 *gin.RouterGroup) {
 	{
 		adminGroup.GET("/listAdminArticles", management.ListAdminArticles)
 		adminGroup.GET("/getAdminArticle", management.GetAdminArticle)
+		adminGroup.POST("/adminUploadImage", images.UploadAdmin)
 		adminGroup.POST("/adminCreateArticle", h.AdminCreateArticle)
 		adminGroup.POST("/adminUpdateArticle", h.AdminUpdateArticle)
 		adminGroup.POST("/adminDeleteArticle", h.AdminDeleteArticle)

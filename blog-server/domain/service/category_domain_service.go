@@ -71,12 +71,8 @@ func (c *CategoryDomainService) CreateCategory(ctx context.Context, categoryDO *
 
 // ListCategoryByPage 分类分页查询：仅参数校验 + 数据库查询
 func (c *CategoryDomainService) ListCategoryByPage(ctx context.Context, query *do.CategoryQuery) ([]do.CategoryDO, int64, error) {
-	// 分页参数合法性校验
-	if query.PageNum <= 0 {
-		query.PageNum = 1
-	}
-	if query.PageSize <= 0 || query.PageSize > 50 {
-		query.PageSize = 10
+	if err := NormalizeCategoryQuery(query); err != nil {
+		return nil, 0, err
 	}
 
 	// 查询数据库
@@ -88,6 +84,20 @@ func (c *CategoryDomainService) ListCategoryByPage(ctx context.Context, query *d
 
 	logger.Info("分页查询分类成功", zap.Int64("total", total))
 	return convert.CategoryModelListToDOList(modelList), total, nil
+}
+
+// NormalizeCategoryQuery 统一数据库查询和缓存键使用的有效分页参数。
+func NormalizeCategoryQuery(query *do.CategoryQuery) error {
+	if query == nil {
+		return common.ParamErr
+	}
+	if query.PageNum <= 0 {
+		query.PageNum = 1
+	}
+	if query.PageSize <= 0 || query.PageSize > 50 {
+		query.PageSize = 10
+	}
+	return nil
 }
 
 // GetCategoryById 根据ID查询分类：仅参数校验 + 数据库查询

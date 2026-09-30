@@ -2,6 +2,8 @@ export type Identity = 'user' | 'admin'
 export type ArticleStatus = 0 | 1 | 2
 export type CommentStatus = 0 | 1 | 2
 
+export interface ArticleImage { url: string; width: number; height: number; content_type?: string }
+
 export interface Profile {
   id: number
   avatar: string

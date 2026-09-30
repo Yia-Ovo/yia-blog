@@ -17,6 +17,8 @@ import (
 	"blog-server/domain/repo"
 	"blog-server/domain/service"
 	"context"
+	"encoding/json"
+	"strconv"
 
 	"go.uber.org/zap"
 )
@@ -24,17 +26,17 @@ import (
 // CategoryAppService 应用服务：仅做流程编排 + 缓存处理
 type CategoryAppService struct {
 	categoryDomainService *service.CategoryDomainService // 领域服务（纯业务）
-	categoryRedisRepo     repo.CategoryRedisRepo         // 缓存仓储（应用层编排）
+	cache                 *readCacheState                // 缓存失败不影响领域写入结果
 }
 
 // NewCategoryAppService 构造函数：依赖外部注入，无强耦合
 func NewCategoryAppService(
 	domainService *service.CategoryDomainService,
-	redisRepo repo.CategoryRedisRepo,
+	redisRepo repo.ReadCacheRepo,
 ) *CategoryAppService {
 	return &CategoryAppService{
 		categoryDomainService: domainService,
-		categoryRedisRepo:     redisRepo,
+		cache:                 newReadCacheState(redisRepo),
 	}
 }
 
@@ -59,6 +61,7 @@ func (s *CategoryAppService) CreateCategory(ctx context.Context, req *dto.Create
 		return err
 	}
 
+	s.cache.invalidate()
 	logger.Info("创建分类成功", zap.String("name", req.Name))
 	return nil
 }
@@ -77,12 +80,25 @@ func (s *CategoryAppService) ListCategoryByPage(ctx context.Context, req *dto.Ca
 		Status:   req.Status,
 	}
 
-	// 调用领域服务
-	categoryDOList, total, err := s.categoryDomainService.ListCategoryByPage(ctx, query)
+	if err := service.NormalizeCategoryQuery(query); err != nil {
+		return nil, err
+	}
+	// 所有筛选条件及归一化后的分页共同组成键，避免不同查询共享列表。
+	key, err := json.Marshal(query)
+	if err != nil {
+		return nil, common.ParamErr
+	}
+	page, err := readThrough(ctx, s.cache, "list:"+string(key), nil, func(ctx context.Context) (categoryCachedPage, error) {
+		items, total, err := s.categoryDomainService.ListCategoryByPage(ctx, query)
+		return categoryCachedPage{Items: items, Total: total}, err
+	}, func(page categoryCachedPage) bool {
+		return page.Total >= 0 && int64(len(page.Items)) <= page.Total && len(page.Items) <= query.PageSize
+	})
 	if err != nil {
 		logger.Error("分页查询分类失败", zap.Error(err))
 		return nil, err
 	}
+	categoryDOList, total := page.Items, page.Total
 
 	// 组装返回
 	respList := make([]map[string]interface{}, 0, len(categoryDOList))
@@ -108,6 +124,11 @@ func (s *CategoryAppService) ListCategoryByPage(ctx context.Context, req *dto.Ca
 	}, nil
 }
 
+type categoryCachedPage struct {
+	Items []do.CategoryDO
+	Total int64
+}
+
 // GetCategoryById 根据ID查询分类详情
 func (s *CategoryAppService) GetCategoryById(ctx context.Context, id uint64) (map[string]interface{}, error) {
 	if id <= 0 {
@@ -115,7 +136,11 @@ func (s *CategoryAppService) GetCategoryById(ctx context.Context, id uint64) (ma
 		return nil, common.ParamErr
 	}
 
-	categoryDO, err := s.categoryDomainService.GetCategoryById(ctx, id)
+	categoryDO, err := readThrough(ctx, s.cache, "detail:"+strconv.FormatUint(id, 10), common.CategoryNotFoundErr, func(ctx context.Context) (*do.CategoryDO, error) {
+		return s.categoryDomainService.GetCategoryById(ctx, id)
+	}, func(value *do.CategoryDO) bool {
+		return value != nil && value.ID == id
+	})
 	if err != nil {
 		logger.Error("查询分类详情失败", zap.Uint64("category_id", id), zap.Error(err))
 		return nil, err
@@ -155,6 +180,7 @@ func (s *CategoryAppService) UpdateCategory(ctx context.Context, id uint64, name
 		return err
 	}
 
+	s.cache.invalidate()
 	logger.Info("更新分类成功", zap.Uint64("id", id))
 	return nil
 }
@@ -172,6 +198,7 @@ func (s *CategoryAppService) DeleteCategory(ctx context.Context, id uint64) erro
 		return err
 	}
 
+	s.cache.invalidate()
 	logger.Info("删除分类成功", zap.Uint64("id", id))
 	return nil
 }

@@ -414,6 +414,19 @@ main:focus { outline: none; }
 .editor-tip { padding: 9px 14px; display: flex; align-items: flex-start; gap: 12px; color: var(--muted); }
 .editor-tip p { font-size: 12px; line-height: 1.9; margin: 0; }
 
+/* 编辑器的本机暂存提示与图片入口。 */
+.draft-recovery-panel { margin: 0 0 22px; padding: 15px 18px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); color: var(--muted-strong); }
+.draft-recovery-message { margin: 0; font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
+.draft-recovery-meta { margin: 6px 0 0; font-size: 11px; line-height: 1.8; color: var(--muted); }
+.draft-recovery-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.draft-recovery-panel[data-status="saved"], .draft-recovery-panel[data-status="idle"], .draft-recovery-panel[data-status="pending"] { padding: 10px 14px; background: transparent; }
+.draft-recovery-panel[data-status="recovery"], .draft-recovery-panel[data-status="conflict"] { border-color: color-mix(in srgb, var(--warning) 35%, var(--border)); }
+.article-image-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding-block: 12px; border-bottom: 1px solid var(--border); }
+.article-image-toolbar > span { font-size: 11px; line-height: 1.8; color: var(--muted); }
+.article-image-toolbar button { font-size: 12px; min-height: 32px; }
+.image-upload-error { margin: 14px 0; }
+.cover-upload-button { width: 100%; margin-bottom: 12px; }
+
 /* 个人资料沿用每日配色，头像预览与服务端的居中裁剪保持一致。 */
 .profile-page > .back-link { margin-bottom: 26px; }
 .profile-panel { max-width: 820px; }

@@ -37,9 +37,10 @@ type GlobalConfig struct {
 	JWT     JWTConfig     `yaml:"jwt"`
 }
 
-// StorageConfig 的目录由部署方设置，空值使用进程工作目录下的 uploads/avatars。
+// StorageConfig 的目录由部署方设置，空值使用进程工作目录下的 uploads 对应资源子目录。
 type StorageConfig struct {
-	AvatarDir string `yaml:"avatar_dir"`
+	ArticleImageDir string `yaml:"article_image_dir"`
+	AvatarDir       string `yaml:"avatar_dir"`
 }
 
 var (

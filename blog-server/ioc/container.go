@@ -13,6 +13,7 @@ package ioc
 import (
 	appSrv "blog-server/app/service"
 	"blog-server/assets"
+	"blog-server/common/consts"
 	"blog-server/config"
 	domainRepo "blog-server/domain/repo"
 	domainSrv "blog-server/domain/service"
@@ -26,6 +27,9 @@ var AppContainer *Container
 
 // Container 真正的DI容器，所有依赖放在结构体里
 type Container struct {
+	ArticleImageRepo        domainRepo.ArticleImageRepo
+	ArticleImageDomain      *domainSrv.ArticleImageDomainService
+	ArticleImageApp         *appSrv.ArticleImageAppService
 	AvatarRepo              domainRepo.AvatarRepo
 	AvatarDomain            *domainSrv.AvatarDomainService
 	AvatarApp               *appSrv.AvatarAppService
@@ -39,6 +43,8 @@ type Container struct {
 	Config *config.GlobalConfig
 	DB     *gorm.DB
 	Redis  *redis.Client
+	// ReadCacheRedis 由容器创建并交给入口关闭，使用独立短超时池隔离鉴权 Redis。
+	ReadCacheRedis *redis.Client
 
 	// Repo 仓储
 	UserRepo      domainRepo.UserMysqlRepo
@@ -46,9 +52,9 @@ type Container struct {
 	AdminRepo     domainRepo.AdminMysqlRepo
 	AdminRedis    domainRepo.AdminRedisRepo
 	CategoryRepo  domainRepo.CategoryMysqlRepo
-	CategoryRedis domainRepo.CategoryRedisRepo
+	CategoryRedis domainRepo.ReadCacheRepo
 	ArticleRepo   domainRepo.ArticleMysqlRepo
-	ArticleRedis  domainRepo.ArticleRedisRepo
+	ArticleRedis  domainRepo.ReadCacheRepo
 	CommentRepo   domainRepo.CommentMysqlRepo
 	CommentRedis  domainRepo.CommentRedisRepo
 
@@ -80,9 +86,10 @@ func NewContainer(
 	conf *config.GlobalConfig,
 ) *Container {
 	c := &Container{
-		Config: conf,
-		DB:     db,
-		Redis:  rdb,
+		Config:         conf,
+		DB:             db,
+		Redis:          rdb,
+		ReadCacheRedis: newReadCacheClient(rdb),
 	}
 
 	// ========== 初始化仓储 ==========
@@ -93,10 +100,10 @@ func NewContainer(
 	c.AdminRedis = infraRepo.NewAdminRedisRepo(rdb, conf)
 
 	c.CategoryRepo = infraRepo.NewCategoryMysqlRepo(db)
-	c.CategoryRedis = infraRepo.NewCategoryRedisRepo(rdb, conf)
+	c.CategoryRedis = infraRepo.NewReadCacheRedisRepo(c.ReadCacheRedis, consts.ReadCacheCategoryNamespace)
 
 	c.ArticleRepo = infraRepo.NewArticleMysqlRepo(db)
-	c.ArticleRedis = infraRepo.NewArticleRedisRepo(rdb, conf)
+	c.ArticleRedis = infraRepo.NewReadCacheRedisRepo(c.ReadCacheRedis, consts.ReadCacheArticleNamespace)
 
 	commentRepo := infraRepo.NewCommentMysqlRepo(db)
 	c.CommentRepo = commentRepo
@@ -110,6 +117,9 @@ func NewContainer(
 	c.AvatarRepo = infraRepo.NewAvatarFileRepo(conf.Storage.AvatarDir)
 	c.AvatarDomain = domainSrv.NewAvatarDomainService(c.AdminDomain, c.UserDomain)
 	c.AvatarApp = appSrv.NewAvatarAppService(c.AvatarDomain, c.AvatarRepo, c.AdminRedis, c.UserRedis)
+	c.ArticleImageRepo = infraRepo.NewArticleImageFileRepo(conf.Storage.ArticleImageDir)
+	c.ArticleImageDomain = domainSrv.NewArticleImageDomainService(c.AdminDomain, c.UserDomain)
+	c.ArticleImageApp = appSrv.NewArticleImageAppService(c.ArticleImageDomain, c.ArticleImageRepo)
 	c.CategoryDomain = domainSrv.NewCategoryDomainService(c.CategoryRepo)
 	c.ArticleDomain = domainSrv.NewArticleDomainService(c.ArticleRepo)
 	c.ArticleManagementDomain = domainSrv.NewArticleManagementDomainService(c.ArticleDomain, c.UserDomain, c.AdminDomain)

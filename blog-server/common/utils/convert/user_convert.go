@@ -24,6 +24,7 @@ func UserModelToDO(m *model.UserModel) *do.UserDO {
 		NickName:     m.NickName,
 		Password:     m.Password,
 		Status:       m.Status,
+		IsDeleted:    m.DeletedAt.Valid,
 		TokenVersion: m.TokenVersion,
 		LastLoginAt:  m.LastLoginAt,
 		Avatar:       m.Avatar,

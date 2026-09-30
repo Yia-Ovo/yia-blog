@@ -1,5 +1,5 @@
 import { request } from './http'
-import type { ArticleDetail, ArticleInput, Category, Comment, CommentReview, Identity, LoginResult, ManagedArticle, ManagedComment, Page, Profile, PublicArticle, Query } from './types'
+import type { ArticleDetail, ArticleImage, ArticleInput, Category, Comment, CommentReview, Identity, LoginResult, ManagedArticle, ManagedComment, Page, Profile, PublicArticle, Query } from './types'
 
 export const authApi = {
   login: (identity: Identity, name: string, password: string) => request<LoginResult>(`/${identity}/login`, {
@@ -16,6 +16,11 @@ export const authApi = {
 }
 
 export const articleApi = {
+  uploadImage: (identity: Identity, file: File, signal?: AbortSignal) => {
+    const body = new FormData()
+    body.append('file', file)
+    return request<ArticleImage>(`/article/${identity === 'admin' ? 'adminUploadImage' : 'uploadImage'}`, { identity, method: 'POST', body, signal, preferServerMessage: true })
+  },
   list: (query: Query, signal?: AbortSignal) => request<Page<PublicArticle>>('/article/listArticle', { query, signal }),
   detail: (id: number, signal?: AbortSignal) => request<ArticleDetail>('/article/getArticleById', { query: { id }, signal }),
   managedList: (identity: Identity, query: Query, signal?: AbortSignal) => request<Page<ManagedArticle>>(`/article/${identity === 'user' ? 'listMyArticles' : 'listAdminArticles'}`, { identity, query, signal }),

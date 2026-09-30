@@ -44,6 +44,7 @@ func main() {
 
 	// 3. 初始化 IOC 容器（自动注入所有依赖）
 	c := ioc.NewContainer(db, rdb, conf)
+	defer c.ReadCacheRedis.Close()
 	ioc.AppContainer = c // 赋值给全局访问点
 
 	// 4. 初始化路由（只传容器）

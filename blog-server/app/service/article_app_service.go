@@ -18,6 +18,7 @@ import (
 	"blog-server/domain/repo"
 	"blog-server/domain/service"
 	"context"
+	"strconv"
 
 	"go.uber.org/zap"
 )
@@ -25,7 +26,7 @@ import (
 // ArticleAppService 应用服务：仅做流程编排 + 缓存处理
 type ArticleAppService struct {
 	articleDomainService *service.ArticleDomainService // 领域服务（纯业务）
-	articleRedisRepo     repo.ArticleRedisRepo         // 缓存仓储（应用层编排）
+	cache                *readCacheState               // 公开正文缓存，不包含作者资料
 	userDomainService    *service.UserDomainService    // 关联文章作者（普通用户）信息
 	adminDomainService   *service.AdminDomainService   // 关联文章作者（管理员）信息
 }
@@ -33,13 +34,13 @@ type ArticleAppService struct {
 // NewArticleAppService 构造函数：依赖外部注入，无强耦合
 func NewArticleAppService(
 	domainService *service.ArticleDomainService,
-	redisRepo repo.ArticleRedisRepo,
+	redisRepo repo.ReadCacheRepo,
 	userDomainService *service.UserDomainService,
 	adminDomainService *service.AdminDomainService,
 ) *ArticleAppService {
 	return &ArticleAppService{
 		articleDomainService: domainService,
-		articleRedisRepo:     redisRepo,
+		cache:                newReadCacheState(redisRepo),
 		userDomainService:    userDomainService,
 		adminDomainService:   adminDomainService,
 	}
@@ -76,6 +77,7 @@ func (s *ArticleAppService) CreateArticle(ctx context.Context, userID uint64, re
 		return err
 	}
 
+	s.cache.invalidate()
 	logger.Info("创建文章成功", zap.String("title", req.Title))
 	return nil
 }
@@ -110,6 +112,7 @@ func (s *ArticleAppService) AdminCreateArticle(ctx context.Context, adminID uint
 		return err
 	}
 
+	s.cache.invalidate()
 	logger.Info("管理员创建文章成功", zap.String("title", req.Title), zap.Uint64("admin_id", adminID))
 	return nil
 }
@@ -178,9 +181,15 @@ func (s *ArticleAppService) GetArticleById(ctx context.Context, id uint64) (map[
 		return nil, common.ParamErr
 	}
 
-	articleDO, err := s.articleDomainService.GetPublicArticleByID(ctx, id)
+	articleDO, err := readThrough(ctx, s.cache, "detail:"+strconv.FormatUint(id, 10), common.ArticleNotFoundErr, func(ctx context.Context) (*do.ArticleDO, error) {
+		return s.articleDomainService.GetPublicArticleByID(ctx, id)
+	}, func(value *do.ArticleDO) bool { return value != nil && value.ID == id })
 	if err != nil {
 		logger.Error("查询文章详情失败", zap.Uint64("id", id), zap.Error(err))
+		return nil, err
+	}
+	// 缓存可能在其他实例失效失败后仍存在，公开资格始终由当前数据库状态决定。
+	if err := s.articleDomainService.EnsurePublicArticle(ctx, id); err != nil {
 		return nil, err
 	}
 
@@ -223,6 +232,7 @@ func (s *ArticleAppService) UpdateArticle(ctx context.Context, userID uint64, re
 		return err
 	}
 
+	s.cache.invalidate()
 	logger.Info("更新文章成功", zap.Uint64("id", req.ID), zap.Uint64("user_id", userID))
 	return nil
 }
@@ -242,6 +252,7 @@ func (s *ArticleAppService) AdminUpdateArticle(ctx context.Context, adminID uint
 		return err
 	}
 
+	s.cache.invalidate()
 	logger.Info("管理员更新文章成功", zap.Uint64("id", req.ID), zap.Uint64("admin_id", adminID))
 	return nil
 }
@@ -259,6 +270,7 @@ func (s *ArticleAppService) DeleteArticle(ctx context.Context, userID uint64, id
 		return err
 	}
 
+	s.cache.invalidate()
 	logger.Info("删除文章成功", zap.Uint64("id", id), zap.Uint64("user_id", userID))
 	return nil
 }
@@ -276,6 +288,7 @@ func (s *ArticleAppService) AdminDeleteArticle(ctx context.Context, adminID uint
 		return err
 	}
 
+	s.cache.invalidate()
 	logger.Info("管理员删除文章成功", zap.Uint64("id", id), zap.Uint64("admin_id", adminID))
 	return nil
 }
