@@ -51,7 +51,7 @@ export default function AuthView({ identity, register = false }: { identity: Ide
   return <div className="container auth-page">
     <section className="auth-story">
       <p className="eyebrow">A SPACE FOR YOUR IDEAS</p><h1>每一次记录，<br />都<span className="serif-accent">算数</span>。</h1><p>把今天想通的事留下来，<br />明天就能走得更远一点。</p>
-      <div className="auth-illustration" aria-hidden="true"><div className="paper-sheet"><span className="paper-title">A little note.</span><i /><i /><i /><span className="paper-sign">y.</span></div><div className="paper-leaf">✳</div></div>
+      <div className="auth-illustration" aria-hidden="true"><span>A little space.<br />A world of ideas.</span></div>
       <span className="auth-footnote">WRITE SOMETHING WORTH REMEMBERING.</span>
     </section>
     <section className="auth-form-panel">

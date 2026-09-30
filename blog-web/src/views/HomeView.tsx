@@ -29,25 +29,18 @@ export default function HomeView() {
   }
 
   return <div className="container home-page">
+    <div className="journal-heading"><div><p className="eyebrow">A PERSONAL CORNER OF THE INTERNET</p><h2>记录，思考，再出发。</h2></div><span>YIA'S JOURNAL <span aria-hidden="true">✳</span></span></div>
     <section className="hero" aria-labelledby="hero-title">
       <div className="hero-copy">
+        <span className="hero-signature">A little space for big ideas.</span>
         <p className="eyebrow"><span className="tiny-dot" /> YIA'S JOURNAL</p>
         <h1 id="hero-title">把想法写下来，<br />把问题<span className="serif-accent">想明白</span>。</h1>
         <p className="hero-description">关于 Go、工程实践，也关于一路上的发现。<br className="desktop-break" />记录走过的弯路，留下一点向前的痕迹。</p>
         <div className="hero-actions"><a className="button primary" href="#articles">开始阅读 <UiIcon name="arrow" size={18} /></a><Link className="text-link" to="/write/new">写下新的想法 <UiIcon name="edit" size={16} /></Link></div>
         <p className="hero-caption"><span /> 保持好奇，持续构建</p>
       </div>
-      <div className="hero-art" aria-hidden="true">
-        <div className="art-orbit orbit-one" /><div className="art-orbit orbit-two" />
-        <span className="art-star star-one">✳</span><span className="art-star star-two">+</span>
-        <div className="code-note">
-          <div className="note-bar"><span /><span /><span /><small>ideas.go</small></div>
-          <div className="note-code"><span className="code-muted">// one step at a time</span><br /><span className="code-keyword">func</span>{' keepLearning() {'}<br />&nbsp;&nbsp;write()<br />&nbsp;&nbsp;reflect()<br />&nbsp;&nbsp;<span className="code-green">grow()</span><br />{'}'}</div>
-          <div className="note-corner" />
-        </div>
-        <div className="art-sticker"><UiIcon name="book" size={24} /><span>从一个问题开始</span></div>
-        <span className="art-label">WRITE · LEARN · REPEAT</span>
-      </div>
+      <div className="hero-art" aria-hidden="true" />
+      <span className="hero-art-label" aria-hidden="true">THE QUIET HOURS<br /><small>write · learn · repeat</small></span>
     </section>
 
     <div id="articles" className="content-layout">

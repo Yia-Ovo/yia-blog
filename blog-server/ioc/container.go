@@ -12,6 +12,7 @@ package ioc
 
 import (
 	appSrv "blog-server/app/service"
+	"blog-server/assets"
 	"blog-server/config"
 	domainRepo "blog-server/domain/repo"
 	domainSrv "blog-server/domain/service"
@@ -25,6 +26,9 @@ var AppContainer *Container
 
 // Container 真正的DI容器，所有依赖放在结构体里
 type Container struct {
+	AppearanceRepo          domainRepo.AppearanceRepo
+	AppearanceDomain        *domainSrv.AppearanceDomainService
+	AppearanceApp           *appSrv.AppearanceAppService
 	CommentReviewRepo       domainRepo.CommentReviewRepo
 	CommentModerationDomain *domainSrv.CommentModerationDomainService
 	CommentModerationApp    *appSrv.CommentModerationAppService
@@ -114,5 +118,8 @@ func NewContainer(
 
 	c.CommentModerationDomain = domainSrv.NewCommentModerationDomainService(c.CommentDomain, c.AdminDomain, c.CommentReviewRepo)
 	c.CommentModerationApp = appSrv.NewCommentModerationAppService(c.CommentModerationDomain, c.CommentRedis)
+	c.AppearanceRepo = infraRepo.NewAppearanceFileRepo(assets.DailyArtwork)
+	c.AppearanceDomain = domainSrv.NewAppearanceDomainService(c.AppearanceRepo)
+	c.AppearanceApp = appSrv.NewAppearanceAppService(c.AppearanceDomain)
 	return c
 }

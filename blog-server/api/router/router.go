@@ -72,6 +72,7 @@ func (r *Router) route(rg *gin.RouterGroup) {
 		r.categoryRouter(v1)
 		r.articleRouter(v1)
 		r.commentRouter(v1)
+		r.appearanceRouter(v1)
 	}
 }
 
