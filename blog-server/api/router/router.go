@@ -73,6 +73,7 @@ func (r *Router) route(rg *gin.RouterGroup) {
 		r.articleRouter(v1)
 		r.commentRouter(v1)
 		r.appearanceRouter(v1)
+		r.avatarRouter(v1)
 	}
 }
 
@@ -91,6 +92,7 @@ func (r *Router) userRouter(v1 *gin.RouterGroup) {
 		g.POST("/updatePWD", h.UpdatePWD)
 		g.POST("/logout", h.Logout)
 		g.POST("/updateUserInfo", h.UpdateUserInfo) // 改成 POST + 登录后
+		g.POST("/uploadAvatar", handler.NewAvatarHandler(r.c.AvatarApp).UploadUser)
 	}
 }
 
@@ -109,6 +111,7 @@ func (r *Router) adminRouter(v1 *gin.RouterGroup) {
 		adminAuth.POST("/updatePWD", h.UpdatePWD)
 		adminAuth.POST("/logout", h.Logout)
 		adminAuth.POST("/updateAdminInfo", h.UpdateAdminInfo)
+		adminAuth.POST("/uploadAvatar", handler.NewAvatarHandler(r.c.AvatarApp).UploadAdmin)
 	}
 
 	// 3. 超管专属接口（双中间件：登录 + 超管角色）

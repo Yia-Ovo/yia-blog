@@ -13,6 +13,7 @@ import MarkdownBody from '../components/MarkdownBody'
 import Pagination from '../components/Pagination'
 import StatePanel from '../components/StatePanel'
 import UiIcon from '../components/UiIcon'
+import Avatar from '../components/Avatar'
 import NotFoundView from './NotFoundView'
 
 export default function ArticleView() {
@@ -53,10 +54,6 @@ function ArticlePage({ id }: { id: number }) {
         <ArticleComments key={`${id}:${sessions.user?.token || ''}`} article={value} />
       </>}
   </div>
-}
-
-function Avatar({ url, name }: { url?: string; name?: string }) {
-  return <span className="avatar">{safeImageURL(url) ? <img src={safeImageURL(url)} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span>{(name || 'Y').slice(0, 1)}</span>}</span>
 }
 
 function ArticleComments({ article }: { article: ArticleDetail }) {

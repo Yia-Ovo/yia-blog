@@ -7,6 +7,11 @@ export const authApi = {
   }),
   register: (nick_name: string, password: string) => request<null>('/user/register', { method: 'POST', body: { nick_name, password } }),
   profile: (identity: Identity, signal?: AbortSignal) => request<Profile>(`/${identity}/getInfo`, { identity, signal }),
+  uploadAvatar: (identity: Identity, file: File) => {
+    const body = new FormData()
+    body.append('file', file)
+    return request<{ avatar: string }>(`/${identity}/uploadAvatar`, { identity, method: 'POST', body, preferServerMessage: true })
+  },
   logout: (identity: Identity) => request<null>(`/${identity}/logout`, { identity, method: 'POST' }),
 }
 

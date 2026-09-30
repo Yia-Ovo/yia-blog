@@ -19,6 +19,7 @@ import (
 	"blog-server/config"
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -49,7 +50,7 @@ func NewApp(router *router.Router) *App {
 	router.Register(engine)
 
 	// 4. 构建http服务器
-	addr := fmt.Sprintf(":%d", globalConf.Server.HttpPort)
+	addr := net.JoinHostPort(globalConf.Server.HttpHost, fmt.Sprint(globalConf.Server.HttpPort))
 	httpSrv := &http.Server{
 		Addr:    addr,
 		Handler: engine,

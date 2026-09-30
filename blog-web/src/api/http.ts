@@ -29,6 +29,7 @@ export interface RequestOptions {
   query?: Query
   identity?: Identity
   signal?: AbortSignal
+  preferServerMessage?: boolean
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -40,7 +41,9 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const token = options.identity ? sessions[options.identity]?.token : undefined
   if (options.identity && !token) throw new ApiError(11009, messages[11009]!)
   if (options.identity && token) headers[options.identity === 'user' ? 'Authorization' : 'Admin-Authorization'] = `Bearer ${token}`
-  if (options.body !== undefined) headers['Content-Type'] = 'application/json'
+  const multipart = options.body instanceof FormData
+  // FormData 的 boundary 必须由浏览器随请求体生成。
+  if (options.body !== undefined && !multipart) headers['Content-Type'] = 'application/json'
   const controller = new AbortController()
   const abort = () => controller.abort()
   options.signal?.addEventListener('abort', abort, { once: true })
@@ -54,7 +57,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     const query = params.toString()
     const response = await fetch(`${base}${path}${query ? `?${query}` : ''}`, {
       method: options.method || 'GET', headers, credentials: 'omit', signal: controller.signal,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: multipart ? options.body as FormData : options.body === undefined ? undefined : JSON.stringify(options.body),
     })
     if (!response.ok) {
       invalidate(response.status)
@@ -68,7 +71,8 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     if (envelope.code !== 200) {
       invalidate(envelope.code)
       const message = 'msg' in envelope && typeof envelope.msg === 'string' ? envelope.msg : ''
-      throw new ApiError(envelope.code, messages[envelope.code] || message || '操作未完成，请稍后重试。')
+      const publicMessage = options.preferServerMessage && envelope.code === 400 ? message : ''
+      throw new ApiError(envelope.code, publicMessage || messages[envelope.code] || message || '操作未完成，请稍后重试。')
     }
     return envelope.data as T
   } catch (error) {

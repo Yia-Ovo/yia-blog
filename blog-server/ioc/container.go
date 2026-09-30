@@ -26,6 +26,9 @@ var AppContainer *Container
 
 // Container 真正的DI容器，所有依赖放在结构体里
 type Container struct {
+	AvatarRepo              domainRepo.AvatarRepo
+	AvatarDomain            *domainSrv.AvatarDomainService
+	AvatarApp               *appSrv.AvatarAppService
 	AppearanceRepo          domainRepo.AppearanceRepo
 	AppearanceDomain        *domainSrv.AppearanceDomainService
 	AppearanceApp           *appSrv.AppearanceAppService
@@ -104,6 +107,9 @@ func NewContainer(
 	c.CommentDomain = domainSrv.NewCommentDomainService(c.CommentRepo, c.ArticleRepo)
 	c.AdminDomain = domainSrv.NewAdminDomainService(c.AdminRepo)
 	c.UserDomain = domainSrv.NewUserDomainService(c.UserRepo)
+	c.AvatarRepo = infraRepo.NewAvatarFileRepo(conf.Storage.AvatarDir)
+	c.AvatarDomain = domainSrv.NewAvatarDomainService(c.AdminDomain, c.UserDomain)
+	c.AvatarApp = appSrv.NewAvatarAppService(c.AvatarDomain, c.AvatarRepo, c.AdminRedis, c.UserRedis)
 	c.CategoryDomain = domainSrv.NewCategoryDomainService(c.CategoryRepo)
 	c.ArticleDomain = domainSrv.NewArticleDomainService(c.ArticleRepo)
 	c.ArticleManagementDomain = domainSrv.NewArticleManagementDomainService(c.ArticleDomain, c.UserDomain, c.AdminDomain)

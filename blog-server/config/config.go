@@ -28,12 +28,18 @@ const (
 )
 
 type GlobalConfig struct {
-	Server ServerConfig `yaml:"server"` // 服务器基础配置
-	Gin    GinConfig    `yaml:"gin"`    // Gin 专属配置
-	Mysql  *MysqlConfig `yaml:"mysql"`
-	Redis  RedisConfig  `yaml:"redis"`
-	Logger LoggerConfig `yaml:"logger"`
-	JWT    JWTConfig    `yaml:"jwt"`
+	Storage StorageConfig `yaml:"storage"` // 可写资源目录，与构建产物分离。
+	Server  ServerConfig  `yaml:"server"`  // 服务器基础配置
+	Gin     GinConfig     `yaml:"gin"`     // Gin 专属配置
+	Mysql   *MysqlConfig  `yaml:"mysql"`
+	Redis   RedisConfig   `yaml:"redis"`
+	Logger  LoggerConfig  `yaml:"logger"`
+	JWT     JWTConfig     `yaml:"jwt"`
+}
+
+// StorageConfig 的目录由部署方设置，空值使用进程工作目录下的 uploads/avatars。
+type StorageConfig struct {
+	AvatarDir string `yaml:"avatar_dir"`
 }
 
 var (
@@ -59,6 +65,7 @@ type JWTConfig struct {
 }
 
 type ServerConfig struct {
+	HttpHost        string        `yaml:"http_host"`        // 监听地址；空值沿用全部网卡，代理部署时设为 127.0.0.1。
 	HttpPort        int           `yaml:"http_port"`        // HTTP端口
 	Env             string        `yaml:"env"`              // 运行环境
 	EnablePprof     bool          `yaml:"enable_pprof"`     // 是否启用性能分析

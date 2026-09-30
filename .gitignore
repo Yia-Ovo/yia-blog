@@ -7,3 +7,9 @@ blog-server/.env
 # Runtime outputs
 logs/
 blog-server/logs/
+
+# User-uploaded images are runtime data, backed up separately.
+blog-server/uploads/
+
+# Local build and verification artifacts
+/.review-commit-prep/
