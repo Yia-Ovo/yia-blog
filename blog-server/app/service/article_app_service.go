@@ -133,12 +133,12 @@ func (s *ArticleAppService) ListArticleByPage(ctx context.Context, req *dto.Arti
 		IsTop:      req.IsTop,
 	}
 
-	// 调用领域服务
-	articleDOList, total, err := s.articleDomainService.ListPublicArticleByPage(ctx, query)
+	page, err := s.readPublicArticlePage(ctx, query)
 	if err != nil {
 		logger.Error("分页查询文章失败", zap.Error(err))
 		return nil, err
 	}
+	articleDOList, total := page.Items, page.Total
 
 	// 组装返回
 	authorMemo := make(map[authorRef]*dto.AuthorInfo) // 同页去重，避免同一作者多篇文章重复查询
@@ -339,11 +339,11 @@ func (s *ArticleAppService) resolveAuthor(ctx context.Context, userID, adminID u
 			logger.Warn("加载文章作者信息失败（管理员）", zap.Uint64("admin_id", adminID), zap.Error(err))
 			return nil
 		}
+		// Remark 是后台内部备注，不能作为公开作者签名输出。
 		return &dto.AuthorInfo{
-			Type:      consts.AuthorTypeAdmin,
-			Name:      adminDO.AdminName,
-			Avatar:    adminDO.Avatar,
-			Signature: adminDO.Remark,
+			Type:   consts.AuthorTypeAdmin,
+			Name:   adminDO.AdminName,
+			Avatar: adminDO.Avatar,
 		}
 	default:
 		return nil

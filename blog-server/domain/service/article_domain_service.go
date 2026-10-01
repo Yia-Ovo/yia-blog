@@ -90,25 +90,16 @@ func (a *ArticleDomainService) CreateArticle(ctx context.Context, articleDO *do.
 
 // ListPublicArticleByPage 公开列表强制限定已发布状态，客户端不能扩大可见范围。
 func (a *ArticleDomainService) ListPublicArticleByPage(ctx context.Context, query *do.ArticleQuery) ([]do.ArticleDO, int64, error) {
-	if query == nil {
-		return nil, 0, common.ParamErr
+	if err := NormalizePublicArticleQuery(query); err != nil {
+		return nil, 0, err
 	}
-	published := consts.ArticleStatusPublished
-	query.Status = &published
 	return a.ListArticleByPage(ctx, query)
 }
 
 // ListArticleByPage 内部文章分页查询，调用方负责选择公开或管理用例。
 func (a *ArticleDomainService) ListArticleByPage(ctx context.Context, query *do.ArticleQuery) ([]do.ArticleDO, int64, error) {
-	if query == nil {
-		return nil, 0, common.ParamErr
-	}
-	// 分页参数合法性校验
-	if query.PageNum < 1 {
-		query.PageNum = 1
-	}
-	if query.PageSize < 1 || query.PageSize > 100 {
-		query.PageSize = 10
+	if err := NormalizeArticleQuery(query); err != nil {
+		return nil, 0, err
 	}
 
 	// 直接查询数据库（缓存逻辑在应用层）

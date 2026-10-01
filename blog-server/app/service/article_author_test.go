@@ -67,9 +67,12 @@ func TestResolveAuthor_Admin(t *testing.T) {
 	if got == nil {
 		t.Fatal("期望返回管理员作者，实际为 nil")
 	}
-	// 管理员作者：Name 取 AdminName，Signature 取 Remark
-	if got.Type != consts.AuthorTypeAdmin || got.Name != "管理员A" || got.Signature != "站点维护" {
+	// 管理员名称和头像仍公开，内部备注不能投影到签名。
+	if got.Type != consts.AuthorTypeAdmin || got.Name != "管理员A" || got.Avatar != "http://a/3.png" || got.Signature != "" {
 		t.Fatalf("管理员作者信息映射错误: %+v", got)
+	}
+	if aRepo.admin.Remark != "站点维护" {
+		t.Fatal("公开投影不应修改后台备注")
 	}
 }
 

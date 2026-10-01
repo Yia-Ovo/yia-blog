@@ -26,6 +26,8 @@ type articleMysqlRepo struct {
 	db *gorm.DB
 }
 
+const articlePageOrder = "sort ASC, publish_at DESC, id DESC"
+
 func NewArticleMysqlRepo(db *gorm.DB) *articleMysqlRepo {
 	return &articleMysqlRepo{db: db}
 }
@@ -44,10 +46,37 @@ func (a *articleMysqlRepo) ListArticleByPage(ctx context.Context, query *do.Arti
 	var (
 		list  []*model.ArticleModel
 		total int64
-		db    = a.db.WithContext(ctx).Model(&model.ArticleModel{})
+		db    = articleQueryScope(a.db.WithContext(ctx), query)
 	)
 
-	// 1. 拼接查询条件
+	// 2. 查询总条数
+	if err := db.Count(&total).Error; err != nil {
+		logger.Error("[MYSQL] 文章分页查询统计失败", zap.Any("query", query), zap.Error(err))
+		return nil, 0, err
+	}
+	if total == 0 {
+		return []*model.ArticleModel{}, 0, nil
+	}
+
+	// 3. 分页查询
+	offset := (query.PageNum - 1) * query.PageSize
+	err := db.
+		Order(articlePageOrder).
+		Limit(query.PageSize).
+		Offset(offset).
+		Find(&list).Error
+
+	if err != nil {
+		logger.Error("[MYSQL] 文章分页查询失败", zap.Any("query", query), zap.Error(err))
+		return nil, 0, err
+	}
+
+	return list, total, nil
+}
+
+// articleQueryScope 让完整列表与轻量分页核对复用筛选和软删除范围，避免两者随维护发生偏移。
+func articleQueryScope(db *gorm.DB, query *do.ArticleQuery) *gorm.DB {
+	db = db.Model(&model.ArticleModel{})
 	if query.Title != "" {
 		db = db.Where("title LIKE ?", "%"+query.Title+"%")
 	}
@@ -63,30 +92,7 @@ func (a *articleMysqlRepo) ListArticleByPage(ctx context.Context, query *do.Arti
 	if query.UserID != nil {
 		db = db.Where("user_id = ? AND admin_id = ?", *query.UserID, 0)
 	}
-
-	// 2. 查询总条数
-	if err := db.Count(&total).Error; err != nil {
-		logger.Error("[MYSQL] 文章分页查询统计失败", zap.Any("query", query), zap.Error(err))
-		return nil, 0, err
-	}
-	if total == 0 {
-		return []*model.ArticleModel{}, 0, nil
-	}
-
-	// 3. 分页查询
-	offset := (query.PageNum - 1) * query.PageSize
-	err := db.
-		Order("sort ASC, publish_at DESC, id DESC").
-		Limit(query.PageSize).
-		Offset(offset).
-		Find(&list).Error
-
-	if err != nil {
-		logger.Error("[MYSQL] 文章分页查询失败", zap.Any("query", query), zap.Error(err))
-		return nil, 0, err
-	}
-
-	return list, total, nil
+	return db
 }
 
 // --------------------- 3. 根据ID查询文章 ---------------------

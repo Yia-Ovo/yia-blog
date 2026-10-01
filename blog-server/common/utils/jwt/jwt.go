@@ -107,11 +107,11 @@ func generateTokenID() (string, error) {
 }
 
 // --------------------------- 解析Token（返回错误码，适配中间件） ---------------------------
-// ParseUserToken 解析用户Token
+// ParseUserToken 解析用户Token，只接受签发端使用的 HS256，避免由令牌头选择其他算法。
 func ParseUserToken(tokenStr string) (*CustomClaims, common.Errno) {
 	token, err := jwt.ParseWithClaims(tokenStr, &CustomClaims{}, func(t *jwt.Token) (any, error) {
 		return userSecret, nil
-	})
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil || token == nil {
 		return nil, common.AuthErr.WithMsg("Token解析失败")
 	}
@@ -122,11 +122,11 @@ func ParseUserToken(tokenStr string) (*CustomClaims, common.Errno) {
 	return claims, common.OK
 }
 
-// ParseAdminToken 解析管理员Token
+// ParseAdminToken 解析管理员Token，只接受签发端使用的 HS256，避免由令牌头选择其他算法。
 func ParseAdminToken(tokenStr string) (*AdminClaims, common.Errno) {
 	token, err := jwt.ParseWithClaims(tokenStr, &AdminClaims{}, func(t *jwt.Token) (any, error) {
 		return adminSecret, nil
-	})
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil || token == nil {
 		return nil, common.AuthErr.WithMsg("管理员Token解析失败")
 	}

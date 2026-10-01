@@ -68,5 +68,5 @@ type AuthorInfo struct {
 	Type      string `json:"type"`      // 作者类型：user-普通用户，admin-管理员
 	Name      string `json:"name"`      // 作者名（用户昵称 / 管理员名）
 	Avatar    string `json:"avatar"`    // 头像URL
-	Signature string `json:"signature"` // 简介/签名（用户签名 / 管理员备注）
+	Signature string `json:"signature"` // 用户公开签名；管理员为空，不输出内部备注。
 }
