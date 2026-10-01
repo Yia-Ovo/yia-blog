@@ -37,5 +37,12 @@ export function formatDate(value?: string | null): string {
 }
 
 export function safeNext(value: unknown, fallback: string): string {
-  return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') && !/[\\\u0000-\u001f\u007f]/.test(value) && !/^\/(admin\/)?login(?:[/?#]|$)/i.test(value) ? value : fallback
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || /[\\\u0000-\u001f\u007f]/.test(value)) return fallback
+  try {
+    const target = new URL(value, 'https://yia.invalid')
+    const path = decodeURIComponent(target.pathname)
+    // 登录与注册页不能作为登录后的目的地；先规范化，避免绕回当前账号卡片。
+    if (path.startsWith('//') || /[\\\u0000-\u001f\u007f]/.test(path) || /^\/(?:(?:admin\/)?login|register)(?:[/?#]|$)/i.test(path)) return fallback
+    return target.pathname + target.search + target.hash
+  } catch { return fallback }
 }

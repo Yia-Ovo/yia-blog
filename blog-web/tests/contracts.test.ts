@@ -71,6 +71,13 @@ describe('API contract boundaries', () => {
 it('keeps post-login redirects inside the application', () => {
   for (const value of ['https://evil.example', '//evil.example', '/\\evil.example', '/\n/evil.example', '/\t/evil.example', '/login?next=/admin', '/admin/login', '/LOGIN']) expect(safeNext(value, '/me/articles')).toBe('/me/articles')
   expect(safeNext('/write/12', '/')).toBe('/write/12')
+  expect(safeNext('/articles/42?page=2&query=hello%20world#comments', '/')).toBe('/articles/42?page=2&query=hello%20world#comments')
+})
+
+it('excludes authentication destinations after path normalization', () => {
+  for (const value of ['/register', '/register?next=/articles/42', '/REGISTER/', '/%6Cogin', '/admin/%6Cogin', '/articles/../login', '/admin/../register', '/%72egister#form']) {
+    expect(safeNext(value, '/me/articles'), value).toBe('/me/articles')
+  }
 })
 
 it('validates UTF-8 title bytes and safe numeric fields without dropping legal zeros', () => {

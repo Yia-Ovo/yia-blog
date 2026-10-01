@@ -271,6 +271,10 @@ main:focus { outline: none; }
 .auth-form-panel > .muted { font-size: 13px; line-height: 1.9; margin-bottom: 29px; }
 .auth-switch { text-align: center; color: var(--muted); font-size: 12px; margin: 22px 0; }
 .auth-switch a { color: var(--accent-strong); margin-left: 6px; }
+.auth-session-card { display: flex; align-items: center; gap: 14px; padding: 18px; margin: 24px 0; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-raised); }
+.auth-session-card > div { min-width: 0; }
+.auth-session-card > div > strong { display: block; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
+.auth-session-card > div > span { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; }
 .auth-divider { height: 1px; background: var(--border); margin: 26px 0 20px; }
 .auth-form-panel > .subtle-link { display: flex; justify-content: space-between; }
 .not-found { padding: 110px 0; text-align: center; }
@@ -398,6 +402,8 @@ main:focus { outline: none; }
 .editor-mode-tabs button.active { color: var(--accent-strong); border-bottom-color: var(--accent); }
 .editor-mode-tabs span { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-left: auto; }
 .content-input { display: block; width: 100%; border: 0; background: transparent; padding: 24px 0; font-family: var(--mono), var(--sans); font-size: 14px; line-height: 2; min-height: 550px; }
+.content-input::placeholder { font-family: var(--sans); transition: opacity 160ms ease-out; }
+.content-input:focus::placeholder { opacity: 0; }
 .editor-preview { min-height: 550px; padding: 20px 0; }
 .editor-preview > .muted { font-size: 13px; }
 .editor-paper-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--border); padding: 16px 0; color: var(--muted); font-size: 10px; }
@@ -609,5 +615,5 @@ main:focus { outline: none; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .page-transition > * { animation: none; }
-  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  *, *::before, *::after, .content-input::placeholder { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }

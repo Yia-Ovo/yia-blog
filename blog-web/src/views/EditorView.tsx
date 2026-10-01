@@ -148,7 +148,7 @@ function ArticleEditor({ identity, accountId, id, initial }: { identity: Identit
         <section className="editor-paper">
           <label className="sr-only" htmlFor="article-title">文章标题</label><input id="article-title" value={form.title} onChange={(event) => setField('title', event.target.value)} className="title-input" required maxLength={128} placeholder="给这篇记录起个名字…" />
           <label className="summary-label" htmlFor="article-summary">摘要 <span>· 可选，帮助读者快速了解内容</span></label><textarea id="article-summary" value={form.summary} onChange={(event) => setField('summary', event.target.value)} className="summary-input" rows={2} maxLength={512} placeholder="用一两句话介绍这篇文章。" />
-          <div className="editor-mode-tabs"><button type="button" className={!preview ? 'active' : ''} aria-pressed={!preview} onClick={() => setPreview(false)}><UiIcon name="edit" size={16} />编辑</button><button type="button" className={preview ? 'active' : ''} aria-pressed={preview} onClick={() => setPreview(true)}><UiIcon name="eye" size={17} />预览</button><span>Markdown</span></div>
+          <div className="editor-mode-tabs"><button type="button" className={!preview ? 'active' : ''} aria-pressed={!preview} onClick={() => setPreview(false)}><UiIcon name="edit" size={16} />编辑</button><button type="button" className={preview ? 'active' : ''} aria-pressed={preview} onClick={() => setPreview(true)}><UiIcon name="eye" size={17} />预览</button><span id="article-format-hint">支持 Markdown</span></div>
           <div className="article-image-toolbar">
             <button type="button" className="text-link link-button" disabled={images.uploading || draftPending || !sessions[identity]} onClick={() => bodyImageInput.current?.click()}><UiIcon name="plus" size={16} />插入图片</button>
             <input ref={bodyImageInput} className="sr-only" tabIndex={-1} aria-label="选择正文图片" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" disabled={images.uploading || draftPending || !sessions[identity]} onChange={(event) => { uploadBody(Array.from(event.currentTarget.files || [])); event.currentTarget.value = '' }} />
@@ -156,14 +156,14 @@ function ArticleEditor({ identity, accountId, id, initial }: { identity: Identit
           </div>
           {images.error && <p className="form-error image-upload-error" role="alert">{images.error}</p>}
           {preview ? <div className="editor-preview">{form.content.trim() ? <MarkdownBody source={form.content} /> : <p className="muted">写下正文后，就可以在这里查看排版。</p>}</div>
-            : <><label className="sr-only" htmlFor="article-content">文章正文（Markdown）</label><textarea ref={contentInput} id="article-content" onPaste={(event) => {
+            : <><label className="sr-only" htmlFor="article-content">文章正文（Markdown）</label><textarea ref={contentInput} id="article-content" aria-describedby="article-format-hint" onPaste={(event) => {
               const files = Array.from(event.clipboardData.files)
               if (files.length) { event.preventDefault(); uploadBody(files) }
             }} onDragOver={(event) => { if (event.dataTransfer.types.includes('Files')) event.preventDefault() }}
             onDrop={(event) => {
               const files = Array.from(event.dataTransfer.files)
               if (files.length) { event.preventDefault(); uploadBody(files) }
-            }} value={form.content} onChange={(event) => setField('content', event.target.value)} className="content-input" rows={23} placeholder={'从一个问题、一段经历，或一行代码开始。\n\n支持 Markdown，例如：\n## 一个小标题\n\n写下你的正文…'} spellCheck={false} /></>}
+            }} value={form.content} onChange={(event) => setField('content', event.target.value)} className="content-input" rows={23} placeholder="写下你的正文…" spellCheck={false} /></>}
           <div className="editor-paper-footer"><span>内容由你保存后写入博客。</span><span>{form.content.length} 字符</span></div>
         </section>
         <aside className="editor-settings">

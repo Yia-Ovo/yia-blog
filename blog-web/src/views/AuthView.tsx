@@ -7,9 +7,10 @@ import type { Identity } from '../api/types'
 import { useMutation } from '../hooks/useMutation'
 import { useSessions } from '../hooks/useSessions'
 import { safeNext } from '../lib/article'
-import { saveSession } from '../stores/session'
+import { getSessions, saveSession } from '../stores/session'
 import { notify } from '../stores/notice'
 import UiIcon from '../components/UiIcon'
+import Avatar from '../components/Avatar'
 
 export default function AuthView({ identity, register = false }: { identity: Identity; register?: boolean }) {
   const [params] = useSearchParams()
@@ -19,32 +20,47 @@ export default function AuthView({ identity, register = false }: { identity: Ide
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
-  const { busy, run } = useMutation(`${identity}:${register}`)
-  const heading = register ? '开始你的第一篇记录' : identity === 'admin' ? '回到内容工作台' : '欢迎回来'
+  const [showOtherForm, setShowOtherForm] = useState(false)
+  const { busy, run } = useMutation(`${identity}:${register}:${sessions.user?.token || ''}:${sessions.admin?.token || ''}:${showOtherForm}`)
+  const otherIdentity = identity === 'admin' ? 'user' : 'admin'
+  const accountIdentity = sessions[identity] ? identity : otherIdentity
+  const account = sessions[accountIdentity]
+  const sameIdentity = !!sessions[identity]
+  const showAccount = !!account && (sameIdentity || !showOtherForm)
+  const accountLabel = accountIdentity === 'admin' ? '管理员' : '普通用户'
+  const accountName = account?.profile[accountIdentity === 'admin' ? 'admin_name' : 'nick_name'] || accountLabel
+  const accountWorkspace = accountIdentity === 'admin' ? '/admin/articles' : '/me/articles'
+  const formLabel = identity === 'admin' ? '管理员' : '普通用户'
+  const heading = showAccount ? '继续使用当前账号' : register ? '开始你的第一篇记录' : identity === 'admin' ? '回到内容工作台' : '欢迎回来'
   const destination = safeNext(params.get('next'), identity === 'admin' ? '/admin/articles' : '/me/articles')
   const nextQuery = params.has('next') ? `?next=${encodeURIComponent(destination)}` : ''
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (busy) return
+    const startedSessions = getSessions()
+    if (busy || startedSessions[identity]) return
+    // 同一批渲染中登录态也可能更新；迟到响应不能覆盖新账号或切换后的选择。
+    const sessionUnchanged = () => getSessions().user?.token === startedSessions.user?.token && getSessions().admin?.token === startedSessions.admin?.token
     setError('')
     if (!name.trim()) { setError('请填写账号名称。'); return }
     if (register && password !== confirm) { setError('两次输入的密码不一致。'); return }
     if (register && (!/[a-zA-Z]/.test(password) || !/\d/.test(password))) { setError('密码需要同时包含字母和数字。'); return }
     if (register) {
       void run(() => authApi.register(name.trim(), password), () => {
+        if (!sessionUnchanged()) return
         setPassword(''); setConfirm('')
         notify('注册成功，现在可以登录开始写作了。')
         void navigate(`/login${nextQuery}`, { replace: true })
-      }, (cause) => setError(errorMessage(cause)))
+      }, (cause) => { if (sessionUnchanged()) setError(errorMessage(cause)) })
     } else {
       // 身份由本次表单闭包固定；切换登录页面后 useMutation 会丢弃旧响应。
       void run(() => authApi.login(identity, name.trim(), password), (result) => {
+        if (!sessionUnchanged()) return
         saveSession(identity, result)
         setPassword('')
         notify('登录成功，欢迎回来。')
         void navigate(destination, { replace: true })
-      }, (cause) => setError(errorMessage(cause)))
+      }, (cause) => { if (sessionUnchanged()) setError(errorMessage(cause)) })
     }
   }
 
@@ -56,9 +72,17 @@ export default function AuthView({ identity, register = false }: { identity: Ide
     </section>
     <section className="auth-form-panel">
       <Link className="back-link" to="/"><UiIcon name="back" size={17} />返回博客</Link>
-      <p className="eyebrow">{register ? 'CREATE AN ACCOUNT' : identity === 'admin' ? 'ADMIN SIGN IN' : 'WELCOME BACK'}</p>
-      <h2>{heading}</h2><p className="muted">{register ? '创建账号，开始阅读、交流与写作。' : identity === 'admin' ? '使用管理员账号，整理内容与审核评论。' : '登录后继续写作，也和他人交换想法。'}</p>
-      {sessions[identity] && <p className="inline-note">当前已有登录账号。<Link className="text-link" to={destination}>进入工作区</Link></p>}
+      <p className="eyebrow">{showAccount ? 'YOUR ACCOUNT' : register ? 'CREATE AN ACCOUNT' : identity === 'admin' ? 'ADMIN SIGN IN' : 'WELCOME BACK'}</p>
+      <h2>{heading}</h2><p className="muted">{showAccount ? sameIdentity ? '无需重复登录，可以继续访问。' : `你当前使用的是${accountLabel}账号，这里是${formLabel}${register ? '注册' : '登录'}入口。` : register ? '创建账号，开始阅读、交流与写作。' : identity === 'admin' ? '使用管理员账号，整理内容与审核评论。' : '登录后继续写作，也和他人交换想法。'}</p>
+      {showAccount && account ? <>
+        <div className="auth-session-card"><Avatar url={account.profile.avatar} name={accountName} /><div><strong>{accountName}</strong><span>{accountLabel}账号</span></div></div>
+        <div className="stack-form">
+          <Link className="button primary full" to={sameIdentity ? destination : accountWorkspace}>{sameIdentity ? '继续访问' : accountIdentity === 'admin' ? '进入管理员工作区' : '进入我的创作'}<UiIcon name="arrow" size={18} /></Link>
+          {!sameIdentity && <button className="button secondary full" type="button" onClick={() => setShowOtherForm(true)}>{register ? '注册普通用户账号' : `登录${formLabel}账号`}</button>}
+        </div>
+        <p className="small-help">{sameIdentity ? '如需更换账号，请先退出当前登录。' : identity === 'user' ? '普通用户账号用于个人创作和发表评论，可与管理员账号同时登录。' : '管理功能需要单独登录管理员账号。'}</p>
+      </> : <>
+      {account && <p className="inline-note">当前仍使用{accountLabel}账号「{accountName}」。下方仅用于{register ? '注册' : '登录'}{formLabel}账号。<Link className="text-link" to={accountWorkspace}>返回工作区</Link></p>}
       <form className="stack-form" onSubmit={submit}>
         <label>{identity === 'admin' ? '管理员名称' : '昵称'}<input value={name} onChange={(event) => setName(event.target.value)} disabled={busy} autoComplete="username" maxLength={16} required placeholder={identity === 'admin' ? '输入管理员名称' : '你的昵称'} /></label>
         <label>密码<input value={password} onChange={(event) => setPassword(event.target.value)} disabled={busy} type="password" autoComplete={register ? 'new-password' : 'current-password'} minLength={6} maxLength={20} required placeholder="输入密码" />{register && <small>6–20 位，包含字母和数字。</small>}</label>
@@ -67,6 +91,7 @@ export default function AuthView({ identity, register = false }: { identity: Ide
         <button className="button primary full" disabled={busy} type="submit">{busy ? '正在处理…' : register ? '创建账号' : '登录'}{!busy && <UiIcon name="arrow" size={18} />}</button>
       </form>
       {identity === 'user' && <p className="auth-switch">{register ? '已经有账号？' : '还没有账号？'}<Link to={`${register ? '/login' : '/register'}${nextQuery}`}>{register ? '直接登录' : '注册一个'}</Link></p>}
+      </>}
       <div className="auth-divider" /><Link className="subtle-link" to={identity === 'admin' ? '/login' : '/admin/login'}>{identity === 'admin' ? '使用普通用户账号登录' : '管理员入口'} <span>↗</span></Link>
     </section>
   </div>
