@@ -5,12 +5,15 @@ const base = (import.meta.env.VITE_API_BASE_URL || '/api/blog/v1').replace(/\/$/
 const expiredCodes = new Set([401, 11007, 11008, 11009, 11019, 16006])
 const messages: Record<number, string> = {
   400: '请求参数不正确，请检查后重试。', 401: '登录已失效，请重新登录。', 403: '当前账号没有操作权限。',
+  429: '请求过于频繁，请稍后重试。',
   500: '服务暂时不可用，请稍后重试。', 10000: '数据服务暂时不可用，请稍后重试。',
   11002: '昵称已被使用，请换一个。', 11004: '账号或密码不正确。', 11005: '登录过于频繁，请稍后重试。',
   11006: '账号已锁定，请稍后再试。', 11007: '登录已过期，请重新登录。', 11008: '登录已失效，请重新登录。',
   11009: '请先登录。', 11019: '此账号已被停用。', 11025: '昵称已被使用，请换一个。',
   12001: '文章不存在，或暂未公开。', 12002: '请填写文章标题。', 12003: '文章标题太长，请适当缩短。',
+  12004: '排序值需要是非负整数。',
   12005: '请填写文章正文。', 13001: '分类不存在，请刷新后重试。', 13002: '分类名称已存在。',
+  14003: '请填写评论内容。', 14004: '你已经赞过这条评论。', 14005: '你还没有赞过这条评论。',
   14001: '评论不存在，或暂未公开。', 15001: '当前账号没有操作权限。', 16006: '此管理员账号已被停用。',
 }
 
@@ -61,7 +64,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     })
     if (!response.ok) {
       invalidate(response.status)
-      throw new ApiError(response.status, messages[response.status] || `服务暂时无法完成请求（HTTP ${response.status}）。`)
+      throw new ApiError(response.status, messages[response.status] || '服务暂时无法完成请求，请稍后重试。')
     }
     let envelope: unknown
     try { envelope = await response.json() } catch { throw new ApiError(0, '服务响应格式不正确，请稍后重试。') }

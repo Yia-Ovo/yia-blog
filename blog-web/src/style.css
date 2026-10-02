@@ -618,6 +618,34 @@ main:focus { outline: none; }
   *, *::before, *::after, .content-input::placeholder { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 
+/* 语言名称保留各自原文，避免切换后找不到原来的语言。 */
+.language-switcher { display: inline-flex; flex-shrink: 0; }
+.language-switcher select { width: 116px; min-height: 36px; padding: 6px 8px; font-size: 12px; border-radius: 9px; cursor: pointer; }
+:root:lang(ja) { --sans: Inter, "Yu Gothic", "Meiryo", "Noto Sans JP", sans-serif; --serif: "Yu Mincho", "Noto Serif JP", Georgia, serif; }
+:root:lang(en) { --sans: Inter, "Segoe UI", Arial, sans-serif; --serif: Georgia, "Times New Roman", serif; }
+:root:lang(vi) { --sans: "Segoe UI", Arial, sans-serif; --serif: "Times New Roman", serif; }
+.main-nav a > span, .workspace-tabs a { min-width: 0; overflow-wrap: anywhere; }
+.hero-actions, .hero-actions .text-link { flex-wrap: wrap; }
+:root:not(:lang(zh)) .hero h1 { font-size: clamp(28px, 3.2vw, 40px); line-height: 1.4; }
+:root:not(:lang(zh)) .button { white-space: normal; text-align: center; }
+:root:not(:lang(zh)) .editor-heading, :root:not(:lang(zh)) .panel-heading { flex-wrap: wrap; }
+@media (max-width: 760px) {
+  .header-inner { height: auto; min-height: 64px; flex-wrap: wrap; padding-block: 10px; }
+  .header-actions { flex-wrap: wrap; justify-content: flex-end; max-width: 100%; }
+  .workspace-tabs a { text-align: center; }
+}
+@media (max-width: 540px) {
+  .language-switcher select { width: 104px; min-height: 36px; font-size: 11px; }
+  .header-actions .account-name { display: none; }
+  .main-nav a { align-items: center; text-align: center; min-width: 0; }
+  .main-nav a > span { overflow-wrap: normal; }
+  .hero-actions { align-items: flex-start; }
+  .hero-actions .button { max-width: 100%; }
+  :root:not(:lang(zh)) .hero h1 { font-size: 28px; }
+  :root:not(:lang(zh)) .editor-mode-tabs { flex-wrap: wrap; gap: 12px; }
+  :root:not(:lang(zh)) .workspace-tabs a { flex-direction: column; }
+}
+
 /* 首屏图片就绪前仅显示稳定底色；淡入不阻塞文字、按钮或路由。 */
 .hero-art, .auth-story::before { opacity: 0; transition: opacity 420ms ease-out; }
 :root[data-artwork-ready="true"] .hero-art,

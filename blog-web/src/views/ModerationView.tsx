@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n'
 import { useCallback, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { commentApi } from '../api'
@@ -13,6 +14,7 @@ import Pagination from '../components/Pagination'
 import UiIcon from '../components/UiIcon'
 
 export default function ModerationView() {
+  const { t } = useI18n()
   const [status, setStatus] = useState('0')
   const [page, setPage] = useState(1)
   const [articleFilter, setArticleFilter] = useState('')
@@ -45,24 +47,24 @@ export default function ModerationView() {
   }
 
   return <div className="container workspace-page"><WorkspaceNav identity="admin" /><section className="workspace-panel">
-    <div className="panel-heading"><div><h2>评论审核{comments.data && <span className="count-label">{comments.data.total} 条</span>}</h2><p>仔细读过每一条留言，再决定是否公开。</p></div><button className="button secondary small" disabled={comments.pending || busy} onClick={comments.reload}>刷新列表</button></div>
+    <div className="panel-heading"><div><h2>{t('评论审核')}{comments.data && <span className="count-label">{t('{count} 条', { count: comments.data.total })}</span>}</h2><p>{t('仔细读过每一条留言，再决定是否公开。')}</p></div><button className="button secondary small" disabled={comments.pending || busy} onClick={comments.reload}>{t('刷新列表')}</button></div>
     <div className="table-toolbar">
       <div className="filter-row">{[...commentStatuses, '全部'].map((label, index) => {
         const value = index === 3 ? 'all' : String(index)
-        return <button key={value} disabled={busy} className={status === value ? 'selected' : ''} aria-pressed={status === value} onClick={() => { setPage(1); setStatus(value) }}>{label}</button>
+        return <button key={value} disabled={busy} className={status === value ? 'selected' : ''} aria-pressed={status === value} onClick={() => { setPage(1); setStatus(value) }}>{t(label)}</button>
       })}</div>
-      <form className="search-box compact" onSubmit={(event) => { event.preventDefault(); filter() }}><UiIcon name="search" size={17} /><label className="sr-only" htmlFor="comment-article-filter">按文章编号筛选</label><input id="comment-article-filter" value={articleFilter} onChange={(event) => setArticleFilter(event.target.value)} disabled={busy} inputMode="numeric" placeholder="按文章编号筛选" /><button disabled={busy}>筛选</button></form>
+      <form className="search-box compact" onSubmit={(event) => { event.preventDefault(); filter() }}><UiIcon name="search" size={17} /><label className="sr-only" htmlFor="comment-article-filter">{t('按文章编号筛选')}</label><input id="comment-article-filter" value={articleFilter} onChange={(event) => setArticleFilter(event.target.value)} disabled={busy} inputMode="numeric" placeholder={t('按文章编号筛选')} /><button disabled={busy}>{t('筛选')}</button></form>
     </div>
-    {filterError && <p className="form-error" role="alert">{filterError}</p>}
+    {filterError && <p className="form-error" role="alert">{t(filterError)}</p>}
     {comments.pending ? <StatePanel kind="loading" />
       : comments.error ? <StatePanel kind="error" message={comments.error} onRetry={comments.reload} />
-      : !comments.data?.list.length ? <StatePanel kind="empty" title="当前筛选下没有评论" message="新的留言会出现在待审核列表中。" />
+      : !comments.data?.list.length ? <StatePanel kind="empty" title={t('当前筛选下没有评论')} message={t('新的留言会出现在待审核列表中。')} />
       : <div className="moderation-list">{comments.data.list.map((comment) => <article key={comment.id} className="moderation-card">
-        <div className="moderation-top"><span className="profile-monogram small-monogram">{comment.nickname.slice(0, 1) || 'Y'}</span><div><strong>{comment.nickname}</strong><p>{formatDate(comment.create_at)}{!!comment.parent_id && <span> · 回复评论</span>}</p></div><span className={`status-pill status-${comment.status}`}>{commentStatuses[comment.status]}</span></div>
+        <div className="moderation-top"><span className="profile-monogram small-monogram">{comment.nickname.slice(0, 1) || 'Y'}</span><div><strong>{comment.nickname}</strong><p>{formatDate(comment.create_at)}{!!comment.parent_id && <span> · {t('回复评论')}</span>}</p></div><span className={`status-pill status-${comment.status}`}>{t(commentStatuses[comment.status])}</span></div>
         <blockquote>{comment.content}</blockquote>
-        <div className="moderation-bottom"><Link to={`/admin/articles/${comment.article_id}/edit`} className="subtle-link">查看所属文章 <UiIcon name="arrow" size={15} /></Link><div className="row-actions">
-          {comment.status !== 2 && <button className="button secondary small" disabled={busy} onClick={() => review(comment, 2)}>{comment.status === 1 ? '撤下评论' : '拒绝'}</button>}
-          {comment.status !== 1 && <button className="button primary small" disabled={busy} onClick={() => review(comment, 1)}><UiIcon name="check" size={16} />通过审核</button>}
+        <div className="moderation-bottom"><Link to={`/admin/articles/${comment.article_id}/edit`} className="subtle-link">{t('查看所属文章')}<UiIcon name="arrow" size={15} /></Link><div className="row-actions">
+          {comment.status !== 2 && <button className="button secondary small" disabled={busy} onClick={() => review(comment, 2)}>{t(comment.status === 1 ? '撤下评论' : '拒绝')}</button>}
+          {comment.status !== 1 && <button className="button primary small" disabled={busy} onClick={() => review(comment, 1)}><UiIcon name="check" size={16} />{t('通过审核')}</button>}
         </div></div>
       </article>)}</div>}
     {comments.data && <Pagination page={comments.data.pageNum} pages={comments.data.pages} busy={comments.pending || busy} onChange={setPage} />}

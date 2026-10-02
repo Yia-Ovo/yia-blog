@@ -21,8 +21,10 @@ import MarkdownBody from '../components/MarkdownBody'
 import StatePanel from '../components/StatePanel'
 import UiIcon from '../components/UiIcon'
 import NotFoundView from './NotFoundView'
+import { useI18n } from '../i18n'
 
 export default function EditorView({ identity }: { identity: Identity }) {
+  const { t } = useI18n()
   const { id: parameter } = useParams()
   const accountId = useSessions()[identity]?.profile.id
   const openedAccount = useRef(accountId)
@@ -30,21 +32,23 @@ export default function EditorView({ identity }: { identity: Identity }) {
   const ownerId = accountId || openedAccount.current
   const id = positiveNumber(parameter, 0)
   if (parameter !== undefined && (!id || !/^\d+$/.test(parameter))) return <NotFoundView />
-  if (!ownerId) return <StatePanel kind="error" title="请先登录后再编辑文章" />
+  if (!ownerId) return <StatePanel kind="error" title={t('请先登录后再编辑文章')} />
   // 登录过期时仍归属于原账号；切换到其他账号则重建编辑器，避免串稿。
   return <EditorLoader key={`${identity}:${ownerId}:${id}`} identity={identity} accountId={ownerId} id={id} />
 }
 
 function EditorLoader({ identity, accountId, id }: { identity: Identity; accountId: number; id: number }) {
+  const { t } = useI18n()
   const article = useResource(useCallback(async (signal) => id ? articleInput(await articleApi.managedDetail(identity, id, signal)) : emptyArticle(), [identity, id]))
   if (article.data) return <ArticleEditor identity={identity} accountId={accountId} id={id} initial={article.data} />
   return <div className="container editor-page">
-    <Link className="back-link" to={identity === 'admin' ? '/admin/articles' : '/me/articles'}><UiIcon name="back" size={17} />返回文章列表</Link>
-    {article.pending ? <StatePanel kind="loading" title="正在打开编辑器…" /> : <StatePanel kind="error" message={article.error} onRetry={article.reload} />}
+    <Link className="back-link" to={identity === 'admin' ? '/admin/articles' : '/me/articles'}><UiIcon name="back" size={17} />{t('返回文章列表')}</Link>
+    {article.pending ? <StatePanel kind="loading" title={t('正在打开编辑器…')} /> : <StatePanel kind="error" message={article.error} onRetry={article.reload} />}
   </div>
 }
 
 function ArticleEditor({ identity, accountId, id, initial }: { identity: Identity; accountId: number; id: number; initial: ArticleInput }) {
+  const { t } = useI18n()
   const navigate = useNavigate()
   const sessions = useSessions()
   const listPath = identity === 'admin' ? '/admin/articles' : '/me/articles'
@@ -70,8 +74,8 @@ function ArticleEditor({ identity, accountId, id, initial }: { identity: Identit
   const canLeave = useCallback(() => {
     if (savedForExit.current) return true
     if (saveInFlight.current || images.isUploading()) return false
-    return !dirty || window.confirm('文章还有未保存的修改，确认离开编辑器？')
-  }, [dirty, images.uploading])
+    return !dirty || window.confirm(t('文章还有未保存的修改，确认离开编辑器？'))
+  }, [dirty, images.uploading, t])
   const blocker = useBlocker(useCallback<BlockerFunction>(({ currentLocation, nextLocation }) =>
     !savedForExit.current && (saveInFlight.current || images.isUploading() || dirty) &&
     (currentLocation.pathname !== nextLocation.pathname || currentLocation.search !== nextLocation.search), [dirty, images.uploading]))
@@ -88,7 +92,7 @@ function ArticleEditor({ identity, accountId, id, initial }: { identity: Identit
     }
     window.addEventListener('beforeunload', beforeUnload)
     return () => window.removeEventListener('beforeunload', beforeUnload)
-  }, [dirty, images.uploading])
+  }, [dirty, images.uploading, t])
 
   function setField<K extends keyof ArticleInput>(key: K, value: ArticleInput[K]) {
     setForm((current) => ({ ...current, [key]: value }))
@@ -139,44 +143,44 @@ function ArticleEditor({ identity, accountId, id, initial }: { identity: Identit
   }
 
   return <div className="container editor-page">
-    <div className="editor-topbar"><Link className="back-link" to={listPath}><UiIcon name="back" size={17} />返回文章列表</Link><span className="editor-save-state"><span className={dirty ? 'unsaved-dot' : 'tiny-dot'} />{saving ? '正在保存…' : dirty ? '有未保存的修改' : id ? '已加载文章' : '一篇新的草稿'}</span></div>
+    <div className="editor-topbar"><Link className="back-link" to={listPath}><UiIcon name="back" size={17} />{t('返回文章列表')}</Link><span className="editor-save-state"><span className={dirty ? 'unsaved-dot' : 'tiny-dot'} />{t(saving ? '正在保存…' : dirty ? '有未保存的修改' : id ? '已加载文章' : '一篇新的草稿')}</span></div>
     <form className="editor-form" onSubmit={save}><fieldset disabled={saving}>
-      <div className="editor-heading"><div><p className="eyebrow">MAKE ROOM FOR AN IDEA</p><h1>{id ? '继续这篇记录' : '写下新的想法'}<span className="accent-dot">.</span></h1></div><button className="button primary" type="submit" disabled={!sessions[identity] || images.uploading || draftPending}>{saving ? '保存中…' : form.status === 1 ? '保存并发布' : form.status === 2 ? '保存并下架' : '保存草稿'}<UiIcon name="check" size={18} /></button></div>
-      {formError && <p className="form-error" role="alert">{formError}</p>}
+      <div className="editor-heading"><div><p className="eyebrow">{t('给想法留些空间')}</p><h1>{t(id ? '继续这篇记录' : '写下新的想法')}<span className="accent-dot">.</span></h1></div><button className="button primary" type="submit" disabled={!sessions[identity] || images.uploading || draftPending}>{t(saving ? '保存中…' : form.status === 1 ? '保存并发布' : form.status === 2 ? '保存并下架' : '保存草稿')}<UiIcon name="check" size={18} /></button></div>
+      {formError && <p className="form-error" role="alert">{t(formError)}</p>}
       <DraftRecoveryPanel draft={draft} />
       <div className="editor-layout">
         <section className="editor-paper">
-          <label className="sr-only" htmlFor="article-title">文章标题</label><input id="article-title" value={form.title} onChange={(event) => setField('title', event.target.value)} className="title-input" required maxLength={128} placeholder="给这篇记录起个名字…" />
-          <label className="summary-label" htmlFor="article-summary">摘要 <span>· 可选，帮助读者快速了解内容</span></label><textarea id="article-summary" value={form.summary} onChange={(event) => setField('summary', event.target.value)} className="summary-input" rows={2} maxLength={512} placeholder="用一两句话介绍这篇文章。" />
-          <div className="editor-mode-tabs"><button type="button" className={!preview ? 'active' : ''} aria-pressed={!preview} onClick={() => setPreview(false)}><UiIcon name="edit" size={16} />编辑</button><button type="button" className={preview ? 'active' : ''} aria-pressed={preview} onClick={() => setPreview(true)}><UiIcon name="eye" size={17} />预览</button><span id="article-format-hint">支持 Markdown</span></div>
+          <label className="sr-only" htmlFor="article-title">{t('文章标题')}</label><input id="article-title" value={form.title} onChange={(event) => setField('title', event.target.value)} className="title-input" required maxLength={128} placeholder={t('给这篇记录起个名字…')} />
+          <label className="summary-label" htmlFor="article-summary">{t('摘要')} <span>{t('· 可选，帮助读者快速了解内容')}</span></label><textarea id="article-summary" value={form.summary} onChange={(event) => setField('summary', event.target.value)} className="summary-input" rows={2} maxLength={512} placeholder={t('用一两句话介绍这篇文章。')} />
+          <div className="editor-mode-tabs"><button type="button" className={!preview ? 'active' : ''} aria-pressed={!preview} onClick={() => setPreview(false)}><UiIcon name="edit" size={16} />{t('编辑')}</button><button type="button" className={preview ? 'active' : ''} aria-pressed={preview} onClick={() => setPreview(true)}><UiIcon name="eye" size={17} />{t('预览')}</button><span id="article-format-hint">{t('支持 Markdown')}</span></div>
           <div className="article-image-toolbar">
-            <button type="button" className="text-link link-button" disabled={images.uploading || draftPending || !sessions[identity]} onClick={() => bodyImageInput.current?.click()}><UiIcon name="plus" size={16} />插入图片</button>
-            <input ref={bodyImageInput} className="sr-only" tabIndex={-1} aria-label="选择正文图片" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" disabled={images.uploading || draftPending || !sessions[identity]} onChange={(event) => { uploadBody(Array.from(event.currentTarget.files || [])); event.currentTarget.value = '' }} />
-            <span>{images.uploading ? '图片正在上传…' : '可粘贴或拖入 JPG / PNG，最大 5 MB'}</span>
+            <button type="button" className="text-link link-button" disabled={images.uploading || draftPending || !sessions[identity]} onClick={() => bodyImageInput.current?.click()}><UiIcon name="plus" size={16} />{t('插入图片')}</button>
+            <input ref={bodyImageInput} className="sr-only" tabIndex={-1} aria-label={t('选择正文图片')} type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" disabled={images.uploading || draftPending || !sessions[identity]} onChange={(event) => { uploadBody(Array.from(event.currentTarget.files || [])); event.currentTarget.value = '' }} />
+            <span>{t(images.uploading ? '图片正在上传…' : '可粘贴或拖入 JPG / PNG，最大 5 MB')}</span>
           </div>
-          {images.error && <p className="form-error image-upload-error" role="alert">{images.error}</p>}
-          {preview ? <div className="editor-preview">{form.content.trim() ? <MarkdownBody source={form.content} /> : <p className="muted">写下正文后，就可以在这里查看排版。</p>}</div>
-            : <><label className="sr-only" htmlFor="article-content">文章正文（Markdown）</label><textarea ref={contentInput} id="article-content" aria-describedby="article-format-hint" onPaste={(event) => {
+          {images.error && <p className="form-error image-upload-error" role="alert">{t(images.error)}</p>}
+          {preview ? <div className="editor-preview">{form.content.trim() ? <MarkdownBody source={form.content} /> : <p className="muted">{t('写下正文后，就可以在这里查看排版。')}</p>}</div>
+            : <><label className="sr-only" htmlFor="article-content">{t('文章正文（Markdown）')}</label><textarea ref={contentInput} id="article-content" aria-describedby="article-format-hint" onPaste={(event) => {
               const files = Array.from(event.clipboardData.files)
               if (files.length) { event.preventDefault(); uploadBody(files) }
             }} onDragOver={(event) => { if (event.dataTransfer.types.includes('Files')) event.preventDefault() }}
             onDrop={(event) => {
               const files = Array.from(event.dataTransfer.files)
               if (files.length) { event.preventDefault(); uploadBody(files) }
-            }} value={form.content} onChange={(event) => setField('content', event.target.value)} className="content-input" rows={23} placeholder="写下你的正文…" spellCheck={false} /></>}
-          <div className="editor-paper-footer"><span>内容由你保存后写入博客。</span><span>{form.content.length} 字符</span></div>
+            }} value={form.content} onChange={(event) => setField('content', event.target.value)} className="content-input" rows={23} placeholder={t('写下你的正文…')} spellCheck={false} /></>}
+          <div className="editor-paper-footer"><span>{t('内容由你保存后写入博客。')}</span><span>{t('{count} 字符', { count: form.content.length })}</span></div>
         </section>
         <aside className="editor-settings">
-          <section className="settings-card"><h2>文章设置</h2>
-            <label>发布状态<select value={form.status} onChange={(event) => setField('status', Number(event.target.value) as ArticleStatus)}><option value={0}>草稿 · 仅作者和管理员可见</option><option value={1}>发布 · 所有人可见</option><option value={2}>下架 · 暂不公开</option></select></label>
-            <label>分类<select value={form.category_id} onChange={(event) => setField('category_id', Number(event.target.value))}><option value={0}>未分类</option>{missingCategory && <option value={form.category_id}>保留原分类（未启用或已移除）</option>}{categories.data?.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
-            {categories.error && <p className="inline-note">分类加载失败。<button type="button" className="link-button" onClick={categories.reload}>重试</button></p>}
-            <label className="checkbox-label"><input checked={form.comment_status === 1} onChange={(event) => setField('comment_status', event.target.checked ? 1 : 0)} type="checkbox" /><span>允许读者发表评论</span></label>
-            <label className="checkbox-label"><input checked={form.is_top === 1} onChange={(event) => setField('is_top', event.target.checked ? 1 : 0)} type="checkbox" /><span>置顶这篇文章</span></label>
-            <label>排序<input value={Number.isNaN(form.sort) ? '' : form.sort} onChange={(event) => setField('sort', event.target.valueAsNumber)} type="number" min={0} step={1} required /></label>
+          <section className="settings-card"><h2>{t('文章设置')}</h2>
+            <label>{t('发布状态')}<select value={form.status} onChange={(event) => setField('status', Number(event.target.value) as ArticleStatus)}><option value={0}>{t('草稿 · 仅作者和管理员可见')}</option><option value={1}>{t('发布 · 所有人可见')}</option><option value={2}>{t('下架 · 暂不公开')}</option></select></label>
+            <label>{t('分类')}<select value={form.category_id} onChange={(event) => setField('category_id', Number(event.target.value))}><option value={0}>{t('未分类')}</option>{missingCategory && <option value={form.category_id}>{t('保留原分类（未启用或已移除）')}</option>}{categories.data?.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+            {categories.error && <p className="inline-note">{t('分类加载失败。')}<button type="button" className="link-button" onClick={categories.reload}>{t('重试')}</button></p>}
+            <label className="checkbox-label"><input checked={form.comment_status === 1} onChange={(event) => setField('comment_status', event.target.checked ? 1 : 0)} type="checkbox" /><span>{t('允许读者发表评论')}</span></label>
+            <label className="checkbox-label"><input checked={form.is_top === 1} onChange={(event) => setField('is_top', event.target.checked ? 1 : 0)} type="checkbox" /><span>{t('置顶这篇文章')}</span></label>
+            <label>{t('排序')}<input value={Number.isNaN(form.sort) ? '' : form.sort} onChange={(event) => setField('sort', event.target.valueAsNumber)} type="number" min={0} step={1} required /></label>
           </section>
-          <section className="settings-card"><h2>封面图片</h2><button type="button" className="button secondary small cover-upload-button" disabled={images.uploading || draftPending || !sessions[identity]} onClick={() => coverImageInput.current?.click()}><UiIcon name="plus" size={16} />上传封面</button><input ref={coverImageInput} className="sr-only" tabIndex={-1} type="file" aria-label="选择封面图片" accept="image/jpeg,image/png,.jpg,.jpeg,.png" disabled={images.uploading || draftPending || !sessions[identity]} onChange={(event) => { uploadCover(Array.from(event.currentTarget.files || [])); event.currentTarget.value = '' }} /><label className="sr-only" htmlFor="article-cover">封面图片地址</label><input id="article-cover" disabled={images.uploading} value={form.cover} onChange={(event) => setField('cover', event.target.value)} placeholder="粘贴图片地址（可选）" />{safeImageURL(form.cover) && <img className="cover-preview" src={safeImageURL(form.cover)} alt="封面预览" referrerPolicy="no-referrer" />}<p className="small-help">JPG / PNG，最大 5 MB、400 万像素。也可粘贴图片地址；留空使用默认封面。上传图片可通过链接访问。</p></section>
-          <div className="editor-tip"><UiIcon name="book" size={20} /><p>不必一次写完。<br />先保存草稿，想清楚了再发布。</p></div>
+          <section className="settings-card"><h2>{t('封面图片')}</h2><button type="button" className="button secondary small cover-upload-button" disabled={images.uploading || draftPending || !sessions[identity]} onClick={() => coverImageInput.current?.click()}><UiIcon name="plus" size={16} />{t('上传封面')}</button><input ref={coverImageInput} className="sr-only" tabIndex={-1} type="file" aria-label={t('选择封面图片')} accept="image/jpeg,image/png,.jpg,.jpeg,.png" disabled={images.uploading || draftPending || !sessions[identity]} onChange={(event) => { uploadCover(Array.from(event.currentTarget.files || [])); event.currentTarget.value = '' }} /><label className="sr-only" htmlFor="article-cover">{t('封面图片地址')}</label><input id="article-cover" disabled={images.uploading} value={form.cover} onChange={(event) => setField('cover', event.target.value)} placeholder={t('粘贴图片地址（可选）')} />{safeImageURL(form.cover) && <img className="cover-preview" src={safeImageURL(form.cover)} alt={t('封面预览')} referrerPolicy="no-referrer" />}<p className="small-help">{t('JPG / PNG，最大 5 MB、400 万像素。也可粘贴图片地址；留空使用默认封面。上传图片可通过链接访问。')}</p></section>
+          <div className="editor-tip"><UiIcon name="book" size={20} /><p>{t('不必一次写完。')}<br />{t('先保存草稿，想清楚了再发布。')}</p></div>
         </aside>
       </div>
     </fieldset></form>

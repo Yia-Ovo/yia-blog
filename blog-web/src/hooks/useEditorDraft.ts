@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useReducer, useState } from 'react'
 import type { ArticleInput } from '../api/types'
+import { getLocale, t, useI18n } from '../i18n'
 import {
   discardInvalidEditorDraft, editorDraftFingerprint, editorDraftKey, readEditorDraft, removeEditorDraft, writeEditorDraft,
 } from '../lib/editorDraft'
@@ -100,22 +101,22 @@ function schedule(session: DraftSession) {
 }
 
 function timeLabel(timestamp: number) {
-  return new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }).format(timestamp)
+  return new Intl.DateTimeFormat(getLocale(), { hour: '2-digit', minute: '2-digit', hour12: false }).format(timestamp)
 }
 
 function describe(session: DraftSession): string {
   switch (session.status) {
-    case 'idle': return '修改会自动暂存到这台设备，保存到博客仍需点击保存。'
-    case 'pending': return '正在暂存到本机…'
-    case 'saved': return `已暂存到本机 ${timeLabel(session.savedAt!)}，尚未保存到服务器。`
-    case 'recovery': return `发现上次未保存的内容（${timeLabel(session.recovery!.savedAt)}）。恢复后仍需保存到博客。`
-    case 'conflict': return '另一个标签页修改了本机暂存，已暂停自动暂存。请先复制当前正文，再刷新核对。'
-    case 'unavailable': return '本机暂存不可用，当前修改尚未暂存。请复制正文或保存到博客。'
+    case 'idle': return t('修改会自动暂存到这台设备，保存到博客仍需点击保存。')
+    case 'pending': return t('正在暂存到本机…')
+    case 'saved': return t('已暂存到本机 {time}，尚未保存到服务器。', { time: timeLabel(session.savedAt!) })
+    case 'recovery': return t('发现上次未保存的内容（{time}）。恢复后仍需保存到博客。', { time: timeLabel(session.recovery!.savedAt) })
+    case 'conflict': return t('另一个标签页修改了本机暂存，已暂停自动暂存。请先复制当前正文，再刷新核对。')
+    case 'unavailable': return t('本机暂存不可用，当前修改尚未暂存。请复制正文或保存到博客。')
     case 'invalid': return session.phase === 'invalid-record'
-      ? '上次的本机暂存无法读取，已保留原记录。可放弃该暂存后继续。'
-      : '部分字段暂时无法暂存，请检查排序等设置；当前修改尚未暂存。'
-    case 'too-large': return '内容超过本机暂存容量，当前修改尚未暂存。请复制正文或保存到博客。'
-    case 'cleared': return '已保存到博客。'
+      ? t('上次的本机暂存无法读取，已保留原记录。可放弃该暂存后继续。')
+      : t('部分字段暂时无法暂存，请检查排序等设置；当前修改尚未暂存。')
+    case 'too-large': return t('内容超过本机暂存容量，当前修改尚未暂存。请复制正文或保存到博客。')
+    case 'cleared': return t('已保存到博客。')
   }
 }
 
@@ -128,6 +129,8 @@ interface Options {
 }
 
 export function useEditorDraft({ owner, initial, value, onRestore }: Options) {
+  // 语言只影响提示展示，不参与草稿会话与自动暂存的生命周期。
+  useI18n()
   const [, redraw] = useReducer((number: number) => number + 1, 0)
   const [session] = useState(() => beginSession(owner, initial, value))
   session.value = value
@@ -139,7 +142,7 @@ export function useEditorDraft({ owner, initial, value, onRestore }: Options) {
     const record = session.recovery
     if (session.phase !== 'recovery' || !record) return
     if (editorDraftFingerprint(session.value) !== session.initialFingerprint &&
-      !window.confirm('恢复暂存会替换当前编辑器中的内容。请先复制需要保留的内容，确认恢复？')) return
+      !window.confirm(t('恢复暂存会替换当前编辑器中的内容。请先复制需要保留的内容，确认恢复？'))) return
     // 选择之前再次核对，避免覆盖另一个标签页刚刚写入的版本。
     const current = readEditorDraft(session.owner)
     if (current.status !== 'found' || current.record.revision !== record.revision) {

@@ -1,3 +1,4 @@
+import { getLocale, t } from '../i18n'
 import type { ArticleInput } from '../api/types'
 
 export function emptyArticle(): ArticleInput {
@@ -31,9 +32,9 @@ export function positiveNumber(value: unknown, fallback = 1): number {
 }
 
 export function formatDate(value?: string | null): string {
-  if (!value) return '未标注日期'
+  if (!value) return t('未标注日期')
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '未标注日期' : new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(date)
+  return Number.isNaN(date.getTime()) ? t('未标注日期') : new Intl.DateTimeFormat(getLocale(), { year: 'numeric', month: '2-digit', day: '2-digit' }).format(date)
 }
 
 export function safeNext(value: unknown, fallback: string): string {
