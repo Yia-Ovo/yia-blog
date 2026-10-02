@@ -8,6 +8,7 @@ type Appearance = LoadedArtwork & { date: string }
 // 轮换仅影响 CSS，不重新挂载页面，编辑中的文章不会因为跨日而丢失。
 export function useDailyAppearance(mode: AppearanceMode) {
   const [appearance, setAppearance] = useState<Appearance | null>(null)
+  const [initialLoadSettled, setInitialLoadSettled] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -46,6 +47,7 @@ export function useDailyAppearance(mode: AppearanceMode) {
         clearTimeout(deadline)
         busy = false
         if (active) {
+          setInitialLoadSettled(true)
           dueAt = Date.now() + delay
           timer = setTimeout(() => { void refresh() }, delay)
         }
@@ -70,6 +72,13 @@ export function useDailyAppearance(mode: AppearanceMode) {
     for (const [name, value] of Object.entries(values)) document.documentElement.style.setProperty(name, value)
     return () => { for (const name of Object.keys(values)) document.documentElement.style.removeProperty(name) }
   }, [appearance, mode])
+
+  // 首次请求和图片解码结束后才揭示插图，避免默认图先闪现再被今日图替换。
+  useLayoutEffect(() => {
+    if (!initialLoadSettled) return
+    document.documentElement.dataset.artworkReady = 'true'
+    return () => { delete document.documentElement.dataset.artworkReady }
+  }, [initialLoadSettled])
 
   useEffect(() => {
     const objectURL = appearance?.objectURL

@@ -168,7 +168,7 @@ main:focus { outline: none; }
 .journal-heading h2 { font-size: 23px; margin: 0; letter-spacing: 1px; }
 .journal-heading > span { display: flex; gap: 16px; align-items: center; color: var(--muted); font: 10px Georgia, serif; letter-spacing: 1px; }
 .journal-heading > span > span { color: var(--accent); font-size: 28px; }
-.hero { position: relative; isolation: isolate; overflow: hidden; min-height: 430px; padding: 43px 40px 34px; border: 1px solid var(--border-strong); border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); margin-bottom: 38px; }
+.hero { position: relative; isolation: isolate; overflow: hidden; min-height: 430px; padding: 43px 40px 34px; border: 1px solid var(--border-strong); border-radius: 22px; background: var(--art-base); box-shadow: var(--shadow); margin-bottom: 38px; }
 .hero-copy { position: relative; z-index: 2; max-width: 570px; }
 .hero-signature { display: block; color: var(--art-accent); font: italic 20px/1.5 "Segoe Script", Georgia, serif; margin-bottom: 26px; }
 .hero-copy > .eyebrow { color: var(--art-accent); margin-bottom: 12px; }
@@ -617,3 +617,8 @@ main:focus { outline: none; }
   .page-transition > * { animation: none; }
   *, *::before, *::after, .content-input::placeholder { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* 首屏图片就绪前仅显示稳定底色；淡入不阻塞文字、按钮或路由。 */
+.hero-art, .auth-story::before { opacity: 0; transition: opacity 420ms ease-out; }
+:root[data-artwork-ready="true"] .hero-art,
+:root[data-artwork-ready="true"] .auth-story::before { opacity: 1; }
