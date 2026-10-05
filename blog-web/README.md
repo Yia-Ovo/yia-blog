@@ -71,19 +71,14 @@ npm run preview
 
 19 项测试覆盖双令牌隔离、业务错误、陈旧请求失效、零值查询、完整文章更新、审核快照、Markdown 注入防护，以及 React StrictMode 下的请求取消、登录切换、未保存提示、保存中阻止导航、保存失败/登录过期保留正文和最新管理员权限校验。
 
-当前状态（2026-09-11）：React 类型检查、19 项测试、构建与原夹具验证通过；本轮另外完成 9 组真实浏览器、18 组 API/数据库检查及桌面/移动端视觉核对。MySQL/Redis/Go 和 4173 代理均可用，既有评论迁移已应用，临时测试记录与缓存已清理。严重 17 的同秒重登录缺陷已用随机 jti 修复，两身份各 3 次真实同秒复验与旧令牌兼容检查通过；具体范围见 [项目进度](../docs/interview/code-review-fix-plan.md#2026-09-11-真实服务联调)。
+当前状态（2026-09-11）：React 类型检查、19 项测试、构建与原夹具验证通过；本轮另外完成 9 组真实浏览器、18 组 API/数据库检查及桌面/移动端视觉核对。MySQL/Redis/Go 和 4173 代理均可用，既有评论迁移已应用，临时测试记录与缓存已清理。JWT 同秒重登录缺陷已用随机 jti 修复，两身份各 3 次真实同秒复验与旧令牌兼容检查通过；具体范围见 [联调记录](../docs/local-integration.md#当前记录)。
 
-## 提交边界
+## 版本与文件范围
 
-后端七批已由用户提交至 `73839ed`，后续 JWT 同秒重登录修复已提交为 `9a0ce12`，旧脚本不要重跑。前端及其 lockfile 可单独提交：
+React 首版及 lockfile 已提交为 `1453c50`，配套 JWT 同秒重登录修复为 `9a0ce12`，只读联调预检工具为 `608b78a`。
 
-```bash
-cd /d/develop/yia-blog
-# 先确认暂存区没有其他人的改动，再执行。
-git add -- blog-web
-git diff --cached --stat
-git diff --cached --name-status
-git commit -m "feat(web): add React blog reading and content management"
-```
+前端源码、测试、构建配置、`.env.example` 和 `package-lock.json` 纳入版本控制；依赖目录 `node_modules`、构建产物 `dist` 以及本地环境文件由前端 `.gitignore` 排除。安装依赖使用 `npm ci --ignore-scripts`，可复现 lockfile 中的版本。
 
-这组 Git 命令在仓库根目录执行；不要把 node_modules、dist、本地配置或个人笔记加入提交。代理没有执行这些提交命令。
+## 最新交付（2026-10-06）
+
+四语言、每日主题、头像与文章图片、草稿恢复及 Markdown 导入已上线。最新前端117项测试、类型检查和构建通过；导入另通过本地及公网桌面/手机浏览器验收。上文19项是首版历史记录。使用边界见[写作说明](../docs/editor-writing.md)和[国际化说明](../docs/frontend-i18n.md)。
