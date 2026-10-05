@@ -18,6 +18,7 @@ import { safeImageURL } from '../lib/markdown'
 import { notify } from '../stores/notice'
 import { LeaveGuardContext } from '../components/LeaveGuardContext'
 import MarkdownBody from '../components/MarkdownBody'
+import MarkdownImportPanel from '../components/MarkdownImportPanel'
 import StatePanel from '../components/StatePanel'
 import UiIcon from '../components/UiIcon'
 import NotFoundView from './NotFoundView'
@@ -148,6 +149,11 @@ function ArticleEditor({ identity, accountId, id, initial }: { identity: Identit
       <div className="editor-heading"><div><p className="eyebrow">{t('给想法留些空间')}</p><h1>{t(id ? '继续这篇记录' : '写下新的想法')}<span className="accent-dot">.</span></h1></div><button className="button primary" type="submit" disabled={!sessions[identity] || images.uploading || draftPending}>{t(saving ? '保存中…' : form.status === 1 ? '保存并发布' : form.status === 2 ? '保存并下架' : '保存草稿')}<UiIcon name="check" size={18} /></button></div>
       {formError && <p className="form-error" role="alert">{t(formError)}</p>}
       <DraftRecoveryPanel draft={draft} />
+      <MarkdownImportPanel disabled={saving || images.uploading || draftPending || !sessions[identity]} hasContent={Boolean(form.title || form.content)} onImport={(value) => {
+        if (saveInFlight.current || images.isUploading() || draftPending) return
+        setForm((current) => ({ ...current, title: value.title, content: value.content }))
+        setFormError(''); setPreview(false)
+      }} />
       <div className="editor-layout">
         <section className="editor-paper">
           <label className="sr-only" htmlFor="article-title">{t('文章标题')}</label><input id="article-title" value={form.title} onChange={(event) => setField('title', event.target.value)} className="title-input" required maxLength={128} placeholder={t('给这篇记录起个名字…')} />

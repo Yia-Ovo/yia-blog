@@ -1,5 +1,95 @@
 // 编辑器与本机草稿仅翻译界面提示，文章内容不随语言切换。
 export const editorMessages = {
+  "Markdown 导入": {
+    "en": "Markdown import",
+    "ja": "Markdown の取り込み",
+    "vi": "Nhập Markdown"
+  },
+  "导入 Markdown": {
+    "en": "Import Markdown",
+    "ja": "Markdown を取り込む",
+    "vi": "Nhập Markdown"
+  },
+  "正在读取文件…": {
+    "en": "Reading file…",
+    "ja": "ファイルを読み込んでいます…",
+    "vi": "Đang đọc tệp…"
+  },
+  "选择 Markdown 文件": {
+    "en": "Choose a Markdown file",
+    "ja": "Markdown ファイルを選択",
+    "vi": "Chọn tệp Markdown"
+  },
+  "UTF-8 · 最大 1 MB · 先预览，再导入": {
+    "en": "UTF-8 · Up to 1 MB · Preview before importing",
+    "ja": "UTF-8 · 最大 1 MB · プレビューしてから取り込み",
+    "vi": "UTF-8 · Tối đa 1 MB · Xem trước khi nhập"
+  },
+  "取消导入": {
+    "en": "Cancel import",
+    "ja": "取り込みをキャンセル",
+    "vi": "Hủy nhập"
+  },
+  "仅预览前 4000 字符，导入会保留完整正文。": {
+    "en": "Preview shows the first 4,000 characters. The full body will be imported.",
+    "ja": "先頭の 4000 文字をプレビューします。本文はすべて取り込まれます。",
+    "vi": "Chỉ xem trước 4000 ký tự đầu. Nội dung được nhập đầy đủ."
+  },
+  "首行一级标题作为文章标题；没有时使用文件名。分类、封面和发布设置保持不变。": {
+    "en": "Use the opening level-one heading as the title, or the filename if absent. Category, cover and publication settings stay unchanged.",
+    "ja": "冒頭のレベル 1 見出しを記事タイトルに使います。なければファイル名を使います。カテゴリー、カバー、公開設定は変わりません。",
+    "vi": "Dùng tiêu đề cấp một ở đầu tệp, hoặc tên tệp nếu không có. Giữ nguyên danh mục, ảnh bìa và cài đặt xuất bản."
+  },
+  "确认导入会替换当前标题和正文，请先保留需要的内容。": {
+    "en": "Importing will replace the current title and body. Keep a copy of anything you need first.",
+    "ja": "取り込むと現在のタイトルと本文が置き換わります。必要な内容は先に保存してください。",
+    "vi": "Nhập sẽ thay thế tiêu đề và nội dung hiện tại. Hãy sao lưu phần cần giữ trước."
+  },
+  "本地图片不会一并上传，请在导入后补充图片。": {
+    "en": "Local images are not uploaded with the file. Add them after importing.",
+    "ja": "ローカル画像は同時にアップロードされません。取り込み後に追加してください。",
+    "vi": "Ảnh cục bộ không được tải lên cùng tệp. Hãy thêm ảnh sau khi nhập."
+  },
+  "替换标题和正文": {
+    "en": "Replace title and body",
+    "ja": "タイトルと本文を置き換える",
+    "vi": "Thay tiêu đề và nội dung"
+  },
+  "使用这份内容": {
+    "en": "Use this content",
+    "ja": "この内容を使う",
+    "vi": "Dùng nội dung này"
+  },
+  "请一次导入一个 Markdown 文件。": {
+    "en": "Import one Markdown file at a time.",
+    "ja": "Markdown ファイルは一度に一つずつ取り込んでください。",
+    "vi": "Vui lòng nhập từng tệp Markdown một."
+  },
+  "请选择 .md 或 .markdown 文件。": {
+    "en": "Choose a .md or .markdown file.",
+    "ja": "拡張子が .md または .markdown のファイルを選択してください。",
+    "vi": "Chọn tệp .md hoặc .markdown."
+  },
+  "Markdown 文件不能为空，大小不能超过 1 MB。": {
+    "en": "The Markdown file must not be empty or larger than 1 MB.",
+    "ja": "空の Markdown ファイルは使えません。サイズは 1 MB 以下にしてください。",
+    "vi": "Tệp Markdown không được rỗng hoặc vượt quá 1 MB."
+  },
+  "文件不是有效的 UTF-8 文本，请转换编码后重试。": {
+    "en": "The file is not valid UTF-8 text. Convert its encoding and try again.",
+    "ja": "有効な UTF-8 テキストではありません。文字コードを変換して再試行してください。",
+    "vi": "Tệp không phải văn bản UTF-8 hợp lệ. Hãy đổi mã hóa rồi thử lại."
+  },
+  "文件包含非文本内容，请选择 Markdown 文本。": {
+    "en": "The file contains non-text data. Choose a Markdown text file.",
+    "ja": "テキスト以外のデータが含まれています。Markdown テキストを選択してください。",
+    "vi": "Tệp chứa dữ liệu không phải văn bản. Hãy chọn tệp văn bản Markdown."
+  },
+  "无法读取文件，请重新选择。": {
+    "en": "Could not read the file. Choose it again.",
+    "ja": "ファイルを読み取れませんでした。選び直してください。",
+    "vi": "Không đọc được tệp. Vui lòng chọn lại."
+  },
   "请先登录后再编辑文章": {
     "en": "Sign in to edit an article",
     "ja": "記事を編集するにはログインしてください",

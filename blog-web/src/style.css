@@ -650,3 +650,16 @@ main:focus { outline: none; }
 .hero-art, .auth-story::before { opacity: 0; transition: opacity 420ms ease-out; }
 :root[data-artwork-ready="true"] .hero-art,
 :root[data-artwork-ready="true"] .auth-story::before { opacity: 1; }
+
+/* 导入预览独立于编辑区，确认前不改变草稿。 */
+.markdown-import { margin: 0 0 24px; padding: 16px; border: 1px solid var(--border); border-radius: 16px; }
+.markdown-import-toolbar, .markdown-import-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.markdown-import-toolbar .small-help { margin: 0; }
+.markdown-import-preview { min-width: 0; padding-top: 18px; }
+.markdown-import-preview h2, .markdown-import-preview .small-help { overflow-wrap: anywhere; }
+.markdown-import-body { max-height: 340px; overflow: auto; padding: 12px 0; }
+.markdown-import-body img { max-width: 100%; }
+.markdown-import-actions { margin-top: 16px; }
+
+/* 文件选择器保持隐藏尺寸，避免设置卡片的 input 宽度规则撑开页面。 */
+.settings-card input.sr-only { width: 1px; padding: 0; }
