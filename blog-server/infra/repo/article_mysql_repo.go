@@ -77,6 +77,9 @@ func (a *articleMysqlRepo) ListArticleByPage(ctx context.Context, query *do.Arti
 // articleQueryScope 让完整列表与轻量分页核对复用筛选和软删除范围，避免两者随维护发生偏移。
 func articleQueryScope(db *gorm.DB, query *do.ArticleQuery) *gorm.DB {
 	db = db.Model(&model.ArticleModel{})
+	if len(query.ExcludeIDs) > 0 {
+		db = db.Where("id NOT IN ?", query.ExcludeIDs)
+	}
 	if query.Title != "" {
 		db = db.Where("title LIKE ?", "%"+query.Title+"%")
 	}

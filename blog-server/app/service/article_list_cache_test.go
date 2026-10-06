@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -35,7 +36,7 @@ type articleListCacheDB struct {
 func (r *articleListCacheDB) pageLocked(query *do.ArticleQuery) ([]*model.ArticleModel, int64) {
 	items := make([]*model.ArticleModel, 0)
 	for _, item := range r.items {
-		if item.DeletedAt.Valid || !strings.Contains(item.Title, query.Title) ||
+		if slices.Contains(query.ExcludeIDs, item.ID) || item.DeletedAt.Valid || !strings.Contains(item.Title, query.Title) ||
 			(query.CategoryID != nil && item.CategoryID != *query.CategoryID) ||
 			(query.Status != nil && item.Status != *query.Status) ||
 			(query.IsTop != nil && item.IsTop != *query.IsTop) ||
@@ -492,5 +493,25 @@ func TestArticleListCacheAuthorRemainsDynamicAndDeduplicatedPerPage(t *testing.T
 		if strings.Contains(string(raw), "before-profile-change") || strings.Contains(string(raw), "/before.png") {
 			t.Fatal("page cache contains author profile")
 		}
+	}
+}
+
+func TestArticleListExclusionsHaveCanonicalSeparateCache(t *testing.T) {
+	s, db, _ := newArticleListCacheFixture()
+	read := func(ids []uint64) *dto.PageResult {
+		t.Helper()
+		page, err := s.ListArticleByPage(context.Background(), &dto.ArticlePageQuery{PageSize: 2, ExcludeIDs: ids})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return page
+	}
+	all := read(nil)
+	filtered := read([]uint64{1, 2})
+	wide, _ := db.counts()
+	again := read([]uint64{2, 1, 2})
+	after, _ := db.counts()
+	if wide != after || !reflect.DeepEqual(filtered, again) || reflect.DeepEqual(all, filtered) {
+		t.Fatalf("filter cache collision or noncanonical key: %d %d", wide, after)
 	}
 }

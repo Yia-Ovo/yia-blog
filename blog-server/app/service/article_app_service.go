@@ -125,6 +125,7 @@ func (s *ArticleAppService) ListArticleByPage(ctx context.Context, req *dto.Arti
 	}
 
 	query := &do.ArticleQuery{
+		ExcludeIDs: req.ExcludeIDs,
 		PageNum:    req.PageNum,
 		PageSize:   req.PageSize,
 		Title:      req.Title,

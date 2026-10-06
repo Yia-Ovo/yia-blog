@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -45,7 +46,7 @@ func (r *publicArticleRepo) ListArticleByPage(_ context.Context, query *do.Artic
 	r.query = &copied
 	var list []*model.ArticleModel
 	for _, article := range r.articles {
-		if query.Status == nil || article.Status == *query.Status {
+		if !slices.Contains(query.ExcludeIDs, article.ID) && (query.Status == nil || article.Status == *query.Status) {
 			list = append(list, article)
 		}
 	}
@@ -190,6 +191,37 @@ func TestArticleQueryBindsSnakeCaseFilters(t *testing.T) {
 		var body struct{ Code int }
 		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil || body.Code != common.ParamErr.Code || r.query != nil {
 			t.Fatalf("invalid query reached repo: %s response=%s", bad, w.Body.String())
+		}
+	}
+}
+
+func TestPublicArticleExclusionBindingAndPagination(t *testing.T) {
+	for _, input := range []string{"2,3,2", "3,2"} {
+		r := &publicArticleRepo{articles: []*model.ArticleModel{{ID: 1, Status: 1}, {ID: 2, Status: 1}, {ID: 3, Status: 1}, {ID: 4, Status: 1}, {ID: 5, Status: 0}}}
+		w := httptest.NewRecorder()
+		publicTestEngine(&ioc.Container{ArticleApp: articleTestApp(r)}).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/blog/v1/article/listArticle?page_size=1&page_num=2&exclude_ids="+input+"&status=0", nil))
+		var body struct {
+			Code int
+			Data struct {
+				Total, Pages int
+				List         []struct{ ID uint64 }
+			}
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		if body.Code != 200 || body.Data.Total != 2 || body.Data.Pages != 2 || len(body.Data.List) != 1 || body.Data.List[0].ID != 4 || !slices.Equal(r.query.ExcludeIDs, []uint64{2, 3}) {
+			t.Fatalf("exclusion/pagination mismatch: %s", w.Body.String())
+		}
+	}
+	for _, bad := range []string{"0", "-1", "abc", "1,,2", strings.Repeat("1,", 100) + "1"} {
+		r := &publicArticleRepo{}
+		w := httptest.NewRecorder()
+		publicTestEngine(&ioc.Container{ArticleApp: articleTestApp(r)}).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/blog/v1/article/listArticle?exclude_ids="+bad, nil))
+		var body struct{ Code int }
+		json.Unmarshal(w.Body.Bytes(), &body)
+		if body.Code != common.ParamErr.Code || r.query != nil {
+			t.Fatalf("invalid exclusion accepted: %s", bad)
 		}
 	}
 }

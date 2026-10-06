@@ -13,11 +13,22 @@ import (
 )
 
 // NormalizeArticleQuery 让数据库查询、响应分页和缓存键采用相同的有效参数。
-// 不改筛选字段，保持管理列表可以查询草稿等状态的既有语义。
+// 保留管理列表的状态语义，排除集合复制后去重排序，不改变调用方的切片。
 func NormalizeArticleQuery(query *do.ArticleQuery) error {
 	if query == nil {
 		return common.ParamErr
 	}
+	if len(query.ExcludeIDs) > consts.ArticleExcludeIDsMax {
+		return common.ParamErr
+	}
+	for _, id := range query.ExcludeIDs {
+		if id == 0 {
+			return common.ParamErr
+		}
+	}
+	query.ExcludeIDs = slices.Clone(query.ExcludeIDs)
+	slices.Sort(query.ExcludeIDs)
+	query.ExcludeIDs = slices.Compact(query.ExcludeIDs)
 	if query.PageNum < 1 {
 		query.PageNum = 1
 	}

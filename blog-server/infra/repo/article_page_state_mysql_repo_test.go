@@ -3,6 +3,7 @@ package repo
 import (
 	"blog-server/common/consts"
 	"blog-server/domain/do"
+	"blog-server/infra/model"
 	"context"
 	"errors"
 	"reflect"
@@ -101,5 +102,17 @@ func TestArticlePageStateReturnsCountAndIDsErrors(t *testing.T) {
 	}
 	if state, err := NewArticleMysqlRepo(nil).GetArticlePageState(context.Background(), nil); state != nil || !errors.Is(err, gorm.ErrInvalidData) {
 		t.Fatalf("nil query should fail without touching database: state=%+v err=%v", state, err)
+	}
+}
+
+func TestArticleExclusionSQLAppliesBeforeCountAndPaging(t *testing.T) {
+	db := newSQLTestDB(t)
+	q := &do.ArticleQuery{PageNum: 2, PageSize: 3, ExcludeIDs: []uint64{2, 3}}
+	count := articleQueryScope(db, q).ToSQL(func(tx *gorm.DB) *gorm.DB { var n int64; return tx.Count(&n) })
+	rows := articleQueryScope(db, q).ToSQL(func(tx *gorm.DB) *gorm.DB { return tx.Limit(3).Offset(3).Find(&[]model.ArticleModel{}) })
+	for _, sql := range []string{count, rows} {
+		if !strings.Contains(sql, "id NOT IN (2,3)") || !strings.Contains(sql, "deleted_at") {
+			t.Fatalf("lost exclusion/visibility: %s", sql)
+		}
 	}
 }

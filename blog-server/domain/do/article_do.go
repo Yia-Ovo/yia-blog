@@ -65,6 +65,7 @@ type ArticleCreate struct {
 
 // ArticleQuery 文章分页查询条件
 type ArticleQuery struct {
+	ExcludeIDs []uint64 `json:",omitempty"` // 排除指定文章；领域校验上限、正数并去重排序，供计数、列表及缓存共用。
 	PageNum    int
 	PageSize   int
 	Title      string  // 文章标题模糊查询

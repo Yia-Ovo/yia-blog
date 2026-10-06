@@ -136,3 +136,19 @@ func TestValidatePublicArticlePageFallsBackForLegacyRepository(t *testing.T) {
 		t.Fatalf("legacy fallback ignored database failure: match=%v err=%v", match, err)
 	}
 }
+
+func TestArticleExclusionNormalization(t *testing.T) {
+	ids := []uint64{9, 2, 9}
+	q := &do.ArticleQuery{ExcludeIDs: ids}
+	if err := NormalizePublicArticleQuery(q); err != nil {
+		t.Fatal(err)
+	}
+	if len(q.ExcludeIDs) != 2 || q.ExcludeIDs[0] != 2 || q.ExcludeIDs[1] != 9 || ids[0] != 9 {
+		t.Fatal("normalization must not mutate caller slice")
+	}
+	for _, invalid := range [][]uint64{{0}, make([]uint64, consts.ArticleExcludeIDsMax+1)} {
+		if err := NormalizeArticleQuery(&do.ArticleQuery{ExcludeIDs: invalid}); err == nil {
+			t.Fatal("invalid exclusion accepted")
+		}
+	}
+}
