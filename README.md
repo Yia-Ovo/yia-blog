@@ -4,17 +4,20 @@
 
 后端位于 `blog-server/`，React 前端位于 `blog-web/`。默认开发端口为 `8081`，当前 Router 固定使用 `/api/blog/v1`；`gin.router_prefix` 尚未接入路由，不会改变实际请求地址。前端接入范围与管理入口见 [前端接入清单](docs/frontend-readiness.md)，服务启动、只读 devcheck 与实际操作验收见 [本地联调说明](docs/local-integration.md)。
 
-## 当前交付（2026-10-06）
+## 当前交付（2026-10-07）
+
+整站收尾结果与当前边界见[首版收尾状态](docs/release-readiness.md)。
 
 公网博客：[sryia.cn](https://sryia.cn/)。已接入域名 HTTPS、四语言界面（中英日越）、每日主题、头像/文章图片、草稿恢复与 Markdown 文件导入。小说《未归之人》已发布20章，第一部仍在连载。
 
+- [三篇 Go 后端技术文章](content/technical/README.md)
 - [写作与 Markdown 导入](docs/editor-writing.md)
 - [国际化说明](docs/frontend-i18n.md)
 - [域名部署与续期](docs/domain-deployment.md)
 - [Ubuntu 部署及每日备份](deploy/ubuntu/README.md)
-- [小说公开章节](creative-writing/novel-01/publication.md)
+- [小说目录与继续阅读](https://sryia.cn/novels) · [维护说明](docs/novel-reading.md)
 
-最近前端验证为117项测试、类型检查与生产构建；Markdown 导入通过本地及公网桌面/手机浏览器验收。每日备份为同机快照，已做首次隔离恢复，不等于异机灾备。下方2026-09-11验收记录保留为首版历史，不能当作当前生产容量证明。
+最近前端验证为120项测试、类型检查与生产构建；Markdown 导入通过本地及公网桌面/手机浏览器验收。每日备份为同机快照，已做首次隔离恢复，不等于异机灾备。下方2026-09-11验收记录保留为首版历史，不能当作当前生产容量证明。
 
 ## 技术栈
 
