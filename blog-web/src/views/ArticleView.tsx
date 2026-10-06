@@ -1,3 +1,4 @@
+import { findChapter, rememberChapter } from '../lib/novel'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { articleApi, categoryApi, commentApi } from '../api'
@@ -31,6 +32,8 @@ function ArticlePage({ id }: { id: number }) {
   const article = useResource(useCallback((signal) => articleApi.detail(id, signal), [id]))
   const categories = useResource(categoryApi.all)
   const value = article.data
+  const chapter = value && findChapter(value)
+  useEffect(() => { if (value) rememberChapter(value) }, [value])
   const categoryName = categories.data?.find((item) => item.id === value?.category_id)?.name || t('文章')
   useEffect(() => {
     if (value) document.title = `${value.title} · Yia`
@@ -40,7 +43,7 @@ function ArticlePage({ id }: { id: number }) {
   }, [value, location.hash])
 
   return <div className="container reading-page">
-    <Link className="back-link" to="/"><UiIcon name="back" size={17} />{t('所有文章')}</Link>
+    <Link className="back-link" to={chapter ? '/novels' : '/'}><UiIcon name="back" size={17} />{t(chapter ? '章节目录' : '所有文章')}</Link>
     {article.pending ? <StatePanel kind="loading" />
       : article.error ? <StatePanel kind="error" message={t(article.error)} onRetry={article.reload} />
       : value && <>
@@ -54,6 +57,7 @@ function ArticlePage({ id }: { id: number }) {
           <MarkdownBody source={value.content || ''} />
           <div className="article-end"><span /><UiIcon name="book" size={18} /><span /></div>
         </article>
+        {chapter && <Link className="button secondary" to="/novels">{t('返回章节目录')}</Link>}
         <ArticleComments key={`${id}:${sessions.user?.token || ''}`} article={value} />
       </>}
   </div>

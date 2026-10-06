@@ -1,3 +1,4 @@
+import { novel } from '../lib/novel'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { articleApi, categoryApi } from '../api'
@@ -18,7 +19,7 @@ export default function HomeView() {
   const title = params.get('q') || ''
   const [search, setSearch] = useState(title)
   useEffect(() => { setSearch(title) }, [title])
-  const articles = useResource(useCallback((signal) => articleApi.list({ page_num: page, page_size: 6, title, category_id: category || undefined }, signal), [page, title, category]))
+  const articles = useResource(useCallback((signal) => articleApi.list({ exclude_ids: novel.chapters.map((chapter) => chapter.id).join(','), page_num: page, page_size: 6, title, category_id: category || undefined }, signal), [page, title, category]))
   const categories = useResource(categoryApi.all)
   const categoryName = (id: number) => categories.data?.find((item) => item.id === id)?.name || t(id ? '文章' : '未分类')
 

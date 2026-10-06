@@ -59,6 +59,7 @@ export default function App() {
       <p className="nav-label">{t("你的记录空间")}</p>
       <nav className="main-nav" aria-label={t("主导航")}>
         <NavLink to="/" end><UiIcon name="book" /><span>{t("文章")}<small>{t("阅读与发现")}</small></span></NavLink>
+        <NavLink to="/novels"><UiIcon name="book" /><span>{t("小说")}<small>{t("走进另一个世界")}</small></span></NavLink>
         <NavLink to="/me/articles" className={location.pathname.startsWith('/write') || location.pathname.startsWith('/me') ? 'active' : undefined}><UiIcon name="edit" /><span>{t("我的创作")}<small>{t("从一个想法开始")}</small></span></NavLink>
         <NavLink to="/admin/articles" className={adminArea ? 'active' : undefined}><UiIcon name="folder" /><span>{t("管理")}<small>{t("整理内容与交流")}</small></span></NavLink>
       </nav>
