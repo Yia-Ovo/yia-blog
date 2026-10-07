@@ -686,3 +686,35 @@ main:focus { outline: none; }
   .main-nav { flex-wrap: wrap; }
   .main-nav a { flex: 1 1 40%; }
 }
+
+/* 阅读菜单通过 portal 挂到 body；独立手柄负责拖动，正文仍可正常触摸滚动。 */
+.reading-page--novel { padding-bottom: 120px; }
+.reading-menu { position: fixed; z-index: 35; right: 18px; top: calc(50dvh - 126px); width: 64px; max-height: calc(100dvh - 24px); opacity: 0; visibility: hidden; transition: opacity .18s ease, visibility .18s; }
+.reading-menu[data-visible="true"] { opacity: 1; visibility: visible; }
+.reading-menu-bar { display: flex; flex-direction: column; gap: 3px; padding: 5px; max-height: inherit; overflow-y: auto; border: 1px solid var(--border-strong); border-radius: 18px; background: var(--glass); backdrop-filter: blur(20px); box-shadow: var(--shadow); }
+.reading-menu-bar > a, .reading-menu-bar > button { min-height: 46px; padding: 7px 2px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; border: 0; border-radius: 12px; background: transparent; color: var(--text); font: inherit; font-size: 11px; line-height: 1.35; text-align: center; text-decoration: none; overflow-wrap: anywhere; }
+.reading-menu-bar svg { flex-shrink: 0; }
+.reading-menu-bar > :hover:not(:disabled), .reading-menu-bar > [aria-expanded="true"] { background: var(--surface-raised); color: var(--accent-strong); }
+.reading-menu-bar > :disabled { opacity: .4; cursor: default; }
+.reading-menu-panel { position: fixed; z-index: 1; display: flex; flex-direction: column; max-height: min(60dvh, 460px); overflow: hidden; border: 1px solid var(--border-strong); border-radius: 18px; background: var(--surface-raised); box-shadow: var(--shadow); }
+.reading-menu-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 17px 18px 13px; flex-shrink: 0; }
+.reading-menu-heading small { display: block; color: var(--muted); margin-bottom: 5px; font-size: 11px; }
+.reading-menu-heading strong { font-family: var(--serif); font-size: 19px; }
+.reading-menu-panel ol { position: relative; min-height: 0; overflow-y: auto; overscroll-behavior: contain; list-style: none; padding: 0 8px; margin: 0; }
+.reading-menu-panel li a { display: flex; gap: 12px; align-items: baseline; min-height: 44px; padding: 12px 10px; border-radius: 9px; font-size: 13px; line-height: 1.5; text-decoration: none; overflow-wrap: anywhere; }
+.reading-menu-panel li a > span:first-child { font: 11px var(--mono); color: var(--muted); }
+.reading-menu-panel li a:hover, .reading-menu-panel li a[aria-current="page"] { background: var(--bg-elevated); color: var(--accent-strong); }
+.reading-menu-panel li a[aria-current="page"] { font-weight: 600; box-shadow: inset 2px 0 var(--accent); }
+.reading-menu-overview { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 13px; flex-shrink: 0; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted-strong); }
+.reading-menu-state { padding: 14px 20px; font-size: 13px; overflow-y: auto; }
+@media (max-width: 600px) {
+  .reading-menu { width: 60px; }
+  .reading-menu-bar > a, .reading-menu-bar > button { flex-direction: column; gap: 4px; font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reading-menu { transition: none; transform: none; }
+}
+
+.reading-menu-bar > .reading-menu-drag { min-height: 28px; padding: 3px; color: var(--muted); cursor: grab; touch-action: none; user-select: none; }
+.reading-menu[data-dragging="true"] .reading-menu-drag { cursor: grabbing; }
+.reading-menu[data-dragging="true"] { user-select: none; }

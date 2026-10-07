@@ -1,4 +1,62 @@
 export const novelMessages = {
+  '拖动阅读菜单': { en: 'Move reading menu', ja: '読書メニューを移動', vi: 'Di chuyển menu đọc' },
+  '拖动调整位置，也可用方向键移动，Home 键复位': { en: 'Drag to move, or use arrow keys; Home resets position', ja: 'ドラッグまたは矢印キーで移動、Home キーで位置を戻す', vi: 'Kéo hoặc dùng phím mũi tên để di chuyển; Home để đặt lại' },
+  "阅读菜单": {
+    "en": "Reading menu",
+    "ja": "読書メニュー",
+    "vi": "Menu đọc"
+  },
+  "上一章": {
+    "en": "Previous",
+    "ja": "前の章",
+    "vi": "Chương trước"
+  },
+  "下一章": {
+    "en": "Next",
+    "ja": "次の章",
+    "vi": "Chương sau"
+  },
+  "目录": {
+    "en": "Chapters",
+    "ja": "目次",
+    "vi": "Mục lục"
+  },
+  "回顶部": {
+    "en": "Top",
+    "ja": "先頭へ",
+    "vi": "Lên đầu"
+  },
+  "关闭目录": {
+    "en": "Close chapters",
+    "ja": "目次を閉じる",
+    "vi": "Đóng mục lục"
+  },
+  "正在加载章节…": {
+    "en": "Loading chapters…",
+    "ja": "章を読み込み中…",
+    "vi": "Đang tải chương…"
+  },
+  "重新加载目录": {
+    "en": "Retry chapters",
+    "ja": "目次を再読み込み",
+    "vi": "Tải lại mục lục"
+  },
+  "前往作品页": {
+    "en": "About this novel",
+    "ja": "作品ページへ",
+    "vi": "Trang tác phẩm"
+  },
+  "没有可用的上一章": {
+    "en": "No previous chapter available",
+    "ja": "前の章はありません",
+    "vi": "Không có chương trước"
+  },
+  "没有可用的下一章": {
+    "en": "No next chapter available",
+    "ja": "次の章はありません",
+    "vi": "Không có chương sau"
+  }
+,
   "小说": {
     "en": "Fiction",
     "ja": "小説",

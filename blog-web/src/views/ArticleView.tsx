@@ -1,3 +1,4 @@
+import NovelReadingMenu from '../components/NovelReadingMenu'
 import { findChapter, rememberChapter } from '../lib/novel'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
@@ -42,7 +43,7 @@ function ArticlePage({ id }: { id: number }) {
     if (value && location.hash === '#comments') document.getElementById('comments')?.scrollIntoView()
   }, [value, location.hash])
 
-  return <div className="container reading-page">
+  return <div className={`container reading-page${chapter ? ' reading-page--novel' : ''}`}>
     <Link className="back-link" to={chapter ? '/novels' : '/'}><UiIcon name="back" size={17} />{t(chapter ? '章节目录' : '所有文章')}</Link>
     {article.pending ? <StatePanel kind="loading" />
       : article.error ? <StatePanel kind="error" message={t(article.error)} onRetry={article.reload} />
@@ -50,14 +51,14 @@ function ArticlePage({ id }: { id: number }) {
         <article className="reading-article">
           <header className="reading-header">
             <div className="article-meta"><Link className="category-tag" to={value.category_id ? `/?category=${value.category_id}` : '/'}>{categoryName}</Link><span>{formatDate(value.publish_at || value.create_at)}</span></div>
-            <h1>{value.title}</h1>{value.summary && <p className="reading-summary">{value.summary}</p>}
+            <h1 id="reading-title" tabIndex={-1}>{value.title}</h1>{value.summary && <p className="reading-summary">{value.summary}</p>}
             <div className="author-line"><Avatar url={value.author?.avatar} name={value.author?.name} /><div><strong>{value.author?.name || t('作者')}</strong><p>{value.author?.signature || t('记录问题，也记录答案。')}</p></div></div>
           </header>
           {safeImageURL(value.cover) && <img className="reading-cover" src={safeImageURL(value.cover)} alt={t('文章封面')} referrerPolicy="no-referrer" />}
           <MarkdownBody source={value.content || ''} />
           <div className="article-end"><span /><UiIcon name="book" size={18} /><span /></div>
         </article>
-        {chapter && <Link className="button secondary" to="/novels">{t('返回章节目录')}</Link>}
+        {chapter && <><Link className="button secondary" to="/novels">{t('返回章节目录')}</Link><NovelReadingMenu key={id} chapterID={id} /></>}
         <ArticleComments key={`${id}:${sessions.user?.token || ''}`} article={value} />
       </>}
   </div>
