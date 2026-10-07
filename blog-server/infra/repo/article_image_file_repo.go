@@ -64,7 +64,7 @@ func (r *ArticleImageFileRepo) Save(ctx context.Context, data []byte) (string, e
 	}
 	sum := sha256.Sum256(data)
 	name := hex.EncodeToString(sum[:]) + ext
-	// 同一进程串行落盘，避免 Windows 同名文件读写的共享冲突。
+	// 同一仓储实例串行落盘；不同实例的同名发布由文件系统原子操作处理。
 	r.writeMu.Lock()
 	defer r.writeMu.Unlock()
 	if err := ctx.Err(); err != nil {
@@ -101,7 +101,7 @@ func (r *ArticleImageFileRepo) Save(ctx context.Context, data []byte) (string, e
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
-	if err := os.Rename(tempName, filepath.Join(r.directory, name)); err != nil {
+	if err := publishArticleImageFile(tempName, filepath.Join(r.directory, name)); err != nil {
 		// 不同实例并发保存同一内容时，Windows 不允许替换已有文件，可复用已完整落盘的图片。
 		if existing, readErr := r.Read(ctx, name); readErr == nil && bytes.Equal(existing.Data, data) {
 			return name, nil
