@@ -27,6 +27,7 @@ var AppContainer *Container
 
 // Container 真正的DI容器，所有依赖放在结构体里
 type Container struct {
+	WeatherApp              *appSrv.WeatherAppService
 	ArticleImageRepo        domainRepo.ArticleImageRepo
 	ArticleImageDomain      *domainSrv.ArticleImageDomainService
 	ArticleImageApp         *appSrv.ArticleImageAppService
@@ -137,5 +138,6 @@ func NewContainer(
 	c.AppearanceRepo = infraRepo.NewAppearanceFileRepo(assets.DailyArtwork)
 	c.AppearanceDomain = domainSrv.NewAppearanceDomainService(c.AppearanceRepo)
 	c.AppearanceApp = appSrv.NewAppearanceAppService(c.AppearanceDomain)
+	c.WeatherApp = appSrv.NewWeatherAppService(domainSrv.NewWeatherDomainService(), infraRepo.NewWeatherHTTPRepo())
 	return c
 }

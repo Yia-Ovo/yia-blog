@@ -9,6 +9,9 @@ import { safeImageURL } from '../lib/markdown'
 import Pagination from '../components/Pagination'
 import StatePanel from '../components/StatePanel'
 import UiIcon from '../components/UiIcon'
+import WeatherCard from '../components/WeatherCard'
+import DailyQuoteCard from '../components/DailyQuoteCard'
+import '../components/home-daily.css'
 
 export default function HomeView() {
   const { t } = useI18n()
@@ -44,6 +47,11 @@ export default function HomeView() {
       </div>
       <div className="hero-art" aria-hidden="true" />
       <span className="hero-art-label" aria-hidden="true">THE QUIET HOURS<br /><small>write · learn · repeat</small></span>
+    </section>
+
+    <section className="home-daily" aria-labelledby="daily-title">
+      <div className="home-daily-heading"><h2 id="daily-title">{t('今日小记')}</h2><p>{t('看看天气，也给今天留一句话。')}</p><span aria-hidden="true" /></div>
+      <div className="home-daily-grid"><WeatherCard /><DailyQuoteCard /></div>
     </section>
 
     <div id="articles" className="content-layout">

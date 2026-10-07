@@ -1,0 +1,18 @@
+.daily-quote-card { position: relative; min-width: 0; display: flex; flex-direction: column; padding: 25px 27px 18px; overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent 60%), var(--surface); }
+.daily-quote-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.daily-quote-heading h3 { margin: 0; font: 500 12px/1.7 var(--sans); color: var(--muted-strong); letter-spacing: .035em; }
+.daily-quote-heading time { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.daily-quote-thought { margin: 0; padding-top: 10px; flex: 1; }
+.daily-quote-mark { display: block; height: 34px; font: 58px/1 Georgia, serif; color: var(--accent-strong); opacity: .6; }
+.daily-quote-thought blockquote { padding: 0; margin: 0; border: 0; }
+.daily-quote-thought blockquote p { margin: 0; color: var(--text); font: 18px/1.95 var(--serif); text-wrap: pretty; overflow-wrap: anywhere; }
+.daily-quote-thought figcaption { margin-top: 15px; color: var(--muted); font-size: 11px; line-height: 1.8; }
+.daily-quote-footer { display: flex; align-items: center; gap: 20px; margin-top: 16px; }
+.daily-quote-rule { flex: 1; height: 1px; background: var(--border); }
+.daily-quote-footer button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex-shrink: 0; min-height: 40px; max-width: 100%; padding: 8px 10px; border: 1px solid transparent; border-radius: 8px; color: var(--muted-strong); background: transparent; font-size: 11px; line-height: 1.5; cursor: pointer; }
+.daily-quote-footer button:hover { color: var(--accent-strong); background: var(--surface-soft); border-color: var(--border); }
+.daily-quote-footer svg { flex-shrink: 0; }
+@media (max-width: 480px) {
+  .daily-quote-card { padding: 21px 20px 14px; }
+  .daily-quote-thought blockquote p { font-size: 17px; }
+}

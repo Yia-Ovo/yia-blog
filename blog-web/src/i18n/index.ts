@@ -1,3 +1,5 @@
+import { weatherMessages } from './weather'
+import { dailyQuoteMessages } from './dailyQuote'
 import { useSyncExternalStore } from 'react'
 import { novelMessages } from './novel'
 import { commonMessages } from './common'
@@ -10,7 +12,7 @@ export type Locale = typeof locales[number]
 export const localeNames: Record<Locale, string> = { 'zh-CN': '中文', en: 'English', ja: '日本語', vi: 'Tiếng Việt' }
 export const localeStorageKey = 'yia.locale'
 export const messages: Record<string, { en: string; ja: string; vi: string }> = {
-  ...novelMessages, ...publicMessages, ...accountMessages, ...editorMessages, ...commonMessages,
+  ...dailyQuoteMessages, ...weatherMessages, ...novelMessages, ...publicMessages, ...accountMessages, ...editorMessages, ...commonMessages,
 }
 export function isLocale(value: unknown): value is Locale {
   return typeof value === 'string' && (locales as readonly string[]).includes(value)
