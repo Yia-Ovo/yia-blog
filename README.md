@@ -2,7 +2,7 @@
 
 `yia-blog` 是一个基于 Go、Gin、GORM、MySQL 和 Redis 的博客后端项目，采用用户与管理员双 JWT 鉴权，并按 DDD 思路划分 API、应用、领域和基础设施层。
 
-后端位于 `blog-server/`，React 前端位于 `blog-web/`。默认开发端口为 `8081`，当前 Router 固定使用 `/api/blog/v1`；`gin.router_prefix` 尚未接入路由，不会改变实际请求地址。前端接入范围与管理入口见 [前端接入清单](docs/frontend-readiness.md)，服务启动、只读 devcheck 与实际操作验收见 [本地联调说明](docs/local-integration.md)。
+后端位于 `blog-server/`，React 前端位于 `blog-web/`。默认开发端口为 `8081`，业务 API 固定使用 `/api/blog/v1`，不提供路由前缀配置；旧配置中的 `gin.router_prefix` 会被忽略。前端接入范围与管理入口见 [前端接入清单](docs/frontend-readiness.md)，服务启动、只读 devcheck 与实际操作验收见 [本地联调说明](docs/local-integration.md)。
 
 ## 当前交付（2026-10-08）
 

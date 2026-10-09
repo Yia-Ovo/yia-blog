@@ -15,6 +15,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"time"
 
@@ -69,7 +70,7 @@ type ServerConfig struct {
 	HttpHost        string        `yaml:"http_host"`        // 监听地址；空值沿用全部网卡，代理部署时设为 127.0.0.1。
 	HttpPort        int           `yaml:"http_port"`        // HTTP端口
 	Env             string        `yaml:"env"`              // 运行环境
-	EnablePprof     bool          `yaml:"enable_pprof"`     // 是否启用性能分析
+	EnablePprof     bool          `yaml:"enable_pprof"`     // 仅允许 dev/local/test 环境在回环监听地址开启。
 	LogLevel        string        `yaml:"log_level"`        // 日志级别
 	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"` // 关闭期限，配置使用 5s/1m 等时长字符串；非正值采用服务端默认值。
 
@@ -79,7 +80,6 @@ type GinConfig struct {
 	Mode                string `yaml:"mode"`                  // 运行模式：debug/release/test
 	DisableConsoleColor bool   `yaml:"disable_console_color"` // 是否禁用控制台颜色（生产环境建议true）
 	MaxMultipartMemory  int64  `yaml:"max_multipart_memory"`  // 上传文件最大内存限制(MB)
-	RouterPrefix        string `yaml:"router_prefix"`         // 全局路由前缀（如/api/v1）
 	// CORS跨域配置
 	CORS CORSConfig `yaml:"cors"`
 	// 其他配置
@@ -307,7 +307,6 @@ func setDefaultConfig(vipConf *viper.Viper) {
 	vipConf.SetDefault("gin.mode", "release")             // 生产默认release模式
 	vipConf.SetDefault("gin.disable_console_color", true) // 生产默认禁用控制台颜色
 	vipConf.SetDefault("gin.max_multipart_memory", 10)    // 默认10MB上传限制
-	vipConf.SetDefault("gin.router_prefix", "/api/v1")    // 默认路由前缀
 
 	// Gin CORS 默认配置（生产环境严格限制）
 	vipConf.SetDefault("gin.cors.enabled", false)
@@ -352,8 +351,20 @@ func setDefaultConfig(vipConf *viper.Viper) {
 	vipConf.SetDefault("logger.compress", false) // 生产默认压缩，开发默认不压缩
 }
 
+// AllowsLocalPprof 将性能分析限制在显式开发环境和回环监听地址。
+func (s ServerConfig) AllowsLocalPprof() bool {
+	if s.Env != "dev" && s.Env != "local" && s.Env != "test" {
+		return false
+	}
+	ip := net.ParseIP(s.HttpHost)
+	return ip != nil && ip.IsLoopback()
+}
+
 // 配置合法性校验（必填项+格式校验）
 func validateConfig(conf *GlobalConfig) error {
+	if conf.Server.EnablePprof && !conf.Server.AllowsLocalPprof() {
+		return fmt.Errorf("server.enable_pprof requires explicit dev/local/test env and a loopback IP in server.http_host")
+	}
 	// 1. 端口校验（1-65535）
 	if conf.Server.HttpPort <= 0 || conf.Server.HttpPort > 65535 {
 		return fmt.Errorf("server.http_port invalid: %d (must 1-65535)", conf.Server.HttpPort)

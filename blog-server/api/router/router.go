@@ -55,7 +55,7 @@ func (r *Router) checkServer() gin.HandlerFunc {
 }
 
 func (r *Router) Register(engine *gin.Engine) {
-	if r.conf.Server.EnablePprof {
+	if r.conf.Server.EnablePprof && r.conf.Server.AllowsLocalPprof() {
 		SetupPprof(engine, "/debug/pprof")
 	}
 	engine.Any("/ping", r.checkServer())
