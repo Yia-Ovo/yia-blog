@@ -10,8 +10,9 @@ func (err Errno) Error() string {
 	return err.Msg
 }
 
+// WithMsg 设置可对外展示的提示，内部错误必须通过 WithErr 附加。
 func (err Errno) WithMsg(msg string) Errno {
-	err.ErrMsg = msg
+	err.Msg = msg
 	return err
 }
 
@@ -45,7 +46,6 @@ var (
 	// ======================
 	UserNotFoundErr        = Errno{Code: 11001, Msg: "User Not Found"}
 	UserExistErr           = Errno{Code: 11002, Msg: "User Already Exist"}
-	UserNickNameTooLongErr = Errno{Code: 11011, Msg: "User nickname too long"}
 	UserStatusInvalidErr   = Errno{Code: 11012, Msg: "User status invalid"}
 	UserCreateErr          = Errno{Code: 11021, Msg: "Create user failed"}
 	UserUpdateErr          = Errno{Code: 11022, Msg: "Update user info failed"}

@@ -52,7 +52,7 @@ func (h *ArticleHandler) CreateArticle(c *gin.Context) {
 
 	var req dto.CreateArticleReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		response.WriteResp(c, nil, common.ParamErr.WithErr(err))
 		return
 	}
 
@@ -72,7 +72,7 @@ func (h *ArticleHandler) CreateArticle(c *gin.Context) {
 func (h *ArticleHandler) ListArticle(c *gin.Context) {
 	var req dto.ArticlePageQuery
 	if err := c.ShouldBindQuery(&req); err != nil {
-		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		response.WriteResp(c, nil, common.ParamErr.WithErr(err))
 		return
 	}
 
@@ -125,7 +125,7 @@ func (h *ArticleHandler) UpdateArticle(c *gin.Context) {
 
 	var req dto.UpdateArticleReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		response.WriteResp(c, nil, common.ParamErr.WithErr(err))
 		return
 	}
 
@@ -192,7 +192,7 @@ func (h *ArticleHandler) AdminCreateArticle(c *gin.Context) {
 
 	var req dto.CreateArticleReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		response.WriteResp(c, nil, common.ParamErr.WithErr(err))
 		return
 	}
 
@@ -224,7 +224,7 @@ func (h *ArticleHandler) AdminUpdateArticle(c *gin.Context) {
 
 	var req dto.UpdateArticleReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		response.WriteResp(c, nil, common.ParamErr.WithErr(err))
 		return
 	}
 

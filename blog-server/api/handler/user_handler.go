@@ -41,7 +41,7 @@ func NewUserHandler(userAppSrv *service.UserAppService) *UserHandler {
 func (h *UserHandler) Register(c *gin.Context) {
 	var req dto.UserRegisterReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		response.WriteResp(c, nil, common.ParamErr.WithErr(err))
 		return
 	}
 
@@ -105,7 +105,7 @@ func (h *UserHandler) Logout(c *gin.Context) {
 			zap.Any("user_id_value", userIdVal),
 			zap.String("actual_type", fmt.Sprintf("%T", userIdVal)),
 		)
-		response.WriteResp(c, nil, common.ServerErr.WithMsg("用户ID类型断言失败"))
+		response.WriteResp(c, nil, common.ServerErr.WithErr(fmt.Errorf("用户ID类型断言失败")))
 		return
 	}
 
@@ -136,7 +136,7 @@ func (h *UserHandler) GetInfo(c *gin.Context) {
 			zap.Any("user_id_value", userIdVal),
 			zap.String("actual_type", fmt.Sprintf("%T", userIdVal)),
 		)
-		response.WriteResp(c, nil, common.ServerErr.WithMsg("用户ID类型断言失败"))
+		response.WriteResp(c, nil, common.ServerErr.WithErr(fmt.Errorf("用户ID类型断言失败")))
 		return
 	}
 
@@ -157,7 +157,7 @@ func (h *UserHandler) GetInfo(c *gin.Context) {
 func (h *UserHandler) UpdatePWD(c *gin.Context) {
 	var req dto.UserUpdatePWDReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		response.WriteResp(c, nil, common.ParamErr.WithErr(err))
 		return
 	}
 
@@ -173,7 +173,7 @@ func (h *UserHandler) UpdatePWD(c *gin.Context) {
 			zap.Any("user_id_value", userIdVal),
 			zap.String("actual_type", fmt.Sprintf("%T", userIdVal)),
 		)
-		response.WriteResp(c, nil, common.ServerErr.WithMsg("用户ID类型断言失败"))
+		response.WriteResp(c, nil, common.ServerErr.WithErr(fmt.Errorf("用户ID类型断言失败")))
 		return
 	}
 
@@ -193,7 +193,7 @@ func (h *UserHandler) UpdatePWD(c *gin.Context) {
 func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 	var req dto.UserUpdateInfoReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		response.WriteResp(c, nil, common.ParamErr.WithErr(err))
 		return
 	}
 
@@ -208,7 +208,7 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 			zap.Any("user_id_value", userIdVal),
 			zap.String("actual_type", fmt.Sprintf("%T", userIdVal)),
 		)
-		response.WriteResp(c, nil, common.ServerErr.WithMsg("用户ID类型断言失败"))
+		response.WriteResp(c, nil, common.ServerErr.WithErr(fmt.Errorf("用户ID类型断言失败")))
 		return
 	}
 
@@ -228,7 +228,7 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 func (h *UserHandler) FindUserByNickname(c *gin.Context) {
 	var req dto.UserFindInfoReq
 	if err := c.ShouldBindQuery(&req); err != nil {
-		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		response.WriteResp(c, nil, common.ParamErr.WithErr(err))
 		return
 	}
 

@@ -38,7 +38,7 @@ func NewCategoryHandler(categoryAppSrv *service.CategoryAppService) *CategoryHan
 func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 	var req dto.CreateCategoryReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		response.WriteResp(c, nil, common.ParamErr.WithErr(err))
 		return
 	}
 
@@ -58,7 +58,7 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 func (h *CategoryHandler) ListCategory(c *gin.Context) {
 	var req dto.CategoryPageQuery
 	if err := c.ShouldBindQuery(&req); err != nil {
-		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		response.WriteResp(c, nil, common.ParamErr.WithErr(err))
 		return
 	}
 
@@ -99,7 +99,7 @@ func (h *CategoryHandler) GetCategoryById(c *gin.Context) {
 func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 	var req dto.UpdateCategoryReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		response.WriteResp(c, nil, common.ParamErr.WithErr(err))
 		return
 	}
 

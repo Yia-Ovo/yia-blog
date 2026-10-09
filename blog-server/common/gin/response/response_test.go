@@ -16,7 +16,8 @@ func TestWriteRespKeepsEnvelopeAndHidesInternalDetails(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	for _, errno := range []common.Errno{
 		common.DatabaseErr.WithErr(errors.New("private-database-host SELECT secret")),
-		common.ParamErr.WithMsg("private-binding-detail"),
+		common.ParamErr.WithErr(errors.New("private-binding-detail")),
+		common.ParamErr.WithMsg("请检查输入").WithErr(errors.New("private-validation-detail")),
 		common.OK,
 	} {
 		w := httptest.NewRecorder()

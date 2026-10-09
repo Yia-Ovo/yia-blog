@@ -18,6 +18,7 @@ import (
 	"blog-server/common/utils/jwt"
 	"blog-server/common/utils/logger"
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -88,7 +89,7 @@ func (h *AdminHandler) GetInfo(c *gin.Context) {
 	adminId, ok := adminIdVal.(uint64)
 	if !ok {
 		logger.Error("[HANDLER] 管理员ID类型转换失败")
-		response.WriteResp(c, nil, common.ServerErr.WithMsg("管理员ID类型错误"))
+		response.WriteResp(c, nil, common.ServerErr.WithErr(errors.New("管理员ID类型错误")))
 		return
 	}
 
@@ -108,7 +109,7 @@ func (h *AdminHandler) UpdatePWD(c *gin.Context) {
 	var req dto.AdminUpdatePWDReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		logger.Warn("[HANDLER] 修改密码参数绑定失败", zap.Error(err))
-		response.WriteResp(c, nil, common.ParamErr.WithMsg("参数校验失败："+err.Error()))
+		response.WriteResp(c, nil, common.ParamErr.WithErr(err))
 		return
 	}
 
@@ -121,7 +122,7 @@ func (h *AdminHandler) UpdatePWD(c *gin.Context) {
 	adminId, ok := adminIdVal.(uint64)
 	if !ok {
 		logger.Error("[HANDLER] 管理员ID类型转换失败")
-		response.WriteResp(c, nil, common.ServerErr.WithMsg("管理员ID类型错误"))
+		response.WriteResp(c, nil, common.ServerErr.WithErr(errors.New("管理员ID类型错误")))
 		return
 	}
 
@@ -155,7 +156,7 @@ func (h *AdminHandler) UpdateAdminRole(c *gin.Context) {
 	operatorID, ok := operatorIdVal.(uint64)
 	if !ok {
 		logger.Error("[HANDLER] 管理员ID类型转换失败")
-		response.WriteResp(c, nil, common.ServerErr.WithMsg("管理员ID类型错误"))
+		response.WriteResp(c, nil, common.ServerErr.WithErr(errors.New("管理员ID类型错误")))
 		return
 	}
 
@@ -188,7 +189,7 @@ func (h *AdminHandler) UpdateAdminInfo(c *gin.Context) {
 	adminId, ok := adminIdVal.(uint64)
 	if !ok {
 		logger.Error("[HANDLER] 管理员ID类型转换失败")
-		response.WriteResp(c, nil, common.ServerErr.WithMsg("管理员ID类型错误"))
+		response.WriteResp(c, nil, common.ServerErr.WithErr(errors.New("管理员ID类型错误")))
 		return
 	}
 
@@ -223,7 +224,7 @@ func (h *AdminHandler) Logout(c *gin.Context) {
 	adminId, ok := adminIdVal.(uint64)
 	if !ok {
 		logger.Error("[HANDLER] 管理员ID类型转换失败")
-		response.WriteResp(c, nil, common.ServerErr.WithMsg("管理员ID类型错误"))
+		response.WriteResp(c, nil, common.ServerErr.WithErr(errors.New("管理员ID类型错误")))
 		return
 	}
 

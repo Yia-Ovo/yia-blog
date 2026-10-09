@@ -27,6 +27,21 @@ describe('API contract boundaries', () => {
     try { await request('/failure') } catch (error) { expect((error as ApiError).message).not.toContain('internal-database-secret') }
   })
 
+  it('keeps code mappings and accepts public fallback messages without reading diagnostics', async () => {
+    saveSession('user', login('user-token'))
+    for (const [code, serverMessage, expected] of [
+      [400, '昵称不能为空且最多16个字符', '请求参数不正确，请检查后重试。'],
+      [11011, '用户数据异常，登录失败', '用户数据异常，登录失败'],
+      [11015, '密码长度必须为 6-20 位', '密码长度必须为 6-20 位'],
+    ] as const) {
+      vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({
+        code, msg: serverMessage, err_msg: 'private-validation-detail', data: null,
+      }), { status: 200 }))
+      await expect(request('/failure', { identity: 'user' })).rejects.toMatchObject({ code, message: expected })
+      expect(sessions.user?.token).toBe('user-token')
+    }
+  })
+
   it('invalidates only the rejected identity and leaves a later login intact', async () => {
     saveSession('user', login('old-user')); saveSession('admin', login('admin-token'))
     vi.mocked(fetch).mockImplementationOnce(async () => { saveSession('user', login('new-user')); return reply(401) })
