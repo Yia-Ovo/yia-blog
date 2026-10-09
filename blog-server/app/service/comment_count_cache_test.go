@@ -36,10 +36,12 @@ type commentCountArticleRepo struct {
 	article *model.ArticleModel
 	err     error
 	reads   int
+	readIDs []uint64
 }
 
-func (r *commentCountArticleRepo) GetArticleById(context.Context, uint64) (*model.ArticleModel, error) {
+func (r *commentCountArticleRepo) GetArticleById(_ context.Context, articleID uint64) (*model.ArticleModel, error) {
 	r.reads++
+	r.readIDs = append(r.readIDs, articleID)
 	return r.article, r.err
 }
 
@@ -83,6 +85,11 @@ func TestCommentCountCacheHit(t *testing.T) {
 			if articles.reads == 0 || cache.reads != 1 || cache.readID != 42 || len(source.queries) != 0 || cache.writes != 0 {
 				t.Fatalf("cache hit skipped visibility or queried/wrote a count: articleReads=%d cache=%+v queries=%+v", articles.reads, cache, source.queries)
 			}
+			for _, articleID := range articles.readIDs {
+				if articleID != 42 {
+					t.Fatalf("cache hit checked visibility for article %d, want 42", articleID)
+				}
+			}
 		})
 	}
 }
@@ -122,8 +129,13 @@ func TestCommentCountCacheFallback(t *testing.T) {
 			if count != tc.wantCount || !errors.Is(err, tc.wantErr) {
 				t.Fatalf("fallback = (%d, %v), want (%d, %v)", count, err, tc.wantCount, tc.wantErr)
 			}
-			if cache.reads != 1 || cache.readID != 42 || len(source.queries) != 1 {
-				t.Fatalf("fallback did not query once for the requested article: cache=%+v queries=%+v", cache, source.queries)
+			if articles.reads == 0 || cache.reads != 1 || cache.readID != 42 || len(source.queries) != 1 {
+				t.Fatalf("fallback skipped visibility or did not query once for the requested article: articleReads=%d cache=%+v queries=%+v", articles.reads, cache, source.queries)
+			}
+			for _, articleID := range articles.readIDs {
+				if articleID != 42 {
+					t.Fatalf("fallback checked visibility for article %d, want 42", articleID)
+				}
 			}
 			query := source.queries[0]
 			if query.ArticleID != 42 || query.Status == nil || *query.Status != consts.CommentStatusPassed || query.WithDeleted || !query.PublishedArticleOnly || query.Page != 1 || query.Size != 1 {
@@ -169,6 +181,11 @@ func TestCommentCountRejectsUnavailableArticleBeforeCache(t *testing.T) {
 			}
 			if articles.reads != tc.wantArticleReads || cache.reads != 0 || cache.writes != 0 || len(source.queries) != 0 {
 				t.Fatalf("unavailable article reached the count cache or query: articleReads=%d cache=%+v queries=%+v", articles.reads, cache, source.queries)
+			}
+			for _, articleID := range articles.readIDs {
+				if articleID != tc.articleID {
+					t.Fatalf("unavailable article checked visibility for article %d, want %d", articleID, tc.articleID)
+				}
 			}
 		})
 	}
