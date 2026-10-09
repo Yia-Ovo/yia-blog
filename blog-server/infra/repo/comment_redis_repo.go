@@ -136,7 +136,12 @@ func (r *commentRedisRepo) GetArticleCommentCount(ctx context.Context, articleID
 	if err != nil {
 		return 0, err
 	}
-	return strconv.Atoi(val)
+	count, err := strconv.Atoi(val)
+	// 负数属于损坏缓存，让 App 回源，不把它当成有效计数或真实零值。
+	if err == nil && count < 0 {
+		return 0, errors.New("invalid article comment count cache: negative count")
+	}
+	return count, err
 }
 
 func (r *commentRedisRepo) DelArticleCommentCache(ctx context.Context, articleID uint64) error {
