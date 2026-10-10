@@ -73,26 +73,6 @@ func CategoryDOToModel(d *do.CategoryDO) *model.CategoryModel {
 	}
 }
 
-func CategoryModelListToDO(list *[]model.CategoryModel) []do.CategoryDO {
-	if list == nil || len(*list) == 0 {
-		return []do.CategoryDO{}
-	}
-
-	listDO := make([]do.CategoryDO, 0, len(*list))
-	for _, m := range *list {
-		listDO = append(listDO, do.CategoryDO{
-			ID:        m.ID,
-			Name:      m.Name,
-			Sort:      m.Sort,
-			Status:    m.Status,
-			CreateAt:  m.CreateAt,
-			UpdateAt:  m.UpdateAt,
-			IsDeleted: m.DeletedAt.Valid,
-		})
-	}
-	return listDO
-}
-
 // CategoryModelListToDOList 模型列表转DO列表。
 // CategoryModelToDO 对 nil / ID==0 的元素返回 nil，此处跳过而非解引用，避免 panic。
 func CategoryModelListToDOList(list []*model.CategoryModel) []do.CategoryDO {
