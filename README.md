@@ -11,6 +11,8 @@
 
 [在线体验](https://sryia.cn/) · [前端源码](https://github.com/Yia-Ovo/yia-blog/tree/main/blog-web) · [后端源码](https://github.com/Yia-Ovo/yia-blog/tree/main/blog-server)
 
+**简体中文** · [English](README_EN.md)
+
 </div>
 
 ---
@@ -53,6 +55,7 @@ blog-server/       Go 后端、测试、配置示例与数据库迁移
 blog-web/          React 前端、测试与构建配置
 .gitignore         Git 忽略规则
 README.md          项目介绍
+README_EN.md       English introduction
 LICENSE            MIT 代码许可证
 CONTRIBUTING.md     贡献说明
 SECURITY.md         安全问题报告说明
@@ -83,4 +86,10 @@ npm run dev
 
 代码采用 [MIT License](LICENSE)。第三方图片、个人作品和站点上传内容的权利独立于代码许可证。
 
-欢迎通过 Issue 交流建议；安全问题请按 [SECURITY.md](SECURITY.md) 报告。
+## 🤝 交流与贡献
+
+欢迎交流想法、反馈问题，也欢迎参与改进。
+
+如果你发现 Bug，或有功能建议，可以提交 Issue；如果你愿意完善代码或文档，欢迎发起 Pull Request。
+
+参与前请阅读 [贡献说明](CONTRIBUTING.md)。感谢每一份反馈与支持！安全问题请按 [SECURITY.md](SECURITY.md) 报告。
