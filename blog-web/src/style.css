@@ -142,7 +142,7 @@ main:focus { outline: none; }
 .sidebar-writing-note { padding: 19px 16px; background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent), var(--surface); border: 1px solid var(--border); border-radius: 13px; color: var(--accent); }
 .sidebar-writing-note p { margin: 14px 0; font-family: var(--serif); font-size: 14px; color: var(--muted-strong); line-height: 1.9; }
 .sidebar-writing-note .text-link { font-size: 11px; }
-.sidebar-signature { display: block; margin: 23px 0 17px; text-align: center; color: var(--muted); font: italic 11px Georgia, serif; }
+.sidebar-signature { display: block; margin: 23px 0 17px; text-align: center; color: var(--muted); font: italic 11px Georgia, serif;line-height: 1.9; }
 .sidebar-theme { display: flex; align-items: center; justify-content: center; gap: 9px; color: var(--muted); font-size: 10px; letter-spacing: 1px; }
 .studio-workspace { margin-left: var(--sidebar-width); min-width: 0; }
 .site-header { position: sticky; top: 0; z-index: 20; background: var(--glass); backdrop-filter: blur(18px); border-bottom: 1px solid var(--border); }

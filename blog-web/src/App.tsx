@@ -66,7 +66,7 @@ export default function App() {
       </nav>
       <div className="sidebar-bottom">
         <div className="sidebar-writing-note"><UiIcon name="edit" size={19} /><p>{t("给想法一点时间，")}<br />{t("也给它一个落脚点。")}</p><Link className="text-link" to={activeIdentity === 'admin' ? '/admin/articles/new' : '/write/new'}>{t("写下一篇记录")}<UiIcon name="arrow" size={15} /></Link></div>
-        <span className="sidebar-signature">Keep curious. Keep creating.</span>
+        <span className="sidebar-signature">Keep curious. Keep creating.<br/ > Ya yi ya hoo ~</span>
         <span className="sidebar-theme"><span className="tiny-dot" />{appearance ? t('每日拾色 · {date}', { date: appearance.date.slice(5).replace('-', '.') }) : theme === 'dark' ? t("暖夜咖啡") : t("暖纸日光")}</span>
       </div>
     </aside>

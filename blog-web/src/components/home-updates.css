@@ -14,7 +14,7 @@
 .announcement-header-title { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .announcement-status-legend { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 0 0 0 auto; padding: 0; list-style: none; }
 .announcement-status-legend li { display: flex; align-items: center; gap: 5px; color: var(--muted-strong); font-size: 10px; line-height: 1.6; white-space: nowrap; }
-.announcement-status-legend li > span { width: 6px; height: 6px; border-radius: 50%; background: var(--announcement-status-color); }
+.announcement-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--announcement-status-color); }
 .announcement-card [data-announcement-status="default"] { --announcement-status-color: var(--muted); }
 .announcement-card [data-announcement-status="progress"] { --announcement-status-color: var(--accent-strong); }
 .announcement-card [data-announcement-status="success"] { --announcement-status-color: var(--success); }
@@ -28,13 +28,14 @@
 .announcement-date { display: flex; align-items: baseline; flex-wrap: wrap; gap: 14px; margin-bottom: 16px; }
 .announcement-date time { font: 500 24px/1.3 var(--serif); color: var(--accent-strong); white-space: nowrap; }
 .announcement-date time > span { font: 400 11px/1.5 var(--mono); letter-spacing: 1px; margin-left: 5px; color: var(--muted); }
-.announcement-stage { font-size: 11px; line-height: 1.7; color: var(--accent-strong); }
+.announcement-stage { font-size: 11px; line-height: 1.7; color: var(--announcement-status-color, var(--accent-strong)); }
 .announcement-overview h4 { font: 500 19px/1.7 var(--serif); margin: 0 0 12px; }
 .announcement-overview > p { color: var(--muted); font-size: 13px; line-height: 2; margin: 0; }
 .announcement-plans { position: relative; list-style: none; margin: 0; padding: 0; display: grid; gap: 24px; }
 .announcement-plans::before { content: ''; position: absolute; top: 7px; bottom: 0; left: 50%; width: 1px; background: var(--border-strong); }
 .announcement-plans li { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr); align-items: start; min-height: 120px; }
-.announcement-plans li::before { content: ''; position: absolute; top: 7px; left: calc(50% - 3px); width: 7px; height: 7px; border-radius: 50%; background: var(--announcement-status-color); box-shadow: 0 0 0 5px var(--surface); }
+.announcement-plans li::before { content: ''; position: absolute; top: 2px; left: calc(50% - 9px); width: 18px; height: 18px; border-radius: 50%; background: var(--surface); }
+.announcement-plans .announcement-dot { position: absolute; top: 7px; left: calc(50% - 4px); }
 .announcement-entry { min-width: 0; grid-column: 3; }
 .announcement-plans li:nth-child(even) .announcement-entry { grid-column: 1; text-align: right; }
 .announcement-entry strong { font-size: 14px; font-weight: 500; line-height: 1.8; }
@@ -72,42 +73,43 @@
   .announcement-plans { gap: 32px; }
   .announcement-plans::before { left: 4px; }
   .announcement-plans li { display: block; min-height: 0; padding-left: 28px; }
-  .announcement-plans li::before { left: 1px; }
+  .announcement-plans li::before { left: -5px; }
+  .announcement-plans .announcement-dot { left: 0; }
   .announcement-plans li:nth-child(even) .announcement-entry { text-align: left; }
   .home-update-footer { padding-inline: 20px; }
   .faq-placeholder, .availability-placeholder { padding-inline: 24px; }
 }
 
-/* 反光只覆盖状态图例的小圆点，底色始终保留状态含义。 */
-.announcement-status-legend li > span { --dot-foil-delay: -6.5s; position: relative; overflow: hidden; flex-shrink: 0; }
+/* 图例与时间线共用小点和反光，底色始终保留状态含义。 */
+.announcement-dot { --dot-foil-delay: -6.5s; position: relative; overflow: hidden; flex-shrink: 0; }
 .announcement-status-legend li:nth-child(2) > span { --dot-foil-delay: -4.7s; }
 .announcement-status-legend li:nth-child(3) > span { --dot-foil-delay: -2.9s; }
 .announcement-status-legend li:nth-child(4) > span { --dot-foil-delay: -1.1s; }
 .announcement-status-legend li:nth-child(5) > span { --dot-foil-delay: -8.3s; }
-.announcement-status-legend li > span::after { content: ''; position: absolute; inset: -25%; pointer-events: none; background-image: linear-gradient(110deg, transparent 25%, #fff3 38%, #fff 49%, #fff9 56%, transparent 72%), repeating-conic-gradient(from 20deg, #fff0 0deg 60deg, #fff8 60deg 90deg, #fff0 90deg 150deg, #fff4 150deg 180deg); background-size: 100% 100%, 3px 3px; opacity: 0; transform: translateX(-110%); animation: legend-dot-foil 9s linear var(--dot-foil-delay) infinite; }
+.announcement-dot::after { content: ''; position: absolute; inset: -25%; pointer-events: none; background-image: linear-gradient(110deg, transparent 25%, #fff3 38%, #fff 49%, #fff9 56%, transparent 72%), repeating-conic-gradient(from 20deg, #fff0 0deg 60deg, #fff8 60deg 90deg, #fff0 90deg 150deg, #fff4 150deg 180deg); background-size: 100% 100%, 3px 3px; opacity: 0; transform: translateX(-110%); animation: legend-dot-foil 9s linear var(--dot-foil-delay) infinite; }
 @keyframes legend-dot-foil {
   0%, 72% { opacity: 0; transform: translateX(-110%); }
   75%, 83% { opacity: .8; }
   88%, 100% { opacity: 0; transform: translateX(110%); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .announcement-status-legend li > span::after { animation: none; opacity: 0; }
+  .announcement-dot::after { animation: none; opacity: 0; }
 }
 
-/* 图例使用更明亮的状态色；只覆盖小点，不改变卡片文字和时间线配色。 */
-.announcement-status-legend li[data-announcement-status="default"] { --announcement-status-color: #dce9ff; }
-.announcement-status-legend li[data-announcement-status="progress"] { --announcement-status-color: #63aaff; }
-.announcement-status-legend li[data-announcement-status="success"] { --announcement-status-color: #3af19d; }
-.announcement-status-legend li[data-announcement-status="warning"] { --announcement-status-color: #ffd352; }
-.announcement-status-legend li[data-announcement-status="error"] { --announcement-status-color: #ff5872; }
-:root[data-theme="light"] .announcement-status-legend li[data-announcement-status="default"] { --announcement-status-color: #8e9db2; }
-:root[data-theme="light"] .announcement-status-legend li[data-announcement-status="progress"] { --announcement-status-color: #4c92f0; }
-:root[data-theme="light"] .announcement-status-legend li[data-announcement-status="success"] { --announcement-status-color: #27bd78; }
-:root[data-theme="light"] .announcement-status-legend li[data-announcement-status="warning"] { --announcement-status-color: #eda62c; }
-:root[data-theme="light"] .announcement-status-legend li[data-announcement-status="error"] { --announcement-status-color: #f35d68; }
+/* 图例与时间线共用状态色，不随每日主题变化。 */
+:is(.announcement-status-legend, .announcement-plans) li[data-announcement-status="default"] { --announcement-status-color: #dce9ff; }
+:is(.announcement-status-legend, .announcement-plans) li[data-announcement-status="progress"] { --announcement-status-color: #63aaff; }
+:is(.announcement-status-legend, .announcement-plans) li[data-announcement-status="success"] { --announcement-status-color: #3af19d; }
+:is(.announcement-status-legend, .announcement-plans) li[data-announcement-status="warning"] { --announcement-status-color: #ffd352; }
+:is(.announcement-status-legend, .announcement-plans) li[data-announcement-status="error"] { --announcement-status-color: #ff5872; }
+:root[data-theme="light"] :is(.announcement-status-legend, .announcement-plans) li[data-announcement-status="default"] { --announcement-status-color: #8e9db2; }
+:root[data-theme="light"] :is(.announcement-status-legend, .announcement-plans) li[data-announcement-status="progress"] { --announcement-status-color: #4c92f0; }
+:root[data-theme="light"] :is(.announcement-status-legend, .announcement-plans) li[data-announcement-status="success"] { --announcement-status-color: #27bd78; }
+:root[data-theme="light"] :is(.announcement-status-legend, .announcement-plans) li[data-announcement-status="warning"] { --announcement-status-color: #eda62c; }
+:root[data-theme="light"] :is(.announcement-status-legend, .announcement-plans) li[data-announcement-status="error"] { --announcement-status-color: #f35d68; }
 
 /* 深色用透光环边，常亮质感独立于碎闪，不设置局部白色高光。 */
-.announcement-status-legend li > span {
+.announcement-dot {
   width: 8px;
   height: 8px;
   background-color: color-mix(in srgb, var(--announcement-status-color) 8%, transparent);
@@ -122,4 +124,4 @@
     0 0 11px 2px color-mix(in srgb, var(--announcement-status-color) 12%, transparent);
 }
 /* 浅色背景使用实心状态点，避免透明环边在白底上显得发虚。 */
-:root[data-theme="light"] .announcement-status-legend li > span { background-color: var(--announcement-status-color); background-image: none; box-shadow: none; }
+:root[data-theme="light"] .announcement-dot { background-color: var(--announcement-status-color); background-image: none; box-shadow: none; }

@@ -24,3 +24,25 @@ blog-server/uploads/
 
 # Local build and verification artifacts
 /.review-commit-prep/
+
+# Private material stays on this computer, never in the public source tree.
+/docs/
+/creative-writing/
+/content/
+/.private/
+/.vscode/
+/AGENTS.md
+/LOCAL-MATERIALS.md
+/scripts/
+/deploy/
+/*.docx
+
+# Build/runtime files and private backups.
+/.local-backups/
+/deploy/windows/runtime/
+/blog-server/blog-server
+/blog-server/blog-server.exe
+/blog-server/*.exe
+**/.env
+**/.env.*
+!**/.env.example

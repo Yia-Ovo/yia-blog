@@ -1,0 +1,112 @@
+-- 空库基线（2026-09-13）：依据 2026-09-11 实际 SHOW CREATE TABLE 与既有迁移核对。
+-- 仅在全新、无业务表的数据库中执行；计数沿用现有 INT，不由 Go int 推断为 BIGINT。
+-- 已包含 20260707/20260709/20260716/20260908 的结构；不要再叠加执行旧增量迁移。
+-- 不创建数据库、不删除表、不插入账号；已有库继续使用增量迁移。
+-- CREATE TABLE 不使用 IF NOT EXISTS：遇到既有表立即报错，避免掩盖结构不一致。
+
+CREATE TABLE `user` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `nick_name` VARCHAR(64) NOT NULL,
+  `password` VARCHAR(255) NOT NULL COMMENT 'bcrypt密码哈希',
+  `avatar` VARCHAR(255) DEFAULT NULL,
+  `gender` TINYINT(1) NOT NULL DEFAULT 0,
+  `status` TINYINT(1) NOT NULL DEFAULT 1,
+  `token_version` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `last_login_at` DATETIME DEFAULT NULL,
+  `create_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` DATETIME DEFAULT NULL,
+  `signature` VARCHAR(255) DEFAULT NULL,
+  `email` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_nick_name` (`nick_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `admin` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `admin_name` VARCHAR(64) NOT NULL,
+  `password` VARCHAR(255) NOT NULL COMMENT 'bcrypt密码哈希',
+  `avatar` VARCHAR(255) DEFAULT NULL,
+  `role` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '0超级管理员，1普通管理员；Domain显式赋值',
+  `status` TINYINT(1) NOT NULL DEFAULT 1,
+  `token_version` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `last_login_at` DATETIME DEFAULT NULL,
+  `create_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` DATETIME DEFAULT NULL,
+  `email` VARCHAR(255) DEFAULT NULL,
+  `remark` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_admin_name` (`admin_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `category` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(64) NOT NULL,
+  `sort` INT NOT NULL DEFAULT 0,
+  `status` TINYINT(1) NOT NULL DEFAULT 1,
+  `create_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `article` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `admin_id` BIGINT UNSIGNED NOT NULL,
+  `title` VARCHAR(128) NOT NULL,
+  `cover` VARCHAR(255) DEFAULT NULL,
+  `summary` VARCHAR(512) DEFAULT NULL,
+  `content` LONGTEXT NOT NULL,
+  `category_id` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `tag_ids` VARCHAR(255) NOT NULL DEFAULT '',
+  `status` TINYINT(1) NOT NULL DEFAULT 0,
+  `sort` INT NOT NULL DEFAULT 0,
+  `views` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `likes` INT NOT NULL DEFAULT 0,
+  `comments` INT NOT NULL DEFAULT 0,
+  `is_top` TINYINT(1) NOT NULL DEFAULT 0,
+  `comment_status` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '0关闭，1允许；Domain显式赋值',
+  `publish_at` DATETIME DEFAULT NULL,
+  `create_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_admin_id` (`admin_id`),
+  KEY `idx_title` (`title`),
+  KEY `idx_category_id` (`category_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `comment` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `article_id` BIGINT UNSIGNED NOT NULL,
+  `parent_id` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `admin_id` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `nickname` VARCHAR(64) NOT NULL,
+  `email` VARCHAR(64) DEFAULT NULL,
+  `avatar` VARCHAR(255) DEFAULT NULL,
+  `content` LONGTEXT NOT NULL,
+  `ip` VARCHAR(64) DEFAULT NULL,
+  `user_agent` VARCHAR(512) DEFAULT NULL,
+  `status` TINYINT(1) NOT NULL DEFAULT 0,
+  `likes` INT NOT NULL DEFAULT 0,
+  `create_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_article_id` (`article_id`),
+  KEY `idx_parent_id` (`parent_id`),
+  KEY `idx_admin_id` (`admin_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `comment_like` (
+  `comment_id` BIGINT UNSIGNED NOT NULL,
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `create_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`comment_id`, `user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

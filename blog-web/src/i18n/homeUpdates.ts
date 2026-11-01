@@ -1,4 +1,10 @@
 export const homeUpdatesMessages = {
+  'Yia Blog 第一版正式上线': { en: 'Yia Blog: first official release', ja: 'Yia Blog 初版を正式公開', vi: 'Yia Blog chính thức ra mắt phiên bản đầu tiên' },
+  '2026 年 11 月 2 日，Yia Blog 第一版正式上线，和大家分享这个持续构建的小站。': { en: 'On November 2, 2026, Yia Blog officially launched its first version, sharing this growing blog with everyone.', ja: '2026年11月2日、Yia Blogの初版を正式公開しました。少しずつ作り続けてきたブログを皆さんにお届けします。', vi: 'Ngày 2 tháng 11 năm 2026, Yia Blog chính thức ra mắt phiên bản đầu tiên, chia sẻ blog đang từng bước phát triển với mọi người.' },
+  'Yia Blog 第一版已上线，开启新的记录。': { en: 'The first version of Yia Blog is live, beginning a new chapter.', ja: 'Yia Blogの初版を公開し、新しい記録を始めました。', vi: 'Phiên bản đầu tiên của Yia Blog đã ra mắt, mở đầu những ghi chép mới.' },
+  '项目源码与 README 已公开，分享开发过程。': { en: 'The source code and README are now public, sharing the development process.', ja: 'ソースコードとREADMEを公開し、開発の過程を共有しました。', vi: 'Mã nguồn và README đã được công khai để chia sẻ quá trình phát triển.' },
+  '已在 Instagram、X 等平台分享上线消息与项目介绍。': { en: 'Release news and the project introduction have been shared on Instagram, X and other platforms.', ja: 'Instagram、Xなどで公開のお知らせとプロジェクト紹介を共有しました。', vi: 'Tin ra mắt và giới thiệu dự án đã được chia sẻ trên Instagram, X và các nền tảng khác.' },
+  '动态公告功能未完成，当前展示维护者确认的公告。': { en: 'Live announcements are unfinished. These notices are confirmed by the maintainer.', ja: 'お知らせの更新機能は未完成です。現在は管理者が確認したお知らせを表示しています。', vi: 'Chức năng cập nhật thông báo chưa hoàn thành. Hiện hiển thị các thông báo đã được người quản lý xác nhận.' },
   '最多显示 {count} 条': { en: 'Up to {count} entries', ja: '最大 {count} 件を表示', vi: 'Hiển thị tối đa {count} mục' },
   '公告状态说明': { en: 'Announcement status legend', ja: 'お知らせの状態凡例', vi: 'Chú giải trạng thái thông báo' },
   '默认': { en: 'Default', ja: '通常', vi: 'Mặc định' },
