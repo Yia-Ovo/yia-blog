@@ -1,0 +1,63 @@
+import { useI18n } from '../i18n'
+import UiIcon from './UiIcon'
+import './home-updates.css'
+
+const announcementLimit = 20
+const announcementStatuses = [
+  { value: 'default', label: '默认' },
+  { value: 'progress', label: '进行中' },
+  { value: 'success', label: '成功' },
+  { value: 'warning', label: '警告' },
+  { value: 'error', label: '异常' },
+] as const
+const releasePlans = [
+  { title: '第一版正式上线', description: '发布第一版 Yia Blog，开启新的记录。', status: 'default' },
+  { title: 'GitHub 仓库公开', description: '计划公开项目源码与 README，分享开发过程。', status: 'default' },
+  { title: 'Instagram · X 宣传', description: '计划在 Instagram、X 等平台分享上线消息与项目介绍。', status: 'default' },
+] as const
+
+export default function HomeUpdates() {
+  const { t } = useI18n()
+
+  return <section className="home-updates" aria-labelledby="updates-title">
+    <div className="home-updates-heading"><h2 id="updates-title">{t('小站动态')}</h2><p>{t('新的进展，也在这里记录。')}</p><span aria-hidden="true" /></div>
+    <div className="home-updates-grid">
+      <section className="home-update-card announcement-card" aria-labelledby="announcement-title">
+        <header className="home-update-header">
+          <div className="announcement-header-title"><h3 id="announcement-title"><UiIcon name="bell" size={17} />{t('系统公告')}</h3><span className="home-update-label">{t('最多显示 {count} 条', { count: announcementLimit })}</span></div>
+          <ul className="announcement-status-legend" aria-label={t('公告状态说明')}>{announcementStatuses.map((status) => <li key={status.value} data-announcement-status={status.value}><span aria-hidden="true" />{t(status.label)}</li>)}</ul>
+        </header>
+        <div className="announcement-body" role="region" aria-labelledby="announcement-title" tabIndex={0}>
+          <div className="announcement-overview">
+            <div className="announcement-date"><time dateTime="2026-11-02">11.02 <span>2026</span></time><span className="announcement-stage">{t('计划上线')}</span></div>
+            <h4>{t('Yia Blog 第一版正式上线计划')}</h4>
+            <p>{t('计划于 2026 年 11 月 2 日正式上线，和大家分享这个持续构建的小站。')}</p>
+          </div>
+          <ol className="announcement-plans">
+            {releasePlans.slice(0, announcementLimit).map((plan) => <li key={plan.title} data-announcement-status={plan.status}><div className="announcement-entry"><strong>{t(plan.title)}</strong><p>{t(plan.description)}</p><time dateTime="2026-11-02">11.02 · {t('计划上线')}</time></div></li>)}
+          </ol>
+        </div>
+        <footer className="home-update-footer">{t('动态公告功能未完成，当前展示固定上线计划。')}</footer>
+      </section>
+
+      <section className="home-update-card faq-card" aria-labelledby="faq-title">
+        <header className="home-update-header"><h3 id="faq-title"><UiIcon name="question" size={17} />{t('常见问答')}</h3><span className="home-update-label unfinished-label">{t('未完成')}</span></header>
+        <div className="faq-placeholder">
+          <p>{t('正在整理小站的使用说明。')}</p>
+          <ul>{['阅读与分类', '账号与评论', '写作与发布'].map((topic) => <li key={topic}><span>{t(topic)}</span><span className="faq-pending">{t('待整理')}</span></li>)}</ul>
+        </div>
+        <footer className="home-update-footer">{t('问答内容整理完成后开放。')}</footer>
+      </section>
+
+      <section className="home-update-card availability-card" aria-labelledby="availability-title">
+        <header className="home-update-header"><h3 id="availability-title"><UiIcon name="activity" size={17} />{t('服务可用性')}</h3><span className="home-update-label unfinished-label">{t('未完成')}</span></header>
+        <div className="availability-placeholder">
+          <span className="availability-illustration" aria-hidden="true"><UiIcon name="activity" size={40} /><span /></span>
+          <h4>{t('暂无监控数据')}</h4>
+          <p>{t('服务监控尚未接入，暂不展示在线状态与可用率。')}</p>
+        </div>
+        <footer className="home-update-footer">{t('监控接入后开放。')}</footer>
+      </section>
+    </div>
+  </section>
+}

@@ -1,0 +1,68 @@
+# 本机开发模板；复制为 config.dev.yaml 后填入本机凭据。
+# 填好后的文件已被忽略；时长须显式写单位。
+server:
+  http_host: 127.0.0.1
+  http_port: 8081
+  env: dev
+  enable_pprof: false
+  log_level: info
+  shutdown_timeout: 10s
+gin:
+  mode: debug
+  disable_console_color: true
+  max_multipart_memory: 2
+  cors:
+    enabled: true
+    allow_origins: [http://127.0.0.1:5173, http://localhost:5173]
+    allow_methods: [GET, POST, OPTIONS]
+    allow_headers: [Content-Type, Authorization, Admin-Authorization]
+    allow_credentials: false
+    max_age: 600
+  gzip:
+    enable_gzip: true
+    min_size: 1024
+    gzip_exclude_types: [image/*, video/*, audio/*, application/zip]
+jwt:
+  custom_secret: REPLACE_WITH_RANDOM_USER_SECRET
+  admin_secret: REPLACE_WITH_DIFFERENT_RANDOM_ADMIN_SECRET
+  expire_hour: 2h
+  issuer: yia-blog
+mysql:
+  dialect: mysql
+  host: 127.0.0.1
+  port: 3307
+  database: yia_blog
+  user: yia_blog
+  password: REPLACE_WITH_LOCAL_DATABASE_PASSWORD
+  charset: utf8mb4
+  show_sql: false
+  max_open: 5
+  max_idle: 1
+  conn_max_lifetime: 5m
+redis:
+  addr: 127.0.0.1:6379
+  password: REPLACE_WITH_LOCAL_REDIS_PASSWORD
+  db_index: 0
+  dial_timeout: 3s
+  read_timeout: 2s
+  write_timeout: 2s
+  pool_size: 5
+  min_idle_conns: 0
+  max_idle_conns: 2
+  pool_timeout: 3s
+  conn_max_idle_time: 5m
+  user_cache_expire: 10m
+  admin_cache_expire: 10m
+  user_empty_cache_expire: 1m
+  like_cache_expire: 5m
+  like_record_expire: 24h
+logger:
+  path: logs
+  file_name: server.log
+  max_size: 10
+  max_backups: 3
+  max_age: 7
+  compress: true
+storage:
+  avatar_dir: uploads/avatars
+  article_image_dir: uploads/articles

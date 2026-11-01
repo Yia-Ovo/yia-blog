@@ -7,6 +7,17 @@ blog-server/.env
 # Runtime outputs
 logs/
 blog-server/logs/
+.gocache/
+
+# Claude Code local guidance
+CLAUDE.md
+
+# Claude Code local hook config + auto-compact transcript snapshots
+.claude/settings.local.json
+docs/interview/handoff-auto/
+
+# Local study notes (not part of the project deliverables)
+docs/golang/
 
 # User-uploaded images are runtime data, backed up separately.
 blog-server/uploads/

@@ -22,7 +22,8 @@ export default function HomeView() {
   const title = params.get('q') || ''
   const [search, setSearch] = useState(title)
   useEffect(() => { setSearch(title) }, [title])
-  const articles = useResource(useCallback((signal) => articleApi.list({ exclude_ids: novel.chapters.map((chapter) => chapter.id).join(','), page_num: page, page_size: 6, title, category_id: category || undefined }, signal), [page, title, category]))
+  // 默认文章流分离小说章节；选择分类后，以分类范围展示所有公开文章。
+  const articles = useResource(useCallback((signal) => articleApi.list({ exclude_ids: category ? undefined : novel.chapters.map((chapter) => chapter.id).join(','), page_num: page, page_size: 6, title, category_id: category || undefined }, signal), [page, title, category]))
   const categories = useResource(categoryApi.all)
   const categoryName = (id: number) => categories.data?.find((item) => item.id === id)?.name || t(id ? '文章' : '未分类')
 

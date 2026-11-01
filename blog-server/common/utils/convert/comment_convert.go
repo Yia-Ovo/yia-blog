@@ -1,4 +1,3 @@
-// CommentDOToModel DO转Model
 package convert
 
 import (

@@ -4,6 +4,12 @@
 
 后端位于 `blog-server/`，React 前端位于 `blog-web/`。默认开发端口为 `8081`，业务 API 固定使用 `/api/blog/v1`，不提供路由前缀配置；旧配置中的 `gin.router_prefix` 会被忽略。前端接入范围与管理入口见 [前端接入清单](docs/frontend-readiness.md)，服务启动、只读 devcheck 与实际操作验收见 [本地联调说明](docs/local-integration.md)。
 
+首次使用请阅读 [打包、上线与 GitHub 公开详细指南](docs/deployment-and-public-release-guide.md)。本机配置从 [占位符模板](blog-server/config/config.example.yaml) 复制；真实配置和密钥不得提交。贡献约定见 [CONTRIBUTING](CONTRIBUTING.md)，安全问题报告见 [SECURITY](SECURITY.md)。
+
+代码与关联技术文档采用 [MIT License](LICENSE)。小说、文学稿件、个人资料与站点上传内容不包含在代码授权中；第三方素材与依赖沿用各自许可证。
+
+数据看板位于 [/dashboard](https://sryia.cn/dashboard)：展示固定上线计划，常见问答与服务监控尚未接入，不提供实时可用率。选择小说分类时会显示该分类的公开章节，默认文章流仍分离小说。
+
 ## 当前交付（2026-10-08）
 
 整站收尾结果与当前边界见[首版收尾状态](docs/release-readiness.md)。

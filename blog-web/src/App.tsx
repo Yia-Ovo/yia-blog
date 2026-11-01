@@ -62,6 +62,7 @@ export default function App() {
         <NavLink to="/novels"><UiIcon name="book" /><span>{t("小说")}<small>{t("走进另一个世界")}</small></span></NavLink>
         <NavLink to="/me/articles" className={location.pathname.startsWith('/write') || location.pathname.startsWith('/me') ? 'active' : undefined}><UiIcon name="edit" /><span>{t("我的创作")}<small>{t("从一个想法开始")}</small></span></NavLink>
         <NavLink to="/admin/articles" className={adminArea ? 'active' : undefined}><UiIcon name="folder" /><span>{t("管理")}<small>{t("整理内容与交流")}</small></span></NavLink>
+        <NavLink to="/dashboard"><UiIcon name="dashboard" /><span>{t('数据看板')}<small>{t('公告与服务信息')}</small></span></NavLink>
       </nav>
       <div className="sidebar-bottom">
         <div className="sidebar-writing-note"><UiIcon name="edit" size={19} /><p>{t("给想法一点时间，")}<br />{t("也给它一个落脚点。")}</p><Link className="text-link" to={activeIdentity === 'admin' ? '/admin/articles/new' : '/write/new'}>{t("写下一篇记录")}<UiIcon name="arrow" size={15} /></Link></div>

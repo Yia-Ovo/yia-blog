@@ -6,6 +6,7 @@ import StatePanel from './components/StatePanel'
 
 const NovelView = lazy(() => import('./views/NovelView'))
 const HomeView = lazy(() => import('./views/HomeView'))
+const DashboardView = lazy(() => import('./views/DashboardView'))
 const ArticleView = lazy(() => import('./views/ArticleView'))
 const AuthView = lazy(() => import('./views/AuthView'))
 const ArticlesView = lazy(() => import('./views/ArticlesView'))
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([{
   errorElement: <StatePanel kind="error" title="页面暂时无法打开" message="请重新加载页面后再试。" onRetry={() => window.location.reload()} />,
   children: [
     { path: '/', element: <HomeView />, handle: { title: '文章' } },
+    { path: '/dashboard', element: <DashboardView />, handle: { title: '数据看板' } },
     { path: '/novels', element: <NovelView />, handle: { title: '小说' } },
     { path: '/articles/:id', element: <ArticleView />, handle: { title: '阅读' } },
     { path: '/login', element: <AuthView key="user-login" identity="user" />, handle: { title: '登录' } },
