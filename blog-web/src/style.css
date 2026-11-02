@@ -494,8 +494,10 @@ main:focus { outline: none; }
   .brand > span { font-size: 30px; }
   .brand small { font-size: 9px; }
   .nav-label, .sidebar-bottom { display: none; }
-  .main-nav { display: flex; gap: 8px; margin-top: 15px; }
-  .main-nav a { min-height: 39px; padding: 8px 13px; gap: 8px; font-size: 12px; }
+  /* 手机导航保持单行，长文案在导航内部滚动，避免挤占正文。 */
+  .main-nav { display: flex; flex-wrap: nowrap; gap: 8px; margin-top: 12px; overflow-x: auto; padding-block: 4px; }
+  .main-nav a { flex: 1 0 max-content; flex-direction: column; justify-content: center; min-height: 52px; padding: 7px 8px; gap: 4px; font-size: 11px; }
+  .main-nav a > span { white-space: nowrap; }
   .main-nav a small { display: none; }
   .main-nav a > svg { width: 16px; height: 16px; }
   .studio-workspace { margin-left: 0; }
@@ -520,7 +522,7 @@ main:focus { outline: none; }
   .container { width: calc(100% - 32px); }
   .site-sidebar { padding-inline: 16px; }
   .main-nav { gap: 6px; }
-  .main-nav a { flex: 1; justify-content: center; padding-inline: 8px; }
+  .main-nav a { padding-inline: 6px; }
   .page-breadcrumb > span { display: none; }
   .header-inner { gap: 10px; }
   .header-actions { gap: 7px; }
@@ -683,8 +685,6 @@ main:focus { outline: none; }
   .novel-jacket { width: 180px; min-height: 250px; margin-inline: auto; }
   .novel-copy h1 { font-size: 34px; }
   .novel-chapters { grid-template-columns: minmax(0, 1fr); }
-  .main-nav { flex-wrap: wrap; }
-  .main-nav a { flex: 1 1 40%; }
 }
 
 /* 阅读菜单通过 portal 挂到 body；独立手柄负责拖动，正文仍可正常触摸滚动。 */
