@@ -28,6 +28,46 @@ Yia Blog 使用 Go 和 React 开发，提供文章阅读与创作、分类管理
 - **每日主题**：按北京时间轮换背景，提供浅色与深色页面体验。
 - **多语言界面**：支持中文、英文、日文和越南文；文章正文保持作者原文。
 
+## 📷 页面预览
+
+以下为线上公开页面的实际截图。
+
+**首页**
+
+![首页](blog-web/readme-assets/home.png)
+
+<details>
+<summary>查看文章阅读与数据看板</summary>
+
+![文章阅读](blog-web/readme-assets/article.png)
+![数据看板](blog-web/readme-assets/dashboard.png)
+
+</details>
+
+## 🌐 在线体验
+
+- [游客阅读](https://sryia.cn/)：无需登录即可浏览文章。
+- [注册账号](https://sryia.cn/register)：注册后可使用个人写作功能。
+- [数据看板](https://sryia.cn/dashboard)：查看当前公告；常见问答和服务监控仍为占位功能。
+
+管理员功能需要授权，不提供公开管理员账号。草稿恢复仅保存在当前浏览器，界面语言切换不会翻译文章正文。
+
+## 🧩 架构概览
+
+```mermaid
+flowchart LR
+    Web[React + TypeScript] --> Handler[Gin Handler]
+    Handler --> App[App Service]
+    App --> Domain[Domain Service]
+    Domain --> Repo[Repository interface]
+    Repo -. implemented by .-> Infra[Infrastructure repositories]
+    Infra --> MySQL[(MySQL)]
+    App --> Cache[Redis repository]
+    Cache --> Redis[(Redis)]
+```
+
+Handler 处理 HTTP，App 编排用例与缓存，Domain 保证权限、资源归属和状态规则，基础设施仓储实现数据读写。Redis 用于缓存与登录状态管理；每日背景读取后端内嵌素材，不依赖数据库。
+
 ## 前端技术
 
 - **框架**：React 19、TypeScript

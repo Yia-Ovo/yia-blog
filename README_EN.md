@@ -28,6 +28,46 @@ Yia Blog is built with Go and React. It supports reading and writing articles, c
 - **Daily themes**: Backgrounds rotate by Beijing calendar date, with light and dark appearances.
 - **Interface languages**: Chinese, English, Japanese, and Vietnamese. Article content stays in its original language.
 
+## 📷 Preview
+
+Actual screenshots of the public live site.
+
+**Home**
+
+![Home](blog-web/readme-assets/home.png)
+
+<details>
+<summary>Article reading and dashboard</summary>
+
+![Article reading](blog-web/readme-assets/article.png)
+![Dashboard](blog-web/readme-assets/dashboard.png)
+
+</details>
+
+## 🌐 Try it online
+
+- [Browse articles](https://sryia.cn/) without signing in.
+- [Create an account](https://sryia.cn/register) to use personal writing features.
+- [Dashboard](https://sryia.cn/dashboard): view announcements. FAQ and service monitoring are still placeholders.
+
+Administrator access requires authorization; no public administrator account is provided. Draft recovery is local to the current browser. Switching interface languages does not translate article content.
+
+## 🧩 Architecture
+
+```mermaid
+flowchart LR
+    Web[React + TypeScript] --> Handler[Gin Handler]
+    Handler --> App[App Service]
+    App --> Domain[Domain Service]
+    Domain --> Repo[Repository interface]
+    Repo -. implemented by .-> Infra[Infrastructure repositories]
+    Infra --> MySQL[(MySQL)]
+    App --> Cache[Redis repository]
+    Cache --> Redis[(Redis)]
+```
+
+Handlers process HTTP; application services coordinate use cases and caching; domain services enforce permissions, ownership, and state rules; infrastructure repositories read and write data. Redis manages caches and login state. Daily backgrounds use embedded backend assets rather than a database.
+
 ## Frontend technologies
 
 - **Framework**: React 19, TypeScript
