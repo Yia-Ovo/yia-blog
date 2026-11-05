@@ -5,7 +5,7 @@ import './home-updates.css'
 
 const announcementLimit = 20
 const announcementStatuses = [
-  { value: 'default', label: '默认' },
+  { value: 'default', label: '待处理' },
   { value: 'progress', label: '进行中' },
   { value: 'success', label: '成功' },
   { value: 'warning', label: '警告' },
@@ -32,7 +32,7 @@ export default function HomeUpdates() {
             <p>{t(announcementOverview.description)}</p>
           </div>
           <ol className="announcement-plans">
-            {announcements.slice(0, announcementLimit).map((item) => <li key={`${item.date}-${item.title}`} data-announcement-status={item.status}><span className="announcement-dot" aria-hidden="true" /><div className="announcement-entry"><strong>{t(item.title)}</strong><p>{t(item.description)}</p><time dateTime={item.date}>{shortDate(item.date)} · {t(statusLabel(item.status))}</time></div></li>)}
+            {announcements.slice(0, announcementLimit).map((item) => <li key={`${item.date}-${item.title}`} data-announcement-status={item.status}><span className="announcement-dot" aria-hidden="true" /><div className="announcement-entry"><strong>{item.href ? <a className="text-link" href={item.href}>{t(item.title)}</a> : t(item.title)}</strong><p>{t(item.description)}</p><time dateTime={item.date}>{shortDate(item.date)} · {t(statusLabel(item.status))}</time></div></li>)}
           </ol>
         </div>
         <footer className="home-update-footer">{t('动态公告功能未完成，当前展示维护者确认的公告。')}</footer>
