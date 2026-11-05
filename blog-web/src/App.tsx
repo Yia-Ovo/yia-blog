@@ -1,5 +1,6 @@
 import { useI18n } from './i18n'
-import { Suspense, useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { flushSync } from 'react-dom'
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation, useMatches } from 'react-router-dom'
 import { authApi } from './api'
 import { ApiError, errorMessage } from './api/http'
@@ -7,6 +8,7 @@ import type { Identity } from './api/types'
 import { useMutation } from './hooks/useMutation'
 import { useSessions } from './hooks/useSessions'
 import { useDailyAppearance } from './hooks/useDailyAppearance'
+import { logConsoleEasterEgg } from './lib/consoleEasterEgg'
 import { clearSession } from './stores/session'
 import { dismissNotice, getNotice, notify, subscribeNotice } from './stores/notice'
 import { LeaveGuardContext } from './components/LeaveGuardContext'
@@ -30,6 +32,23 @@ export default function App() {
     try { localStorage.setItem('yia.theme', theme) } catch { /* 禁用存储时仍可在当前页面切换外观。 */ }
   }, [theme])
   const appearance = useDailyAppearance(theme)
+  useEffect(() => { logConsoleEasterEgg() }, [appearance, theme])
+  const themeTransition = useRef<ViewTransition | null>(null)
+
+  function toggleTheme() {
+    const update = () => setTheme(current => current === 'dark' ? 'light' : 'dark')
+    if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      update()
+      return
+    }
+    themeTransition.current?.skipTransition()
+    // 先提交新主题，再让整页快照淡入，避免各块颜色逐个跳变。
+    const transition = document.startViewTransition(() => { flushSync(update) })
+    themeTransition.current = transition
+    const settled = () => { if (themeTransition.current === transition) themeTransition.current = null }
+    void transition.ready.catch(() => { /* 连续切换时，旧快照被主动跳过。 */ })
+    void transition.finished.then(settled, settled)
+  }
   const leaveGuard = useRef<(() => boolean) | null>(null)
   const registerLeaveGuard = useCallback((guard: () => boolean) => {
     leaveGuard.current = guard
@@ -76,7 +95,7 @@ export default function App() {
         <div className="page-breadcrumb"><span>Yia Journal</span><span aria-hidden="true">/</span><strong>{title}</strong></div>
         <div className="header-actions">
           <LanguageSwitcher />
-          <button className="icon-button theme-toggle" aria-label={theme === 'dark' ? t("切换到浅色外观") : t("切换到深色外观")} title={theme === 'dark' ? t("切换到浅色外观") : t("切换到深色外观")} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}><UiIcon name={theme === 'dark' ? 'sun' : 'moon'} size={18} /></button>
+          <button className="icon-button theme-toggle" aria-label={theme === 'dark' ? t("切换到浅色外观") : t("切换到深色外观")} title={theme === 'dark' ? t("切换到浅色外观") : t("切换到深色外观")} onClick={toggleTheme}><UiIcon name={theme === 'dark' ? 'sun' : 'moon'} size={18} /></button>
           {activeIdentity === 'admin' && sessions.admin ? <>
             <Link className="account-profile" to="/admin/profile" aria-label={t("管理员个人资料")}><Avatar url={sessions.admin.profile.avatar} name={sessions.admin.profile.admin_name} /><span className="account-name">{sessions.admin.profile.admin_name}</span></Link>
             <button className="icon-button" disabled={busy} aria-label={t("退出管理员登录")} onClick={() => logout('admin')}><UiIcon name="logout" /></button>
