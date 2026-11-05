@@ -1,4 +1,8 @@
 export const homeUpdatesMessages = {
+  'Yia Blog 加载体验更新': { en: 'Yia Blog loading experience update', ja: 'Yia Blog 読み込み体験を改善', vi: 'Cập nhật trải nghiệm tải Yia Blog' },
+  '优化首次访问体验，让首页内容更早呈现。': { en: 'Improved first-visit loading so the homepage content appears sooner.', ja: '初回アクセス時の読み込みを改善し、ホームの内容をより早く表示します。', vi: 'Cải thiện lần truy cập đầu tiên để nội dung trang chủ hiển thị sớm hơn.' },
+  '首次访问体验优化': { en: 'Improved first-visit loading', ja: '初回アクセスの読み込みを改善', vi: 'Cải thiện trải nghiệm truy cập lần đầu' },
+  '精简首页加载资源，减少首次访问的下载量与等待。': { en: 'Streamlined homepage resources to reduce downloads and waiting on the first visit.', ja: 'ホームで読み込むリソースを減らし、初回アクセス時のダウンロード量と待ち時間を抑えました。', vi: 'Tinh gọn tài nguyên trang chủ để giảm dung lượng tải và thời gian chờ khi truy cập lần đầu.' },
   'Yia Blog 第一版正式上线': { en: 'Yia Blog: first official release', ja: 'Yia Blog 初版を正式公開', vi: 'Yia Blog chính thức ra mắt phiên bản đầu tiên' },
   '2026 年 11 月 2 日，Yia Blog 第一版正式上线，和大家分享这个持续构建的小站。': { en: 'On November 2, 2026, Yia Blog officially launched its first version, sharing this growing blog with everyone.', ja: '2026年11月2日、Yia Blogの初版を正式公開しました。少しずつ作り続けてきたブログを皆さんにお届けします。', vi: 'Ngày 2 tháng 11 năm 2026, Yia Blog chính thức ra mắt phiên bản đầu tiên, chia sẻ blog đang từng bước phát triển với mọi người.' },
   'Yia Blog 第一版已上线，开启新的记录。': { en: 'The first version of Yia Blog is live, beginning a new chapter.', ja: 'Yia Blogの初版を公開し、新しい記録を始めました。', vi: 'Phiên bản đầu tiên của Yia Blog đã ra mắt, mở đầu những ghi chép mới.' },

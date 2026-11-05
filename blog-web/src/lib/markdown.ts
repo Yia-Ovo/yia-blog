@@ -1,15 +1,8 @@
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
-import { artworkURL } from '../api/appearance'
+import { safeImageURL } from './imageURL'
 
-export function safeImageURL(value?: string | null): string {
-  if (!value?.trim()) return ''
-  try {
-    if (value.trim().startsWith('/api/blog/v1/article/images/')) return artworkURL(value.trim())
-    const url = new URL(value, window.location.origin)
-    return ['http:', 'https:'].includes(url.protocol) ? url.href : ''
-  } catch { return '' }
-}
+export { safeImageURL } from './imageURL'
 
 export function renderMarkdown(source: string): string {
   const html = marked.parse(source, { async: false, gfm: true })

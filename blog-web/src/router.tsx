@@ -3,9 +3,10 @@ import { createBrowserRouter } from 'react-router-dom'
 import App from './App'
 import RequireSession from './components/RequireSession'
 import StatePanel from './components/StatePanel'
+import HomeView from './views/HomeView'
 
 const NovelView = lazy(() => import('./views/NovelView'))
-const HomeView = lazy(() => import('./views/HomeView'))
+// 首页随入口加载，避免主脚本执行后再串行下载首页模块；其他页面保持按需加载。
 const DashboardView = lazy(() => import('./views/DashboardView'))
 const ArticleView = lazy(() => import('./views/ArticleView'))
 const AuthView = lazy(() => import('./views/AuthView'))

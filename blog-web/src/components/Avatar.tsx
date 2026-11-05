@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { safeImageURL } from '../lib/markdown'
+import { safeImageURL } from '../lib/imageURL'
 import { artworkURL } from '../api/appearance'
 
 function avatarURL(value?: string): string {
