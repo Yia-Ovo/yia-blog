@@ -66,3 +66,20 @@ logger:
 storage:
   avatar_dir: uploads/avatars
   article_image_dir: uploads/articles
+ai:
+  enabled: false
+  base_url: https://anyrouter.top/v1
+  model: gpt-6.1-sol
+  # 后端环境变量 YIA_AI_API_KEY；不要在前端或公开配置中填写密钥。
+  allowed_admin_ids: []
+  allow_all_admins: false
+  private_knowledge_admin_ids: []
+  data_dir: /var/lib/yia-blog/ai/state
+  knowledge_dir: /var/lib/yia-blog/ai/knowledge
+  workspace_dir: /var/lib/yia-blog/ai/workspace
+  # 独立执行服务用 YIA_AI_WORKER_KEY；默认不允许创建代码任务。
+  worker_enabled: false
+  workspace_dir: /var/lib/yia-blog/ai/workspace
+  # 独立执行服务用 YIA_AI_WORKER_KEY；默认不允许创建代码任务。
+  worker_enabled: false
+  daily_limit: 50

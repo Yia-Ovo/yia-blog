@@ -29,6 +29,7 @@ const (
 )
 
 type GlobalConfig struct {
+	AI      AIConfig      `yaml:"ai"`      // 私有助手默认关闭，密钥仅供后端使用。
 	Storage StorageConfig `yaml:"storage"` // 可写资源目录，与构建产物分离。
 	Server  ServerConfig  `yaml:"server"`  // 服务器基础配置
 	Gin     GinConfig     `yaml:"gin"`     // Gin 专属配置

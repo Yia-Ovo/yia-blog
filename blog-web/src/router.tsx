@@ -15,6 +15,7 @@ const EditorView = lazy(() => import('./views/EditorView'))
 const ModerationView = lazy(() => import('./views/ModerationView'))
 const CategoriesView = lazy(() => import('./views/CategoriesView'))
 const ProfileView = lazy(() => import('./views/ProfileView'))
+const AIView = lazy(() => import('./views/AIView'))
 const NotFoundView = lazy(() => import('./views/NotFoundView'))
 
 export const router = createBrowserRouter([{
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([{
     { path: '/write/:id', element: <RequireSession identity="user" preserveEditor><EditorView identity="user" /></RequireSession>, handle: { title: '编辑文章' } },
     { path: '/admin/articles', element: <RequireSession identity="admin"><ArticlesView identity="admin" /></RequireSession>, handle: { title: '文章管理' } },
     { path: '/admin/profile', element: <RequireSession identity="admin"><ProfileView identity="admin" /></RequireSession>, handle: { title: '个人资料' } },
+    { path: '/admin/ai', element: <RequireSession identity="admin"><AIView /></RequireSession>, handle: { title: 'AI 助手' } },
     { path: '/admin/articles/new', element: <RequireSession identity="admin" preserveEditor><EditorView identity="admin" /></RequireSession>, handle: { title: '写文章' } },
     { path: '/admin/articles/:id/edit', element: <RequireSession identity="admin" preserveEditor><EditorView identity="admin" /></RequireSession>, handle: { title: '编辑文章' } },
     { path: '/admin/comments', element: <RequireSession identity="admin"><ModerationView /></RequireSession>, handle: { title: '评论审核' } },

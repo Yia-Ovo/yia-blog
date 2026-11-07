@@ -72,7 +72,7 @@ export default function App() {
   const activeIdentity: Identity | null = adminArea ? (sessions.admin ? 'admin' : null) : sessions.user ? 'user' : sessions.admin ? 'admin' : null
   return <LeaveGuardContext.Provider value={registerLeaveGuard}>
     <a className="skip-link" href="#main">{t("跳到正文")}</a>
-    <div className="studio-shell">
+    <div className="studio-shell" data-workspace={location.pathname === '/admin/ai' && sessions.admin ? 'ai' : undefined}>
     <aside className="site-sidebar">
       <Link className="brand" to="/" aria-label={t("Yia 博客首页")}><span>Yia<span className="brand-dot">.</span></span><small>JOURNAL</small></Link>
       <p className="nav-label">{t("你的记录空间")}</p>
@@ -80,7 +80,8 @@ export default function App() {
         <NavLink to="/" end><UiIcon name="book" /><span>{t("文章")}<small>{t("阅读与发现")}</small></span></NavLink>
         <NavLink to="/novels"><UiIcon name="book" /><span>{t("小说")}<small>{t("走进另一个世界")}</small></span></NavLink>
         <NavLink to="/me/articles" className={location.pathname.startsWith('/write') || location.pathname.startsWith('/me') ? 'active' : undefined}><UiIcon name="edit" /><span>{t("我的创作")}<small>{t("从一个想法开始")}</small></span></NavLink>
-        <NavLink to="/admin/articles" className={adminArea ? 'active' : undefined}><UiIcon name="folder" /><span>{t("管理")}<small>{t("整理内容与交流")}</small></span></NavLink>
+        <NavLink to="/admin/articles" className={adminArea && location.pathname !== '/admin/ai' ? 'active' : undefined}><UiIcon name="folder" /><span>{t("管理")}<small>{t("整理内容与交流")}</small></span></NavLink>
+        {sessions.admin && <NavLink to="/admin/ai"><UiIcon name="comment" /><span>{t('AI 助手')}<small>{t('对话与项目工作')}</small></span></NavLink>}
         <NavLink to="/dashboard"><UiIcon name="dashboard" /><span>{t('数据看板')}<small>{t('公告与服务信息')}</small></span></NavLink>
       </nav>
       <div className="sidebar-bottom">

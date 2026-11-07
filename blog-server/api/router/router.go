@@ -75,6 +75,7 @@ func (r *Router) route(rg *gin.RouterGroup) {
 		r.appearanceRouter(v1)
 		r.weatherRouter(v1)
 		r.avatarRouter(v1)
+		r.aiRouter(v1)
 	}
 }
 

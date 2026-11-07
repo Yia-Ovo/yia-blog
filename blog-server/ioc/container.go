@@ -15,6 +15,7 @@ import (
 	"blog-server/assets"
 	"blog-server/common/consts"
 	"blog-server/config"
+	"blog-server/domain/do"
 	domainRepo "blog-server/domain/repo"
 	domainSrv "blog-server/domain/service"
 	infraRepo "blog-server/infra/repo"
@@ -27,6 +28,7 @@ var AppContainer *Container
 
 // Container 真正的DI容器，所有依赖放在结构体里
 type Container struct {
+	AIApp                   *appSrv.AIAppService
 	WeatherApp              *appSrv.WeatherAppService
 	ArticleImageRepo        domainRepo.ArticleImageRepo
 	ArticleImageDomain      *domainSrv.ArticleImageDomainService
@@ -139,5 +141,14 @@ func NewContainer(
 	c.AppearanceDomain = domainSrv.NewAppearanceDomainService(c.AppearanceRepo)
 	c.AppearanceApp = appSrv.NewAppearanceAppService(c.AppearanceDomain)
 	c.WeatherApp = appSrv.NewWeatherAppService(domainSrv.NewWeatherDomainService(), infraRepo.NewWeatherHTTPRepo())
+	ai := conf.AI.Effective()
+	c.AIApp = appSrv.NewAIAppService(
+		domainSrv.NewAIDomainService(c.AdminDomain, do.AIAccessPolicy{AllowedAdminIDs: ai.AllowedAdminIDs, PrivateKnowledgeAdminIDs: ai.PrivateKnowledgeAdminIDs, AllowAllAdmins: ai.AllowAllAdmins}, ai.DailyLimit),
+		infraRepo.NewAIStateFileRepo(ai.DataDir), infraRepo.NewAIKnowledgeFileRepo(ai.KnowledgeDir),
+		infraRepo.NewAIResponsesRepo(ai.BaseURL, ai.APIKey, ai.Model),
+		ai.Enabled && ai.APIKey != "" && ai.DataDir != "" && ai.KnowledgeDir != "", ai.Model, ai.DailyLimit,
+		infraRepo.NewAIImportFileRepo(ai.ImportsDir),
+	)
+	c.AIApp.ConfigureWorkspace(infraRepo.NewAIWorkspaceFileRepo(ai.WorkspaceDir), ai.WorkerEnabled, ai.WorkerKey)
 	return c
 }
